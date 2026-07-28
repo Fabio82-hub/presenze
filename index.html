@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gestione Presenze 2026 — Dashboard Filiali</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#0f172a 0%,#1e1b4b 100%);min-height:100vh;color:#f1f5f9}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 2rem;border-bottom:1px solid rgba(255,255,255,.08)}
+.hdr-logo{font-size:1.3rem;font-weight:800;color:#fff;display:flex;align-items:center;gap:.6rem}
+.hdr-sub{font-size:.75rem;color:#94a3b8;font-weight:400;margin-left:.5rem}
+.hdr-date{font-size:.78rem;color:#94a3b8}
+.layout{display:flex;min-height:calc(100vh - 70px)}
+.map-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:2rem;position:relative}
+.italy-svg{width:100%;max-width:460px;height:auto}
+.pin{cursor:pointer;transition:transform .2s}
+.pin:hover{transform:scale(1.18)}
+.pin-label{font-family:'Inter',sans-serif;font-weight:700;font-size:9px;fill:#fff;pointer-events:none}
+.pin-count{font-family:'Inter',sans-serif;font-size:7px;fill:rgba(255,255,255,.85);pointer-events:none}
+.sidebar{width:340px;padding:1.5rem;display:flex;flex-direction:column;gap:.85rem;overflow-y:auto}
+.panel-title{font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:.15rem}
+.card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:.9rem 1rem;cursor:pointer;text-decoration:none;display:block;transition:all .18s;position:relative}
+.card:hover{background:rgba(79,70,229,.25);border-color:#6366f1;transform:translateX(4px)}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.45rem}
+.card-nome{font-size:.85rem;font-weight:700;color:#fff}
+.card-apri{font-size:.65rem;color:#818cf8}
+.card-stats{display:flex;gap:1.2rem;align-items:center}
+.stat-label{font-size:.58rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em;display:block}
+.stat-val{font-size:.88rem;font-weight:700;color:#e2e8f0}
+.badge-eff{display:inline-flex;align-items:center;padding:.18rem .5rem;border-radius:20px;font-size:.63rem;font-weight:700}
+.badge-eff.ok{background:rgba(52,211,153,.15);color:#34d399}
+.badge-eff.warn{background:rgba(251,191,36,.15);color:#fbbf24}
+.badge-eff.danger{background:rgba(248,113,113,.15);color:#f87171}
+.badge-eff.na{background:rgba(100,116,139,.15);color:#64748b}
+.totali{background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);border-radius:12px;padding:.9rem 1rem}
+.tot-row{display:flex;justify-content:space-between;align-items:center;padding:.28rem 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.tot-row:last-child{border-bottom:none}
+.tot-label{font-size:.73rem;color:#94a3b8}
+.tot-val{font-size:.85rem;font-weight:700;color:#e2e8f0}
+.tot-val.ok{color:#34d399}.tot-val.warn{color:#fbbf24}.tot-val.danger{color:#f87171}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid #475569;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tooltip{position:absolute;background:#1e1b4b;border:1px solid #6366f1;border-radius:10px;padding:.65rem .9rem;font-size:.73rem;color:#e2e8f0;pointer-events:none;white-space:nowrap;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.4);display:none}
+.tooltip.show{display:block}
+.tooltip b{color:#818cf8}
+</style>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const firebaseConfig={apiKey:"AIzaSyDw6gFXrMA3hgShlk4S9XzYwBt2WGN6HKE",authDomain:"presenze2026.firebaseapp.com",projectId:"presenze2026",storageBucket:"presenze2026.firebasestorage.app",messagingSenderId:"1073603463859",appId:"1:1073603463859:web:23a1a363bbaabdc5077ec6"};
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+const FILIALI=[
+  {id:'seriate', nome:'SERIATE', file:'seriate.html', doc:'seriate', cx:210,cy:108, citta:'Bergamo'},
+  {id:'orio',    nome:'ORIO',    file:'orio.html',    doc:'orio',    cx:190,cy:100, citta:'Bergamo'},
+  {id:'pomezia', nome:'POMEZIA', file:'pomezia.html', doc:'pomezia', cx:215,cy:298, citta:'Roma'},
+  {id:'perugia', nome:'PERUGIA', file:'perugia.html', doc:'perugia', cx:228,cy:272, citta:'Perugia'},
+  {id:'modugno', nome:'MODUGNO', file:'modugno.html', doc:'modugno', cx:315,cy:355, citta:'Bari'},
+  {id:'elmas',   nome:'ELMAS',   file:'elmas.html',   doc:'elmas',   cx:118,cy:392, citta:'Cagliari'},
+];
+const ESCLUSI=['AREA SERIATE S.ITALIA',"SERIATE REPARTO CONTROLLO QUALITA'",'SERIATE REPARTO LABORATORIO','SERIATE REPARTO MAGAZZINO','SERIATE REPARTO FRIGORISTA','SERIATE REPARTO BRANDIZZAZIONE','BRANDIZZAZIONE'];
+function isoD(y,m,d){return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
+function localDateStr(dt){return isoD(dt.getFullYear(),dt.getMonth(),dt.getDate());}
+function calcolaEfficienza(s){
+  if(!s||!s.dipendenti||!s.tempistiche)return null;
+  const oggi=new Date(),anno=oggi.getFullYear(),mese=oggi.getMonth();
+  const attivi=s.dipendenti.filter(d=>!d.cessato&&!ESCLUSI.includes(d.reparto));
+  const reps=['SERIATE REPARTO 1°FASE','SERIATE REPARTO MONTAGGIO','SERIATE REPARTO COLLAUDI'];
+  const prod=s.produzione||{},ents=s.entries||[],temp=s.tempistiche||{};
+  let totR=0,totT=0;
+  let cur=new Date(anno,mese,1);
+  while(cur<=new Date(anno,mese+1,0)){
+    const ds=localDateStr(cur),wd=cur.getDay();
+    if(wd!==0&&wd!==6){
+      const p=prod[ds];
+      reps.forEach(rep=>{
+        const dr=attivi.filter(d=>d.reparto===rep);
+        const t=parseFloat(temp[rep])||0;
+        if(!dr.length||!t){return;}
+        let ore=dr.length*8;
+        const eg=ents.filter(e=>e.data===ds&&dr.some(d=>d.id===e.dipId));
+        ore=Math.max(0,ore-eg.filter(e=>['ferie','rol','t104','lavorazione_extra','ferie_prev','rol_prev'].includes(e.tipo)).reduce((a,e)=>a+(parseFloat(e.ore)||0),0)-eg.filter(e=>e.tipo==='malattia').length*8);
+        let daR=null;
+        if(p){if(rep==='SERIATE REPARTO 1°FASE')daR=((parseInt(p.smontati)||0)+(parseInt(p.carrelli)||0)+(parseInt(p.verniciati)||0))/3;else if(rep==='SERIATE REPARTO MONTAGGIO')daR=parseInt(p.linee)||0;else if(rep==='SERIATE REPARTO COLLAUDI')daR=parseInt(p.evase)||0;}
+        if(daR!==null&&daR>0&&t>0){totR+=daR;totT+=ore/t;}
+      });
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  return totT===0?null:Math.round(totR/totT*100);
+}
+async function carica(){
+  const res=await Promise.allSettled(FILIALI.map(f=>getDoc(doc(db,'stato',f.doc))));
+  let totP=0,effs=[],totF=0;
+  res.forEach((r,i)=>{
+    const f=FILIALI[i];
+    const cEl=document.getElementById('card-'+f.id);
+    const pcEl=document.getElementById('pc-'+f.id);
+    if(r.status==='fulfilled'&&r.value.exists()){
+      const st=r.value.data();
+      const att=(st.dipendenti||[]).filter(d=>!d.cessato).length;
+      const eff=calcolaEfficienza(st);
+      totP+=att;if(eff!==null)effs.push(eff);totF++;
+      if(cEl){
+        cEl.querySelector('.dip-val').textContent=att+' dip.';
+        const eEl=cEl.querySelector('.eff-badge');
+        if(eff!==null){const cls=eff>=100?'ok':eff>=80?'warn':'danger';eEl.className='badge-eff '+cls;eEl.textContent='⚡ '+eff+'%';}
+        else{eEl.className='badge-eff na';eEl.textContent='— n/d';}
+      }
+      if(pcEl)pcEl.textContent=att+' dip.';
+      // Colora pin in base all'efficienza
+      const pinCircle=document.getElementById('pin-c-'+f.id);
+      if(pinCircle){const c=eff===null?'#6366f1':eff>=100?'#10b981':eff>=80?'#f59e0b':'#ef4444';pinCircle.setAttribute('fill',c);}
+    } else {
+      if(cEl){cEl.querySelector('.dip-val').textContent='—';const eEl=cEl.querySelector('.eff-badge');eEl.className='badge-eff na';eEl.textContent='DB vuoto';}
+    }
+  });
+  document.getElementById('tot-p').textContent=totP;
+  document.getElementById('tot-f').textContent=totF+'/6';
+  if(effs.length){const m=Math.round(effs.reduce((a,b)=>a+b,0)/effs.length);const cl=m>=100?'ok':m>=80?'warn':'danger';const el=document.getElementById('tot-e');el.textContent=m+'%';el.className='tot-val '+cl;}
+  else{document.getElementById('tot-e').textContent='—';}
+}
+window.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('hdr-date').textContent=new Date().toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  carica();
+  const tip=document.getElementById('tip');
+  FILIALI.forEach(f=>{
+    const pin=document.getElementById('pin-'+f.id);
+    if(!pin)return;
+    pin.addEventListener('mouseenter',()=>{
+      const cEl=document.getElementById('card-'+f.id);
+      const dip=cEl?.querySelector('.dip-val')?.textContent||'—';
+      const eff=cEl?.querySelector('.eff-badge')?.textContent||'—';
+      tip.innerHTML='<b>'+f.nome+'</b> · '+f.citta+'<br>👥 '+dip+'<br>⚡ '+eff;
+      tip.classList.add('show');
+    });
+    pin.addEventListener('mousemove',e=>{
+      const r=document.querySelector('.map-wrap').getBoundingClientRect();
+      tip.style.left=(e.clientX-r.left+16)+'px';
+      tip.style.top=(e.clientY-r.top-10)+'px';
+    });
+    pin.addEventListener('mouseleave',()=>tip.classList.remove('show'));
+    pin.addEventListener('click',()=>{window.location.href=f.file;});
+  });
+});
+</script>
+</head>
+<body>
+<div class="hdr">
+  <div class="hdr-logo">🏭 Gestione Presenze 2026<span class="hdr-sub">Dashboard Filiali</span></div>
+  <div class="hdr-date" id="hdr-date"></div>
+</div>
+<div class="layout">
+  <div class="map-wrap">
+    <div id="tip" class="tooltip"></div>
+    <svg class="italy-svg" viewBox="0 0 420 580" xmlns="http://www.w3.org/2000/svg">
+      <rect width="420" height="580" fill="#0f172a" rx="12"/>
+      <!-- ITALIA continentale -->
+      <path fill="#1e293b" stroke="#334155" stroke-width="1.3" d="M148,42 L172,38 L198,40 L224,46 L248,56 L268,70 L282,86 L290,104 L288,122 L280,138 L270,154 L272,170 L280,186 L292,202 L298,220 L296,238 L288,254 L278,268 L272,282 L276,298 L282,314 L284,330 L278,344 L268,356 L260,368 L255,382 L252,396 L248,408 L242,402 L234,390 L226,378 L220,364 L215,350 L210,336 L205,322 L200,308 L195,294 L190,282 L184,270 L178,258 L170,248 L162,238 L155,228 L148,218 L143,206 L140,194 L137,180 L135,165 L134,150 L135,134 L138,118 L143,102 L148,86 L150,65 Z"/>
+      <!-- PUGLIA (tacco) -->
+      <path fill="#1e293b" stroke="#334155" stroke-width="1.1" d="M278,330 L295,324 L312,328 L324,338 L330,352 L328,366 L320,376 L308,382 L295,380 L282,370 L275,356 L273,344 Z"/>
+      <!-- CALABRIA -->
+      <path fill="#1e293b" stroke="#334155" stroke-width="1.1" d="M248,408 L258,412 L266,420 L272,432 L274,446 L270,458 L260,466 L248,468 L237,462 L228,452 L224,440 L226,428 L234,418 L242,412 Z"/>
+      <!-- SICILIA -->
+      <path fill="#1e293b" stroke="#334155" stroke-width="1.1" d="M128,476 L155,467 L184,465 L208,470 L226,480 L234,494 L228,508 L213,517 L195,520 L175,518 L155,512 L138,502 L126,488 L122,476 Z"/>
+      <!-- SARDEGNA -->
+      <path fill="#1e293b" stroke="#334155" stroke-width="1.1" d="M88,362 L108,353 L126,356 L138,366 L144,380 L143,396 L136,410 L122,420 L106,423 L90,418 L78,406 L74,392 L78,378 L84,368 Z"/>
+      <!-- Griglia -->
+      <line x1="0" y1="200" x2="420" y2="200" stroke="#ffffff06" stroke-width=".5"/>
+      <line x1="0" y1="300" x2="420" y2="300" stroke="#ffffff06" stroke-width=".5"/>
+      <line x1="200" y1="0" x2="200" y2="580" stroke="#ffffff06" stroke-width=".5"/>
+      <!-- PIN SERIATE -->
+      <g id="pin-seriate" class="pin"><circle id="pin-c-seriate" cx="210" cy="108" r="19" fill="#6366f1" opacity=".9"/><circle cx="210" cy="108" r="14" fill="#6366f1"/><text x="210" y="105" text-anchor="middle" class="pin-label">SER</text><text x="210" y="115" text-anchor="middle" class="pin-count" id="pc-seriate">...</text></g>
+      <!-- PIN ORIO -->
+      <g id="pin-orio" class="pin"><circle id="pin-c-orio" cx="188" cy="100" r="16" fill="#6366f1" opacity=".9"/><circle cx="188" cy="100" r="11" fill="#6366f1"/><text x="188" y="97" text-anchor="middle" class="pin-label">ORI</text><text x="188" y="106" text-anchor="middle" class="pin-count" id="pc-orio">...</text></g>
+      <!-- PIN PERUGIA -->
+      <g id="pin-perugia" class="pin"><circle id="pin-c-perugia" cx="228" cy="272" r="18" fill="#6366f1" opacity=".9"/><circle cx="228" cy="272" r="13" fill="#6366f1"/><text x="228" y="269" text-anchor="middle" class="pin-label">PER</text><text x="228" y="279" text-anchor="middle" class="pin-count" id="pc-perugia">...</text></g>
+      <!-- PIN POMEZIA -->
+      <g id="pin-pomezia" class="pin"><circle id="pin-c-pomezia" cx="212" cy="298" r="18" fill="#6366f1" opacity=".9"/><circle cx="212" cy="298" r="13" fill="#6366f1"/><text x="212" y="295" text-anchor="middle" class="pin-label">POM</text><text x="212" y="305" text-anchor="middle" class="pin-count" id="pc-pomezia">...</text></g>
+      <!-- PIN MODUGNO -->
+      <g id="pin-modugno" class="pin"><circle id="pin-c-modugno" cx="315" cy="355" r="18" fill="#6366f1" opacity=".9"/><circle cx="315" cy="355" r="13" fill="#6366f1"/><text x="315" y="352" text-anchor="middle" class="pin-label">MOD</text><text x="315" y="362" text-anchor="middle" class="pin-count" id="pc-modugno">...</text></g>
+      <!-- PIN ELMAS (Sardegna) -->
+      <g id="pin-elmas" class="pin"><circle id="pin-c-elmas" cx="110" cy="390" r="18" fill="#6366f1" opacity=".9"/><circle cx="110" cy="390" r="13" fill="#6366f1"/><text x="110" y="387" text-anchor="middle" class="pin-label">ELM</text><text x="110" y="397" text-anchor="middle" class="pin-count" id="pc-elmas">...</text></g>
+      <!-- Legenda colori -->
+      <circle cx="22" cy="558" r="7" fill="#10b981"/><text x="34" y="562" font-family="Inter" font-size="9" fill="#94a3b8">≥100%</text>
+      <circle cx="82" cy="558" r="7" fill="#f59e0b"/><text x="94" y="562" font-family="Inter" font-size="9" fill="#94a3b8">80-99%</text>
+      <circle cx="142" cy="558" r="7" fill="#ef4444"/><text x="154" y="562" font-family="Inter" font-size="9" fill="#94a3b8">&lt;80%</text>
+      <circle cx="198" cy="558" r="7" fill="#6366f1"/><text x="210" y="562" font-family="Inter" font-size="9" fill="#94a3b8">n/d</text>
+    </svg>
+  </div>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div>
+      <div class="panel-title">Riepilogo aziendale</div>
+      <div class="totali">
+        <div class="tot-row"><span class="tot-label">👥 Personale totale</span><span class="tot-val" id="tot-p"><span class="spin"></span></span></div>
+        <div class="tot-row"><span class="tot-label">🏢 Filiali con dati</span><span class="tot-val" id="tot-f"><span class="spin"></span></span></div>
+        <div class="tot-row"><span class="tot-label">⚡ Efficienza media</span><span class="tot-val" id="tot-e"><span class="spin"></span></span></div>
+      </div>
+    </div>
+    <div class="panel-title">Seleziona filiale</div>
+    <a id="card-seriate" class="card" href="seriate.html"><div class="card-head"><span class="card-nome">🏢 SERIATE</span><span class="card-apri">Bergamo →</span></div><div class="card-stats"><div><span class="stat-label">Personale</span><span class="stat-val dip-val"><span class="spin"></span></span></div><div><span class="stat-label">Efficienza</span><span class="eff-badge badge-eff na"><span class="spin"></span></span></div></div></a>
+    <a id="card-orio" class="card" href="orio.html"><div class="card-head"><span class="card-nome">🏢 ORIO</span><span class="card-apri">Bergamo →</span></div><div class="card-stats"><div><span class="stat-label">Personale</span><span class="stat-val dip-val"><span class="spin"></span></span></div><div><span class="stat-label">Efficienza</span><span class="eff-badge badge-eff na"><span class="spin"></span></span></div></div></a>
+    <a id="card-pomezia" class="card" href="pomezia.html"><div class="card-head"><span class="card-nome">🏢 POMEZIA</span><span class="card-apri">Roma →</span></div><div class="card-stats"><div><span class="stat-label">Personale</span><span class="stat-val dip-val"><span class="spin"></span></span></div><div><span class="stat-label">Efficienza</span><span class="eff-badge badge-eff na"><span class="spin"></span></span></div></div></a>
+    <a id="card-perugia" class="card" href="perugia.html"><div class="card-head"><span class="card-nome">🏢 PERUGIA</span><span class="card-apri">Umbria →</span></div><div class="card-stats"><div><span class="stat-label">Personale</span><span class="stat-val dip-val"><span class="spin"></span></span></div><div><span class="stat-label">Efficienza</span><span class="eff-badge badge-eff na"><span class="spin"></span></span></div></div></a>
+    <a id="card-modugno" class="card" href="modugno.html"><div class="card-head"><span class="card-nome">🏢 MODUGNO</span><span class="card-apri">Bari →</span></div><div class="card-stats"><div><span class="stat-label">Personale</span><span class="stat-val dip-val"><span class="spin"></span></span></div><div><span class="stat-label">Efficienza</span><span class="eff-badge badge-eff na"><span class="spin"></span></span></div></div></a>
+    <a id="card-elmas" class="card" href="elmas.html"><div class="card-head"><span class="card-nome">🏢 ELMAS</span><span class="card-apri">Cagliari →</span></div><div class="card-stats"><div><span class="stat-label">Personale</span><span class="stat-val dip-val"><span class="spin"></span></span></div><div><span class="stat-label">Efficienza</span><span class="eff-badge badge-eff na"><span class="spin"></span></span></div></div></a>
+  </div>
+</div>
+</body>
+</html>
