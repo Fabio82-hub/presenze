@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gestione Presenze 2026 — Accesso</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#1e40af 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1rem}
+.box{background:#fff;border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:380px;box-shadow:0 25px 60px rgba(0,0,0,.35)}
+.logo{text-align:center;margin-bottom:2rem}
+.logo-icon{font-size:2.5rem;display:block;margin-bottom:.5rem}
+.logo-title{font-size:1.25rem;font-weight:800;color:#1f2937}
+.logo-sub{font-size:.75rem;color:#9ca3af;margin-top:.2rem}
+.fg{margin-bottom:1rem}
+label{display:block;font-size:.75rem;font-weight:600;color:#374151;margin-bottom:.4rem}
+input{width:100%;border:1.5px solid #e5e7eb;border-radius:8px;padding:.65rem .85rem;font-size:.88rem;font-family:'Inter',sans-serif;outline:none;transition:border-color .15s;color:#1f2937}
+input:focus{border-color:#4f46e5;box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+.btn-login{width:100%;background:#4f46e5;color:#fff;border:none;border-radius:8px;padding:.8rem;font-size:.9rem;font-weight:700;font-family:'Inter',sans-serif;cursor:pointer;transition:all .15s;margin-top:.5rem}
+.btn-login:hover{background:#4338ca;transform:translateY(-1px);box-shadow:0 6px 20px rgba(79,70,229,.35)}
+.btn-login:disabled{background:#9ca3af;cursor:not-allowed;transform:none;box-shadow:none}
+.err{background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:.65rem .85rem;font-size:.78rem;color:#dc2626;margin-top:.75rem;display:none}
+.err.show{display:block}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:.4rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.footer{text-align:center;font-size:.68rem;color:#9ca3af;margin-top:1.5rem}
+</style>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyDw6gFXrMA3hgShlk4S9XzYwBt2WGN6HKE",
+  authDomain:"presenze2026.firebaseapp.com",
+  projectId:"presenze2026",
+  storageBucket:"presenze2026.firebasestorage.app",
+  messagingSenderId:"1073603463859",
+  appId:"1:1073603463859:web:23a1a363bbaabdc5077ec6"
+};
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
+
+// Se già loggato, redirect diretto
+onAuthStateChanged(auth, async user=>{
+  if(user){
+    const userDoc=await getDoc(doc(db,'utenti',user.uid));
+    if(userDoc.exists()){
+      const redirect=sessionStorage.getItem('redirectAfterLogin')||'index.html';
+      window.location.href=redirect;
+    }
+  }
+});
+
+window.doLogin=async function(){
+  const email=document.getElementById('email').value.trim();
+  const pw=document.getElementById('pw').value;
+  const btn=document.getElementById('btnLogin');
+  const err=document.getElementById('errMsg');
+  err.classList.remove('show');
+  if(!email||!pw){err.textContent='Inserisci email e password.';err.classList.add('show');return;}
+  btn.disabled=true;
+  btn.innerHTML='<span class="spin"></span>Accesso in corso...';
+  try{
+    const cred=await signInWithEmailAndPassword(auth,email,pw);
+    // Verifica che l'utente esista nel nostro sistema
+    const userDoc=await getDoc(doc(db,'utenti',cred.user.uid));
+    if(!userDoc.exists()||!userDoc.data().attivo){
+      await auth.signOut();
+      throw new Error('Utente non autorizzato o disabilitato.');
+    }
+    const redirect=sessionStorage.getItem('redirectAfterLogin')||'index.html';
+    sessionStorage.removeItem('redirectAfterLogin');
+    window.location.href=redirect;
+  } catch(e){
+    let msg=e.message||'Errore di accesso.';
+    if(msg.includes('user-not-found')||msg.includes('wrong-password')||msg.includes('invalid-credential'))msg='Email o password non corretti.';
+    else if(msg.includes('too-many-requests'))msg='Troppi tentativi. Riprova tra qualche minuto.';
+    else if(msg.includes('non autorizzato'))msg=e.message;
+    else msg='Errore di accesso. Controlla email e password.';
+    err.textContent=msg;err.classList.add('show');
+    btn.disabled=false;btn.innerHTML='Accedi';
+  }
+};
+
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('pw').addEventListener('keydown',e=>{if(e.key==='Enter')window.doLogin();});
+  document.getElementById('email').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('pw').focus();});
+});
+</script>
+</head>
+<body>
+<div class="box">
+  <div class="logo">
+    <span class="logo-icon">🏭</span>
+    <div class="logo-title">Gestione Presenze 2026</div>
+    <div class="logo-sub">Accedi per continuare</div>
+  </div>
+  <div class="fg">
+    <label for="email">Email</label>
+    <input type="email" id="email" placeholder="nome@azienda.it" autocomplete="email">
+  </div>
+  <div class="fg">
+    <label for="pw">Password</label>
+    <input type="password" id="pw" placeholder="••••••••" autocomplete="current-password">
+  </div>
+  <button class="btn-login" id="btnLogin" onclick="doLogin()">Accedi</button>
+  <div class="err" id="errMsg"></div>
+  <div class="footer">Documento riservato ad uso interno · Accesso protetto</div>
+</div>
+</body>
+</html>
