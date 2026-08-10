@@ -1,0 +1,2232 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Report KPI — Gestione Presenze 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--accent:#4f46e5;--ok:#059669;--warn:#d97706;--danger:#dc2626;--border:#e5e7eb;--surface:#f8fafc;--text:#1f2937;--text2:#6b7280}
+body{font-family:"Inter",sans-serif;background:#f1f5f9;color:var(--text)}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;background:#fff;border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06);flex-wrap:wrap;gap:.5rem;position:sticky;top:0;z-index:100}
+.hdr-title{font-size:1.1rem;font-weight:800}.hdr-sub{font-size:.72rem;color:var(--text2)}
+.main{max-width:1300px;margin:0 auto;padding:1.5rem}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.25rem}
+.ct{font-size:.85rem;font-weight:700;margin-bottom:.85rem;padding-bottom:.55rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem}
+.step-num{width:22px;height:22px;background:var(--accent);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;flex-shrink:0}
+.fr{display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end}
+.fg{display:flex;flex-direction:column;gap:.28rem}
+.lbl{font-size:.65rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:.3rem}
+input,select{border:1.5px solid var(--border);border-radius:8px;padding:.48rem .7rem;font-size:.82rem;font-family:"Inter",sans-serif;outline:none;color:var(--text);transition:border-color .15s;background:#fff}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.48rem 1rem;border-radius:8px;font-family:"Inter",sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;border:none;transition:all .12s;white-space:nowrap}
+.bp{background:var(--accent);color:#fff}.bp:hover{background:#4338ca;transform:translateY(-1px)}
+.bg{background:#f1f5f9;color:var(--text);border:1.5px solid var(--border)}.bg:hover{background:#e5e7eb}
+.btn-lg{font-size:.9rem;padding:.65rem 1.75rem}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:.7rem;margin-bottom:1rem}
+.kpi{background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:.9rem;text-align:center;position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;bottom:0;left:0;right:0;height:3px;background:var(--kc,#e5e7eb)}
+.kpi-val{font-size:1.7rem;font-weight:800;line-height:1;color:var(--kc,var(--text))}
+.kpi-label{font-size:.62rem;color:var(--text2);margin-top:.3rem;line-height:1.35}
+.kpi.ok{--kc:#059669}.kpi.warn{--kc:#d97706}.kpi.danger{--kc:#dc2626}.kpi.accent{--kc:#4f46e5}.kpi.blue{--kc:#0369a1}.kpi.purple{--kc:#7c3aed}
+table{width:100%;border-collapse:collapse;font-size:.76rem}
+th{text-align:left;padding:.42rem .65rem;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);border-bottom:2px solid var(--border);background:var(--surface)}
+td{padding:.5rem .65rem;border-bottom:1px solid #f3f4f6;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa}
+.badge{display:inline-flex;align-items:center;padding:.13rem .45rem;border-radius:20px;font-size:.63rem;font-weight:700}
+.b-ok{background:#d1fae5;color:#065f46}.b-warn{background:#fef3c7;color:#92400e}.b-danger{background:#fee2e2;color:#991b1b}
+.b-info{background:#dbeafe;color:#1e40af}.b-purple{background:#ede9fe;color:#5b21b6}.b-gray{background:#f1f5f9;color:#6b7280}
+.progress-bar{background:#f1f5f9;border-radius:20px;height:7px;overflow:hidden;margin-top:.22rem;min-width:80px}
+.progress-fill{height:100%;border-radius:20px;transition:width .5s}
+.upload-zone{border:2px dashed var(--border);border-radius:10px;padding:1.25rem;text-align:center;cursor:pointer;transition:all .18s;background:#fafafa}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:#eef2ff}
+.uz-icon{font-size:2rem;margin-bottom:.4rem}
+.uz-text{font-size:.8rem;color:var(--text2)}.uz-sub{font-size:.68rem;color:#9ca3af;margin-top:.2rem}
+.al{border-radius:8px;padding:.6rem .85rem;font-size:.76rem;margin-bottom:.7rem}
+.a-ok{background:#d1fae5;border:1px solid #a7f3d0;color:#065f46}
+.a-warn{background:#fef3c7;border:1px solid #fde68a;color:#92400e}
+.a-info{background:#dbeafe;border:1px solid #bfdbfe;color:#1e40af}
+.a-danger{background:#fee2e2;border:1px solid #fca5a5;color:#991b1b}
+.sep{margin:.65rem 0;border:none;border-top:1px solid var(--border)}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #e5e7eb;border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.preview-box{max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;font-size:.7rem;margin-top:.5rem}
+.fase-badge{display:inline-block;padding:.12rem .4rem;border-radius:5px;font-size:.62rem;font-weight:700;font-family:monospace}
+.f60{background:#dbeafe;color:#1e40af}.f61{background:#ede9fe;color:#5b21b6}.f62{background:#fce7f3;color:#be185d}
+.f63{background:#d1fae5;color:#065f46}.f64{background:#fef3c7;color:#92400e}.f70{background:#fee2e2;color:#991b1b}
+.tabs{display:flex;gap:.2rem;border-bottom:2px solid var(--border);margin-bottom:1rem;flex-wrap:wrap}
+.tab{padding:.5rem .9rem;font-size:.75rem;font-weight:600;cursor:pointer;border:none;background:none;color:var(--text2);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s;border-radius:6px 6px 0 0}
+.tab:hover{background:#f1f5f9;color:var(--text)}.tab.active{color:var(--accent);border-bottom-color:var(--accent);background:#f5f3ff}
+.tc{display:none}.tc.active{display:block}
+.tecnico-card{border:1px solid var(--border);border-radius:10px;margin-bottom:.75rem;overflow:hidden}
+.tecnico-head{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;background:var(--surface);cursor:pointer;flex-wrap:wrap}
+.tecnico-nome{font-weight:700;font-size:.88rem;flex:1}
+.tecnico-body{padding:.75rem 1rem;border-top:1px solid var(--border);display:none}
+.tecnico-body.open{display:block}
+.mese-chip{border:1.5px solid var(--border);border-radius:8px;padding:.3rem .55rem;cursor:pointer;font-size:.72rem;font-weight:600;transition:all .15s;user-select:none;background:#fff;color:var(--text2)}
+.mese-chip.sel{border-color:var(--accent);background:#eef2ff;color:var(--accent)}
+.kpi-click{cursor:pointer;transition:transform .12s,box-shadow .12s}
+.kpi-click:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,.08)}
+.kpi-modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:2000;align-items:center;justify-content:center;padding:1rem}
+.kpi-modal-overlay.open{display:flex}
+.kpi-modal{background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:82vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.kpi-modal-head{display:flex;justify-content:space-between;align-items:center;padding:1rem 1.25rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:#fff;z-index:1}
+.kpi-modal-title{font-size:.92rem;font-weight:800}
+.kpi-modal-close{border:none;background:#f1f5f9;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:.9rem;color:var(--text2)}
+.kpi-modal-close:hover{background:#e5e7eb}
+.kpi-modal-body{padding:.5rem 1.25rem 1.25rem}
+.classifica-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:.85rem}
+.classifica-card{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:1.85rem 1rem 1rem;position:relative;transition:transform .15s,box-shadow .15s}
+.classifica-card:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.08);cursor:pointer}
+.classifica-periodo{font-size:.62rem;color:#9ca3af;text-align:center;margin-top:.4rem;border-top:1px dashed var(--border);padding-top:.35rem}
+.classifica-card.linea{border-color:#1e40af;border-width:2px;background:linear-gradient(145deg,#eff6ff,#f8faff)}
+.classifica-linea-badge{background:#1e40af;color:#fff;font-size:.72rem;font-weight:800;border-radius:6px;padding:.3rem .6rem;display:inline-block;letter-spacing:.03em}
+.classifica-card.oro{border-color:#f5c518;background:linear-gradient(145deg,#fffbea,#fff)}
+.classifica-card.argento{border-color:#c7c7c7;background:linear-gradient(145deg,#f8f9fa,#fff)}
+.classifica-card.bronzo{border-color:#cd8b4f;background:linear-gradient(145deg,#fdf3ea,#fff)}
+.classifica-card.critico{border-color:#dc2626;background:linear-gradient(145deg,#fef2f2,#fff)}
+.classifica-medaglia{position:absolute;top:-12px;right:12px;font-size:1.8rem;filter:drop-shadow(0 2px 3px rgba(0,0,0,.2))}
+.classifica-escludi{position:absolute;top:8px;left:8px;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);background:#fff;color:#9ca3af;font-size:.7rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;transition:all .15s}
+.classifica-escludi:hover{background:#fef2f2;border-color:#dc2626;color:#dc2626}
+.classifica-card.fantasma{border-color:#dc2626;border-width:2px;background:linear-gradient(145deg,#fff0f5,#ffe4ec);box-shadow:0 0 0 3px rgba(220,38,38,.08)}
+.classifica-pericolo{position:absolute;top:-14px;right:10px;font-size:2rem;filter:drop-shadow(0 2px 3px rgba(220,38,38,.35))}
+.classifica-fantasma-msg{background:#dc2626;color:#fff;font-size:.68rem;font-weight:700;border-radius:6px;padding:.35rem .5rem;margin-top:.4rem;text-align:center}
+.classifica-zero-badge{background:#fef3c7;color:#92400e;font-size:.66rem;font-weight:700;border-radius:6px;padding:.3rem .5rem;margin-top:.4rem;text-align:center;border:1px solid #fde68a}
+.classifica-teschio{position:absolute;top:-10px;right:12px;font-size:1.5rem}
+.classifica-rank{font-size:.65rem;font-weight:800;color:#9ca3af;letter-spacing:.05em}
+.classifica-nome{font-size:.95rem;font-weight:800;margin:.15rem 0 .6rem;color:var(--text)}
+.classifica-metriche{display:flex;gap:.5rem;margin-bottom:.5rem}
+.classifica-metrica{flex:1;text-align:center;padding:.5rem .3rem;border-radius:8px;background:#f8f9fb}
+.classifica-metrica-val{font-size:1.1rem;font-weight:800}
+.classifica-metrica-lbl{font-size:.6rem;color:var(--text2);text-transform:uppercase;letter-spacing:.03em}
+.classifica-foot{font-size:.68rem;color:var(--text2);text-align:center;border-top:1px dashed var(--border);padding-top:.4rem;margin-top:.3rem}
+@media print{.no-print{display:none!important}body{background:#fff}.card{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div>
+    <div class="hdr-title">⚡ REPORT KPI</div>
+    <div class="hdr-sub">Confronto tempi standard vs tempi effettivi per tecnico e per fase</div>
+  </div>
+  <div style="display:flex;gap:.5rem" class="no-print">
+    <button class="btn bg" onclick="window.print()">🖨 Stampa</button>
+    <a href="index.html" class="btn bg">🏠 Hub</a>
+  </div>
+</div>
+
+<div class="main">
+
+<div class="tabs no-print" style="justify-content:space-between;align-items:center;flex-wrap:wrap">
+  <div style="display:flex;gap:.2rem">
+    <button class="tab active" id="tabBtnReport" onclick="switchTab('report')">📥 Inserimento Dati</button>
+    <button class="tab" id="tabBtnStorico" onclick="switchTab('storico')">📈 KPI Produzione</button>
+    <button class="tab" id="tabBtnClassifica" onclick="switchTab('classifica')">🏆 Classifica Team</button>
+    <button class="tab" id="tabBtnFasi" onclick="switchTab('fasi')">📊 Analisi Fase/Reparto</button>
+  </div>
+  <a href="index.html" class="btn bg" style="font-size:.75rem;text-decoration:none;margin-bottom:.4rem">🏠 Torna alla Home</a>
+</div>
+
+<div class="tc active" id="tab-report">
+
+<!-- STEP 1: FILE TEMPI MEDI -->
+<div class="card">
+  <div class="ct"><span class="step-num">1</span> File tempi medi (Excel con 2 fogli: "Usati" e "Nuovi")</div>
+  <div class="al a-info">
+    <b>Foglio 1 — Distributori USATI:</b> Articolo · Modello · Descrizione · T.Montaggio · T.Collaudo · Fase60 · Fase61 · Fase62 · Fase63 · Fase64 · Fase70<br>
+    <b>Foglio 2 — Distributori NUOVI:</b> Articolo · Modello · Descrizione · T.Collaudo (solo Fase 70)<br>
+    <small style="color:#6b7280">Il sistema riconosce automaticamente le colonne — potrai abbinarle manualmente se necessario.</small>
+  </div>
+  <div class="upload-zone" id="uzTempi" onclick="document.getElementById('fTempi').click()">
+    <div class="uz-icon">📋</div>
+    <div class="uz-text">Carica file tempi medi (.xlsx)</div>
+    <div class="uz-sub">trascina qui o clicca per selezionare</div>
+  </div>
+  <input type="file" id="fTempi" accept=".xlsx,.xls" style="display:none">
+  <div id="tempiStatus" style="margin-top:.65rem"></div>
+  <div id="tempiMapping" style="display:none;margin-top:1rem">
+    <div class="sep"></div>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:280px">
+        <b style="font-size:.78rem">Foglio USATI — abbina colonne</b>
+        <div class="fr" style="margin-top:.6rem;gap:.5rem">
+          <div class="fg"><label class="lbl">Articolo/Codice</label><select id="uCod" style="width:140px"></select></div>
+          <div class="fg"><label class="lbl">Modello</label><select id="uMod" style="width:140px"></select></div>
+          <div class="fg"><label class="lbl">Descrizione</label><select id="uDesc" style="width:140px"></select></div>
+        </div>
+        <div class="fr" style="margin-top:.5rem;gap:.5rem">
+          <div class="fg"><label class="lbl">T.Montaggio (h)</label><select id="uTmont" style="width:120px"></select></div>
+          <div class="fg"><label class="lbl">T.Collaudo (h)</label><select id="uTcoll" style="width:120px"></select></div>
+        </div>
+        <div class="fr" style="margin-top:.5rem;gap:.5rem">
+          <div class="fg"><label class="lbl">Fase 60</label><select id="uF60" style="width:100px"><option value="">—</option></select></div>
+          <div class="fg"><label class="lbl">Fase 61</label><select id="uF61" style="width:100px"><option value="">—</option></select></div>
+          <div class="fg"><label class="lbl">Fase 62</label><select id="uF62" style="width:100px"><option value="">—</option></select></div>
+          <div class="fg"><label class="lbl">Fase 63</label><select id="uF63" style="width:100px"><option value="">—</option></select></div>
+          <div class="fg"><label class="lbl">Fase 64</label><select id="uF64" style="width:100px"><option value="">—</option></select></div>
+          <div class="fg"><label class="lbl">Fase 70</label><select id="uF70" style="width:100px"><option value="">—</option></select></div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:280px">
+        <b style="font-size:.78rem">Foglio NUOVI — abbina colonne</b>
+        <div class="fr" style="margin-top:.6rem;gap:.5rem">
+          <div class="fg"><label class="lbl">Articolo/Codice</label><select id="nCod" style="width:140px"></select></div>
+          <div class="fg"><label class="lbl">Modello</label><select id="nMod" style="width:140px"></select></div>
+          <div class="fg"><label class="lbl">Descrizione</label><select id="nDesc" style="width:140px"></select></div>
+        </div>
+        <div class="fr" style="margin-top:.5rem;gap:.5rem">
+          <div class="fg"><label class="lbl">Fase 70 (T.Collaudo)</label><select id="nF70" style="width:140px"></select></div>
+        </div>
+        <div class="al a-info" style="margin-top:.6rem;font-size:.7rem">I distributori nuovi hanno solo la fase di collaudo (Fase 70)</div>
+      </div>
+    </div>
+    <div id="tempiPreview" class="preview-box" style="margin-top:.75rem"></div>
+    <div style="display:flex;align-items:center;gap:1rem;margin-top:.75rem;flex-wrap:wrap">
+      <div class="fg">
+        <label class="lbl">Unità di misura dei tempi nel file</label>
+        <select id="unitaTempi" style="width:180px">
+          <option value="min">Minuti (es. 360 = 6 ore) ✓ Tuo file</option>
+          <option value="ore">Ore (es. 6.0 = 6 ore)</option>
+        </select>
+      </div>
+      <button class="btn bp" onclick="confermaTempi()">✓ Conferma tempi medi</button>
+    </div>
+  </div>
+  <div id="tempiOk" style="display:none;margin-top:.65rem">
+    <div class="al a-ok" id="tempiOkMsg"></div>
+    <div style="display:flex;gap:.5rem;margin-top:.5rem">
+      <button class="btn bg" style="font-size:.7rem" onclick="resetTempi()">🔄 Sostituisci file (drag&drop)</button>
+      <button class="btn bg" style="font-size:.7rem;color:#dc2626" onclick="resetTempi()">🗑 Rimuovi</button>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 2: FILE PRODUZIONE -->
+<div class="card" id="step2" style="display:none">
+  <div class="ct"><span class="step-num">2</span> File produzione (lavori effettivi per tecnico)</div>
+  <div class="fg" style="max-width:260px;margin-bottom:.85rem">
+    <label class="lbl">Sito produttivo / Filiale di questo file</label>
+    <select id="filialeAnal">
+      <option value="seriate">SERIATE</option>
+      <option value="pomezia">POMEZIA</option>
+      <option value="orio">ORIO</option>
+      <option value="perugia">PERUGIA</option>
+      <option value="elmas">ELMAS</option>
+      <option value="modugno">MODUGNO</option>
+    </select>
+    <small style="color:#9ca3af;font-size:.65rem;margin-top:.2rem;display:block">Serve per abbinare i nominativi di questo file al calendario presenze di quella filiale. I nominativi non trovati nel calendario di questa filiale verranno esclusi dal report.</small>
+  </div>
+  <div class="al a-info">
+    Colonne attese: <b>Tecnico</b> (nome utente) · <b>Articolo/Modello</b> · <b>Fase</b> (60,61,62,63,64,70) · <b>Data completamento</b> · <b>Tempo effettivo (h)</b>
+  </div>
+  <div class="upload-zone" id="uzProd" onclick="document.getElementById('fProd').click()">
+    <div class="uz-icon">📊</div>
+    <div class="uz-text">Carica file produzione (.xlsx)</div>
+    <div class="uz-sub">trascina qui o clicca per selezionare</div>
+  </div>
+  <input type="file" id="fProd" accept=".xlsx,.xls" style="display:none">
+  <div id="prodStatus" style="margin-top:.65rem"></div>
+  <div id="prodMapping" style="display:none;margin-top:1rem">
+    <div class="sep"></div>
+    <div class="al a-info" style="font-size:.72rem;margin-bottom:.5rem">
+      <b>Calcolo tempo effettivo:</b> "Start minuti" è già il tempo effettivo di lavorazione — viene preso direttamente, senza sottrarre nulla. Il campo "Stop minuti" resta disponibile solo se in futuro vorrai sottrarre pause/interruzioni: di default <b>non è selezionato</b>.
+    </div>
+    <div class="fr" style="gap:.5rem">
+      <div class="fg"><label class="lbl">Tecnico (Utente)</label><select id="pTec" style="width:150px"></select></div>
+      <div class="fg"><label class="lbl">Articolo (Prod. Modello)</label><select id="pArt" style="width:150px"></select></div>
+      <div class="fg"><label class="lbl">Fase</label><select id="pFase" style="width:110px"></select></div>
+      <div class="fg"><label class="lbl">Data Fine</label><select id="pData" style="width:150px"></select></div>
+      <div class="fg"><label class="lbl">Start minuti</label><select id="pTempo" style="width:140px"></select></div>
+      <div class="fg"><label class="lbl">Stop minuti (pause)</label><select id="pStop" style="width:140px"><option value="">— non usare —</option></select></div>
+      <div class="fg"><label class="lbl">Unità tempo produzione</label>
+        <select id="unitaProd" style="width:150px">
+          <option value="min">Minuti ✓ (questo file)</option>
+          <option value="ore">Ore</option>
+        </select>
+      </div>
+    </div>
+    <div id="prodPreview" class="preview-box" style="margin-top:.6rem"></div>
+    <button class="btn bp" style="margin-top:.7rem" onclick="confermaProd()">✓ Conferma produzione</button>
+  </div>
+  <div id="prodOk" style="display:none;margin-top:.65rem">
+    <div class="al a-ok" id="prodOkMsg"></div>
+    <div id="codiciMancantiImport"></div>
+    <div id="righeTempoZeroImport"></div>
+    <button class="btn bg" style="font-size:.7rem" onclick="resetProd()">✕ Cambia file</button>
+  </div>
+</div>
+
+<!-- STEP 3: PARAMETRI -->
+<div class="card" id="step3" style="display:none">
+  <div class="ct"><span class="step-num">3</span> Parametri e filtri</div>
+  <div class="fr" style="align-items:flex-start;gap:1rem">
+    <div class="fg" style="flex:1">
+      <label class="lbl">Periodo di analisi</label>
+      <div style="display:flex;gap:.35rem;flex-wrap:wrap" id="mesiChips"></div>
+      <div style="display:flex;gap:.3rem;margin-top:.4rem;flex-wrap:wrap">
+        <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selMesi([0,1,2,3,4,5,6,7,8,9,10,11])">Tutti</button>
+        <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selMesi([0,1,2,3,4,5])">1° Sem.</button>
+        <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selMesi([6,7,8,9,10,11])">2° Sem.</button>
+        <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selMesi([0,1,2])">Q1</button>
+        <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selMesi([3,4,5])">Q2</button>
+        <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selMesi([6,7,8])">Q3</button>
+        <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selMesi([9,10,11])">Q4</button>
+        <select id="annoAnal" style="font-size:.75rem;padding:.22rem .5rem">
+          <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg">
+      <label class="lbl">Fasi da includere</label>
+      <div style="display:flex;gap:.3rem;flex-wrap:wrap" id="fasiChips"></div>
+    </div>
+  </div>
+  <div class="sep"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap">
+    <small style="color:var(--text2);font-size:.7rem">ℹ️ Il risultato dell'analisi apparirà nella tab "📈 KPI Produzione"</small>
+    <div style="display:flex;align-items:center;gap:.75rem">
+      <span id="analLoad" style="display:none;color:var(--text2);font-size:.76rem"><span class="spin"></span> Elaborazione...</span>
+      <button class="btn bp btn-lg" id="btnAnal" onclick="eseguiReport()">▶ Genera ed analizza</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /tab-report -->
+
+<div class="tc" id="tab-storico">
+
+  <!-- Report del mese appena generato in "Inserimento dati" -->
+  <div id="risultati" style="display:none"></div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:.85rem">
+      <div class="ct" style="border-bottom:none;margin-bottom:0;padding-bottom:0">📈 KPI Produzione — andamento mensile efficienza e performance tecnici</div>
+      <button class="btn bp" onclick="switchTab('report')">🔧 Inserimento dati</button>
+    </div>
+    <div class="fr" style="align-items:flex-end">
+      <div class="fg">
+        <label class="lbl">Filiale</label>
+        <select id="storicoFiliale" style="width:180px">
+          <option value="seriate">SERIATE</option>
+          <option value="pomezia">POMEZIA</option>
+          <option value="orio">ORIO</option>
+          <option value="perugia">PERUGIA</option>
+          <option value="elmas">ELMAS</option>
+          <option value="modugno">MODUGNO</option>
+        </select>
+      </div>
+      <div class="fg" style="flex:1;min-width:280px">
+        <label class="lbl">Periodo storico</label>
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap" id="storicoMesiChips"></div>
+        <div style="display:flex;gap:.3rem;margin-top:.4rem;flex-wrap:wrap;align-items:center">
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selStoricoMesi([0,1,2,3,4,5,6,7,8,9,10,11])">Tutti</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selStoricoMesi([0,1,2,3,4,5])">1° Sem.</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selStoricoMesi([6,7,8,9,10,11])">2° Sem.</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selStoricoMesi([0,1,2])">Q1</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selStoricoMesi([3,4,5])">Q2</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selStoricoMesi([6,7,8])">Q3</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selStoricoMesi([9,10,11])">Q4</button>
+          <select id="storicoAnnoSel" style="font-size:.75rem;padding:.22rem .5rem">
+            <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn bp" onclick="caricaStorico()">▶ Carica storico</button>
+    </div>
+  </div>
+  <div id="storicoContent"></div>
+</div><!-- /tab-storico -->
+
+<div class="tc" id="tab-classifica">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <div class="ct" style="border-bottom:none;margin-bottom:0;padding-bottom:0">🏆 Classifica Team — efficienza e performance dell'ultimo caricamento</div>
+      <button class="btn bp" onclick="switchTab('report')">🔧 Inserimento dati</button>
+    </div>
+    <div class="fr" style="align-items:flex-end;margin-top:.5rem">
+      <div class="fg">
+        <label class="lbl">Filiale</label>
+        <select id="classificaFiliale" onchange="caricaClassifica()" style="width:180px">
+          <option value="seriate">SERIATE</option>
+          <option value="pomezia">POMEZIA</option>
+          <option value="orio">ORIO</option>
+          <option value="perugia">PERUGIA</option>
+          <option value="elmas">ELMAS</option>
+          <option value="modugno">MODUGNO</option>
+        </select>
+      </div>
+      <button class="btn bp" onclick="caricaClassifica()">▶ Carica</button>
+    </div>
+    <div id="classificaMeta" style="margin-top:.5rem;font-size:.75rem;color:var(--text2)"></div>
+  </div>
+  <div id="classificaContent"></div>
+</div><!-- /tab-classifica -->
+
+<div class="tc" id="tab-fasi">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <div class="ct" style="border-bottom:none;margin-bottom:0;padding-bottom:0">📊 Analisi per Fase / Reparto — scarto standard vs reale, tutta la filiale</div>
+      <button class="btn bp" onclick="switchTab('report')">🔧 Inserimento dati</button>
+    </div>
+    <div class="fr" style="align-items:flex-end;margin-top:.5rem">
+      <div class="fg">
+        <label class="lbl">Filiale</label>
+        <select id="fasiFiliale" onchange="caricaAnalisiFase()" style="width:180px">
+          <option value="seriate">SERIATE</option>
+          <option value="pomezia">POMEZIA</option>
+          <option value="orio">ORIO</option>
+          <option value="perugia">PERUGIA</option>
+          <option value="elmas">ELMAS</option>
+          <option value="modugno">MODUGNO</option>
+        </select>
+      </div>
+      <button class="btn bp" onclick="caricaAnalisiFase()">▶ Carica</button>
+    </div>
+    <div id="fasiMeta" style="margin-top:.5rem;font-size:.75rem;color:var(--text2)"></div>
+  </div>
+  <div id="fasiContent"></div>
+</div><!-- /tab-fasi -->
+
+
+
+<!-- Modal dettaglio card KPI -->
+<div id="kpiModalOverlay" class="kpi-modal-overlay no-print" onclick="chiudiDettaglioKpi()">
+  <div class="kpi-modal" onclick="event.stopPropagation()">
+    <div class="kpi-modal-head">
+      <div class="kpi-modal-title" id="kpiModalTitle"></div>
+      <button class="kpi-modal-close" onclick="chiudiDettaglioKpi()">✕</button>
+    </div>
+    <div class="kpi-modal-body" id="kpiModalBody"></div>
+  </div>
+</div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const firebaseConfig={apiKey:"AIzaSyDw6gFXrMA3hgShlk4S9XzYwBt2WGN6HKE",authDomain:"presenze2026.firebaseapp.com",projectId:"presenze2026",storageBucket:"presenze2026.firebasestorage.app",messagingSenderId:"1073603463859",appId:"1:1073603463859:web:23a1a363bbaabdc5077ec6"};
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+
+// Mappa fasi
+const FASI={
+  "60":{label:"Fase 60 — Montaggio Singolo",  tipo:"montaggio", col:"#1e40af"},
+  "61":{label:"Fase 61 — Montaggio Linea",     tipo:"montaggio", col:"#5b21b6"},
+  "62":{label:"Fase 62 — Montaggio Linea",     tipo:"montaggio", col:"#be185d"},
+  "63":{label:"Fase 63 — Montaggio Linea",     tipo:"montaggio", col:"#065f46"},
+  "64":{label:"Fase 64 — Montaggio Linea",     tipo:"montaggio", col:"#92400e"},
+  "70":{label:"Fase 70 — Collaudo",            tipo:"collaudo",  col:"#991b1b"},
+};
+// Unica definizione condivisa delle fasi rilevanti per questa analisi (montaggio+collaudo).
+// Usata OVUNQUE (report, riconciliazione, conteggi tempo=0, fantasmi) per evitare che numeri
+// calcolati in punti diversi del codice risultino incoerenti tra loro.
+const FASI_VALIDE_ANALISI=new Set(["60","61","62","63","64","70"]);
+const MESI_B=["Gen","Feb","Mar","Apr","Mag","Giu","Lug","Ago","Set","Ott","Nov","Dic"];
+
+let tempiUsati=[], tempiNuovi=[], produzione=[], cacheS={};
+let ultimoNomeFileTempi=""; // nome del file Tempi Tecnici caricato in questa sessione (per il messaggio di stato)
+const LS_KEY_TEMPI="kpiProduzione_tempiTecnici_v1"; // chiave localStorage: i Tempi Tecnici restano in memoria tra una sessione e l'altra (solo su questo PC)
+let ultimoReportSnapshot=null; // ultimo report generato, pronto per essere salvato nello storico (solo se mese singolo)
+let ultimoReportSnapshotMulti=null; // come sopra, ma un array di snapshot (uno per mese) quando sono stati selezionati più mesi insieme
+let esclusiManuali=new Set(); // nomi esclusi manualmente dall'analisi (es. ruolo diverso, troppo poche lavorazioni) — su Firestore, visibile ovunque
+let ultimoDatiClassificaCloud=null; // ultimo payload Classifica Team caricato dal cloud (per re-render immediato dopo escludi/ripristina)
+async function caricaEsclusiManuali(){
+  try{
+    const snap=await getDoc(doc(db,"config","esclusioniManuali"));
+    esclusiManuali=new Set(snap.exists()?(snap.data().nomi||[]):[]);
+  }catch(e){ console.warn("Impossibile caricare le esclusioni manuali dal cloud:", e); }
+}
+async function salvaEsclusiManuali(){
+  try{ await setDoc(doc(db,"config","esclusioniManuali"), {nomi:[...esclusiManuali]}); }
+  catch(e){ console.warn("Impossibile salvare le esclusioni manuali sul cloud:", e); }
+}
+window.escludiTecnicoManualmente=async function(nome){
+  esclusiManuali.add(nome);
+  await salvaEsclusiManuali();
+  renderClassificaTeam(ultimoDatiClassificaCloud);
+};
+window.rimuoviEsclusioneManuale=async function(nome){
+  esclusiManuali.delete(nome);
+  await salvaEsclusiManuali();
+  renderClassificaTeam(ultimoDatiClassificaCloud);
+};
+// Buffer per gli export Excel degli alert diagnostici (popolati ogni volta che l'alert corrispondente viene renderizzato)
+let ultimoExportCodiciMancanti=[], ultimoExportTempoZero=[], ultimoExportCodiciMancantiReport=[], ultimoExportFasiZero=[], ultimoExportTecniciEsclusi=[];
+// Conteggio lavorazioni a tempo=0 per tecnico (filtrato sulla filiale selezionata in Step 2) e
+// "fantasmi": tecnici che hanno SOLO lavorazioni a tempo=0 (nessuna lavorazione reale registrata).
+let ultimoConteggioTempoZero={}, ultimoFantasmiTempoZero=[];
+let ultimoProduzioneGrezza=[]; // TUTTE le righe del file Produzione (ogni fase, incluse tempo=0) — usata per la riconciliazione nel report
+// (Classifica Team ora salvata su Firestore, non più in localStorage — vedi collection "kpiClassifica")
+let ultimoTecniciReport=[], ultimoGiorniLavReport=[]; // dati dell'ultimo report generato, usati dai modal di dettaglio delle card KPI
+let ultimoAggregatoStorico=[], ultimoDocsFiltratiStorico=[]; // dati aggregati storico, usati dai modal della tab KPI Produzione
+let mesiSel=new Set([new Date().getMonth()]);
+let fasiSel=new Set(Object.keys(FASI));
+let storicoMesiSel=new Set([0,1,2,3,4,5,6,7,8,9,10,11]); // default: tutto l'anno
+let rawUsati=[], rawNuovi=[], rawProd=[];
+
+// ── HELPERS ──────────────────────────────────────────
+function isoD(y,m,d){return y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");}
+function localDS(dt){return isoD(dt.getFullYear(),dt.getMonth(),dt.getDate());}
+function fmt(v,d=1){v=parseFloat(v)||0;return v%1===0?v.toFixed(0):v.toFixed(d).replace(/\.?0+$/,"");}
+function parseFase(val){return String(val||"").replace(/[^0-9]/g,"").trim();}
+function parseOre(val){
+  val=String(val||"").replace(",",".").trim();
+  // Gestisce formato HH:MM
+  if(val.includes(":")){const[h,m]=val.split(":");return parseFloat(h)+(parseFloat(m)||0)/60;}
+  return parseFloat(val)||0;
+}
+function perfCls(p){return p>=95?"ok":p>=80?"warn":"danger";}
+function perfBcls(p){return p>=95?"b-ok":p>=80?"b-warn":"b-danger";}
+
+// Spiega perché l'efficienza di un tecnico non è calcolabile (n/d)
+function motivoNoEfficienza(tec){
+  if(!tec.lavorazioni.length) return "nessuna lavorazione nel periodo/fasi selezionati";
+  if(!(tec.totStd>0)) return "tempo standard = 0 per i codici/fasi lavorati (vedi alert 'codici non trovati' e 'tempo standard = 0' sopra)";
+  if(!(tec.oreEff>0)) return "ore di presenza calcolate = 0 nel periodo selezionato";
+  return "dato non disponibile";
+}
+
+// Indice tempi medi (Articolo/Modello -> record) — condiviso tra alert import e report
+// IMPORTANTE: il foglio USATO ha SEMPRE priorità perché contiene tutte le fasi (60-64-70).
+// Il foglio NUOVO nel file reale duplica gli stessi codici ma con solo la Fase 70 (stesso
+// valore della Fase 70 di USATO) — quindi va usato solo per completare eventuali buchi
+// (codici presenti solo in NUOVO, o fase 70 assente in USATO), MAI per sovrascrivere o
+// sommare, altrimenti si perderebbero le fasi 60-64 o si raddoppierebbe il tempo di collaudo.
+function buildTempiIdx(){
+  const idx={};
+  // 1) Prima passata: foglio USATI — dati completi, hanno sempre priorità
+  tempiUsati.forEach(t=>{
+    if(t.codice) idx[t.codice.toLowerCase()]=t;
+    if(t.modello) idx[t.modello.toLowerCase()]=t;
+  });
+  // 2) Seconda passata: foglio NUOVI — completa solo ciò che manca, non sovrascrive né somma
+  tempiNuovi.forEach(t=>{
+    const keyC=t.codice?t.codice.toLowerCase():null;
+    const keyM=t.modello?t.modello.toLowerCase():null;
+    if(keyC){
+      if(!idx[keyC]){
+        idx[keyC]=t; // codice esiste SOLO nel foglio nuovi
+      } else {
+        // codice già presente da USATO: aggiungi solo le fasi mancanti/vuote (es. fase 70 se assente)
+        Object.keys(t.fasi).forEach(k=>{
+          if(!idx[keyC].fasi[k] && t.fasi[k]) idx[keyC].fasi[k]=t.fasi[k];
+        });
+      }
+    }
+    if(keyM && !idx[keyM]) idx[keyM]=t;
+  });
+  return idx;
+}
+// Trova i codici presenti in produzione ma assenti nell'indice tempi medi
+function trovaCodiciMancanti(prodList){
+  const idx=buildTempiIdx();
+  const mappa={}; // codice -> {count, tecnici:Set}
+  prodList.forEach(p=>{
+    const key=(p.articolo||"").toLowerCase();
+    if(!key||idx[key])return;
+    if(!mappa[p.articolo]) mappa[p.articolo]={count:0,tecnici:new Set()};
+    mappa[p.articolo].count++;
+    if(p.tecnico) mappa[p.articolo].tecnici.add(p.tecnico);
+  });
+  return Object.entries(mappa).map(([codice,v])=>({codice,count:v.count,tecnici:[...v.tecnici]}))
+    .sort((a,b)=>b.count-a.count);
+}
+function renderCodiciMancantiAlert(mancanti, elId){
+  const el=document.getElementById(elId);
+  if(!el)return;
+  if(!mancanti.length){el.innerHTML="";return;}
+  const totLav=mancanti.reduce((s,m)=>s+m.count,0);
+  ultimoExportCodiciMancanti=mancanti.map(m=>({Codice:m.codice,Lavorazioni:m.count,"Tecnici coinvolti":m.tecnici.join(", ")}));
+  el.innerHTML=`<div class="al a-danger">
+    ⚠️ <b>${mancanti.length} codice/i non trovato/i</b> nel file Tempi Tecnici (${totLav} lavorazioni interessate, escluse dal calcolo dell'efficienza):
+    <div style="margin-top:.4rem;max-height:140px;overflow-y:auto">
+      <table><thead><tr><th>Codice</th><th style="text-align:right">Lavorazioni</th><th>Tecnici coinvolti</th></tr></thead>
+      <tbody>${mancanti.map(m=>`<tr>
+        <td style="font-family:monospace;font-weight:700">${m.codice}</td>
+        <td style="text-align:right">${m.count}</td>
+        <td style="font-size:.7rem;color:var(--text2)">${m.tecnici.join(", ")}</td>
+      </tr>`).join("")}</tbody></table>
+    </div>
+    <button class="btn bg no-print" style="font-size:.68rem;margin-top:.5rem" onclick="esportaExcel(ultimoExportCodiciMancanti,'codici_non_trovati.xlsx','Codici non trovati')">📥 Esporta in Excel</button>
+  </div>`;
+}
+
+// Righe con tecnico+fase validi ma tempo di lavorazione = 0 (es. "Start minunti"=0): vengono
+// escluse dal calcolo (non producono ore std né effettive), ma vanno segnalate — altrimenti il
+// tecnico può sparire silenziosamente da tutto il report senza che si capisca il motivo.
+function renderRigheTempoZeroAlert(righe, elId){
+  const el=document.getElementById(elId);
+  if(!el)return;
+  if(!righe.length){el.innerHTML="";return;}
+  const perTec={};
+  righe.forEach(r=>{
+    if(!perTec[r.tecnico])perTec[r.tecnico]={tecnico:r.tecnico,count:0};
+    perTec[r.tecnico].count++;
+  });
+  const lista=Object.values(perTec).sort((a,b)=>b.count-a.count);
+  ultimoExportTempoZero=lista.map(t=>({Tecnico:t.tecnico,"Lavorazioni escluse (tempo=0)":t.count}));
+  el.innerHTML=`<div class="al a-warn">
+    ⏱️ <b>${righe.length} lavorazione/i con tempo = 0 minuti</b> escluse dal calcolo, per <b>${lista.length} tecnico/i</b> della filiale selezionata (il tecnico può risultare del tutto assente dal report se TUTTE le sue lavorazioni hanno tempo = 0):
+    <div style="margin-top:.4rem;max-height:140px;overflow-y:auto">
+      <table><thead><tr><th>Tecnico</th><th style="text-align:right">Lavorazioni escluse (tempo=0)</th></tr></thead>
+      <tbody>${lista.map(t=>`<tr>
+        <td style="font-family:monospace;font-weight:700">${t.tecnico}</td>
+        <td style="text-align:right">${t.count}</td>
+      </tr>`).join("")}</tbody></table>
+    </div>
+    <div style="margin-top:.4rem;font-size:.7rem">💡 Controlla nel file Produzione: se "Start minunti" è 0 per queste righe, probabilmente il lavoro non è ancora stato completato/timbrato nel gestionale d'origine.</div>
+    <button class="btn bg no-print" style="font-size:.68rem;margin-top:.5rem" onclick="esportaExcel(ultimoExportTempoZero,'lavorazioni_tempo_zero.xlsx','Tempo zero')">📥 Esporta in Excel</button>
+  </div>`;
+}
+
+// Trova le combinazioni codice+fase dove il codice ESISTE nel file Tempi Tecnici
+// ma il tempo standard per quella fase (o i fallback montaggio/collaudo) risulta 0/vuoto.
+// Questo è diverso da "codice non trovato": qui il codice c'è, ma la colonna della fase è vuota/0.
+function trovaFasiTempoZero(prodList){
+  const idx=buildTempiIdx();
+  const mappa={}; // "codice|fase" -> {codice,fase,count,tecnici:Set}
+  prodList.forEach(p=>{
+    const key=(p.articolo||"").toLowerCase();
+    const tObj=idx[key];
+    if(!tObj)return; // già segnalato come "codice non trovato", non duplicare qui
+    const tStd=parseOre(tObj.fasi[p.fase])||parseOre(tObj.fasi.montaggio)||parseOre(tObj.fasi.collaudo);
+    if(tStd>0)return;
+    const k=p.articolo+"|F"+p.fase;
+    if(!mappa[k]) mappa[k]={codice:p.articolo,fase:p.fase,count:0,tecnici:new Set()};
+    mappa[k].count++;
+    if(p.tecnico) mappa[k].tecnici.add(p.tecnico);
+  });
+  return Object.values(mappa).map(v=>({...v,tecnici:[...v.tecnici]})).sort((a,b)=>b.count-a.count);
+}
+function renderFasiZeroAlert(lista, elId){
+  const el=document.getElementById(elId);
+  if(!el)return;
+  if(!lista.length){el.innerHTML="";return;}
+  const totLav=lista.reduce((s,m)=>s+m.count,0);
+  el.innerHTML=`<div class="al a-warn">
+    ⚠️ <b>${lista.length} combinazione/i codice+fase con tempo standard = 0</b> nel file Tempi Tecnici (${totLav} lavorazioni interessate — il codice esiste ma la colonna della fase lavorata (e i fallback T.Montaggio/T.Collaudo) risultano vuoti/0 per quel codice):
+    <div style="margin-top:.4rem;max-height:160px;overflow-y:auto">
+      <table><thead><tr><th>Codice</th><th>Fase</th><th style="text-align:right">Lavorazioni</th><th>Tecnici coinvolti</th></tr></thead>
+      <tbody>${lista.map(m=>`<tr>
+        <td style="font-family:monospace;font-weight:700">${m.codice}</td>
+        <td><span class="fase-badge f${m.fase}">F${m.fase}</span></td>
+        <td style="text-align:right">${m.count}</td>
+        <td style="font-size:.7rem;color:var(--text2)">${m.tecnici.join(", ")}</td>
+      </tr>`).join("")}</tbody></table>
+    </div>
+    <div style="margin-top:.4rem;font-size:.7rem">💡 Vai a rileggere il file Tempi Tecnici e completa la colonna della fase indicata per questi codici (foglio USATO).</div>
+  </div>`;
+}
+
+function isFestivo(ds){
+  const[y,m,d]=ds.split("-").map(Number);
+  const fisse=[[1,1],[6,1],[25,4],[1,5],[2,6],[15,8],[1,11],[8,12],[25,12],[26,12]];
+  if(fisse.some(([mm,dd])=>mm===m&&dd===d))return true;
+  const a=y%19,b=Math.floor(y/100),c=y%100,d2=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);
+  const g=Math.floor((b-f+1)/3),h=(19*a+b-d2-g+15)%30,i=Math.floor(c/4),k=c%4;
+  const l=(32+2*e+2*i-h-k)%7,m2=Math.floor((a+11*h+22*l)/451);
+  const month=Math.floor((h+l-7*m2+114)/31),day2=(h+l-7*m2+114)%31+1;
+  const pasqua=isoD(y,month-1,day2);
+  const pm=new Date(pasqua+"T00:00:00");pm.setDate(pm.getDate()+1);
+  return ds===pasqua||ds===localDS(pm);
+}
+function isLav(ds){const w=new Date(ds+"T00:00:00").getDay();return w!==0&&w!==6&&!isFestivo(ds);}
+
+function getGiorniLav(anno,mesi){
+  const gg=[];
+  [...mesi].sort((a,b)=>a-b).forEach(m=>{
+    let cur=new Date(anno,m,1);
+    while(cur.getMonth()===m){const ds=localDS(cur);if(isLav(ds))gg.push(ds);cur.setDate(cur.getDate()+1);}
+  });
+  return gg;
+}
+
+function parseExcel(file, cb){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:"binary",cellDates:true});
+    cb(wb);
+  };
+  reader.readAsBinaryString(file);
+}
+
+function popolaSelect(selId, cols, keywords=[]){
+  const sel=document.getElementById(selId);
+  const hasEmpty=sel.innerHTML.includes("—");
+  sel.innerHTML=(hasEmpty?'<option value="">—</option>':"")+cols.map(c=>`<option value="${c}">${c}</option>`).join("");
+  const match=cols.find(c=>keywords.some(k=>c.toLowerCase().includes(k.toLowerCase())));
+  if(match) sel.value=match;
+}
+
+function anteprima(data, el, maxRows=4){
+  if(!data.length){document.getElementById(el).innerHTML="";return;}
+  const cols=Object.keys(data[0]);
+  document.getElementById(el).innerHTML=`<table>
+    <thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead>
+    <tbody>${data.slice(0,maxRows).map(r=>`<tr>${cols.map(c=>`<td>${r[c]??""}</td>`).join("")}</tr>`).join("")}</tbody>
+  </table>`;
+}
+
+// ── STEP 1: TEMPI MEDI ──────────────────────────────
+document.getElementById("fTempi").addEventListener("change",function(){
+  const file=this.files[0];if(!file)return;
+  ultimoNomeFileTempi=file.name;
+  document.getElementById("tempiStatus").innerHTML='<span style="font-size:.76rem;color:var(--text2)"><span class="spin"></span> Lettura...</span>';
+  parseExcel(file, wb=>{
+    const fogli=wb.SheetNames;
+    // Cerca foglio usati e nuovi
+    const nUsati=fogli.find(n=>n.toLowerCase().includes("usat"))||fogli[0];
+    const nNuovi=fogli.find(n=>n.toLowerCase().includes("nuov"))||fogli[1]||fogli[0];
+    rawUsati=XLSX.utils.sheet_to_json(wb.Sheets[nUsati],{defval:""});
+    rawNuovi=XLSX.utils.sheet_to_json(wb.Sheets[nNuovi],{defval:""});
+    const colU=rawUsati.length?Object.keys(rawUsati[0]):[];
+    const colN=rawNuovi.length?Object.keys(rawNuovi[0]):[];
+    // Abbinamento automatico foglio Usati
+    popolaSelect("uCod",colU,["articolo","cod","art"]);
+    popolaSelect("uMod",colU,["cod_mod","modello","model","tipo","codmod"]);
+    popolaSelect("uDesc",colU,["modello","descr","desc","nome","name"]);
+    popolaSelect("uTmont",colU,["mont","asm","assembl"]);
+    popolaSelect("uTcoll",colU,["coll","test","70"]);
+    ["uF60","uF61","uF62","uF63","uF64","uF70"].forEach((id,i)=>{
+      const fase=["60","61","62","63","64","70"][i];
+      const sel=document.getElementById(id);
+      sel.innerHTML='<option value="">—</option>'+colU.map(c=>`<option value="${c}">${c}</option>`).join("");
+      const m=colU.find(c=>c.includes(fase));if(m)sel.value=m;
+    });
+    // Abbinamento automatico foglio Nuovi
+    popolaSelect("nCod",colN,["articolo","cod","art"]);
+    popolaSelect("nMod",colN,["cod_mod","modello","model","tipo"]);
+    popolaSelect("nDesc",colN,["modello","descr","desc","nome","name"]);
+    popolaSelect("nF70",colN,["70","coll","test"]);
+    document.getElementById("tempiStatus").innerHTML=
+      `<div class="al a-ok">✅ File caricato: foglio "<b>${nUsati}</b>" (${rawUsati.length} righe) + foglio "<b>${nNuovi}</b>" (${rawNuovi.length} righe)</div>`;
+    document.getElementById("tempiMapping").style.display="block";
+    anteprima(rawUsati,"tempiPreview");
+  });
+});
+
+// Converti minuti in ore se necessario
+function convertiTempi(val){
+  const unita=document.getElementById("unitaTempi").value;
+  if(unita==="min") return (parseFloat(val)||0)/60;
+  return parseFloat(val)||0;
+}
+
+window.confermaTempi=function(){
+  // Mappa foglio usati
+  tempiUsati=rawUsati.map(r=>({
+    codice:String(r[document.getElementById("uCod").value]||"").trim(),
+    modello:String(r[document.getElementById("uMod").value]||"").trim(),
+    descr:String(r[document.getElementById("uDesc").value]||"").trim(),
+    tipo:"usato",
+    fasi:{
+      "60":convertiTempi(r[document.getElementById("uF60").value]),
+      "61":convertiTempi(r[document.getElementById("uF61").value]),
+      "62":convertiTempi(r[document.getElementById("uF62").value]),
+      "63":convertiTempi(r[document.getElementById("uF63").value]),
+      "64":convertiTempi(r[document.getElementById("uF64").value]),
+      "70":convertiTempi(r[document.getElementById("uF70").value]),
+      montaggio:convertiTempi(r[document.getElementById("uTmont").value]),
+      collaudo:convertiTempi(r[document.getElementById("uTcoll").value]),
+    }
+  })).filter(r=>r.codice);
+  // Mappa foglio nuovi
+  tempiNuovi=rawNuovi.map(r=>({
+    codice:String(r[document.getElementById("nCod").value]||"").trim(),
+    modello:String(r[document.getElementById("nMod").value]||"").trim(),
+    descr:String(r[document.getElementById("nDesc").value]||"").trim(),
+    tipo:"nuovo",
+    fasi:{"70":convertiTempi(r[document.getElementById("nF70").value])}
+  })).filter(r=>r.codice);
+  const tot=tempiUsati.length+tempiNuovi.length;
+  if(!tot){alert("Nessuna riga valida. Controlla le colonne selezionate.");return;}
+  salvaTempiInMemoria(); // persiste in localStorage: non andranno ricaricati alla prossima apertura
+  mostraTempiOk();
+  document.getElementById("step2").style.display="block";
+};
+
+// Salva i Tempi Tecnici nel browser (localStorage) così restano disponibili anche
+// dopo aver chiuso/riaperto la pagina, senza doverli ricaricare ogni volta.
+function salvaTempiInMemoria(){
+  try{
+    localStorage.setItem(LS_KEY_TEMPI, JSON.stringify({
+      tempiUsati, tempiNuovi,
+      fileName: ultimoNomeFileTempi||"file.xlsx",
+      savedAt: new Date().toISOString()
+    }));
+  }catch(e){ console.warn("Impossibile salvare i Tempi Tecnici in memoria locale:", e); }
+}
+// Mostra il pannello "Tempi Tecnici in memoria" e nasconde la dropzone di caricamento
+function mostraTempiOk(){
+  let meta={fileName:ultimoNomeFileTempi,savedAt:new Date().toISOString()};
+  try{ const raw=localStorage.getItem(LS_KEY_TEMPI); if(raw) meta=JSON.parse(raw); }catch(e){}
+  const dataFmt=meta.savedAt?new Date(meta.savedAt).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"";
+  document.getElementById("uzTempi").style.display="none";
+  document.getElementById("tempiStatus").innerHTML="";
+  document.getElementById("tempiMapping").style.display="none";
+  document.getElementById("tempiOk").style.display="block";
+  document.getElementById("tempiOkMsg").innerHTML=
+    `✅ <b>Tempi Tecnici in memoria</b>: ${meta.fileName||"file.xlsx"} — ${tempiUsati.length} D.A. usati + ${tempiNuovi.length} D.A. nuovi${dataFmt?` <small style="color:var(--text2)">(caricati il ${dataFmt})</small>`:""}<br>
+    <small style="color:var(--text2)">Non serve ricaricarlo ad ogni apertura: resta qui finché non lo rimuovi o lo sostituisci.</small>`;
+}
+window.resetTempi=function(){
+  tempiUsati=[];tempiNuovi=[];rawUsati=[];rawNuovi=[];ultimoNomeFileTempi="";
+  try{ localStorage.removeItem(LS_KEY_TEMPI); }catch(e){}
+  document.getElementById("fTempi").value="";
+  document.getElementById("tempiStatus").innerHTML="";
+  document.getElementById("tempiMapping").style.display="none";
+  document.getElementById("tempiOk").style.display="none";
+  document.getElementById("uzTempi").style.display="block";
+  document.getElementById("step2").style.display="none";
+  document.getElementById("step3").style.display="none";
+  document.getElementById("risultati").style.display="none";
+};
+// Al riavvio: se i Tempi Tecnici erano già stati salvati in una sessione precedente, li ricarica
+// automaticamente dal browser (localStorage) senza richiedere un nuovo upload del file.
+function ripristinaTempiDaMemoria(){
+  let raw;
+  try{ raw=localStorage.getItem(LS_KEY_TEMPI); }catch(e){ return; }
+  if(!raw)return;
+  try{
+    const dati=JSON.parse(raw);
+    if(!dati||!Array.isArray(dati.tempiUsati))return;
+    tempiUsati=dati.tempiUsati||[];
+    tempiNuovi=dati.tempiNuovi||[];
+    ultimoNomeFileTempi=dati.fileName||"";
+    if(tempiUsati.length+tempiNuovi.length>0){
+      mostraTempiOk();
+      document.getElementById("step2").style.display="block";
+    }
+  }catch(e){ console.warn("Impossibile ripristinare i Tempi Tecnici salvati:", e); }
+}
+
+// ── CLASSIFICA TEAM: salvataggio persistente e rendering ────────────────
+async function salvaClassificaInMemoria(filiale, periodoLabel, tecniciGrid, conteggioTempoZero, fantasmi, linee, tecniciCompleti){
+  try{
+    const dati={
+      filiale, periodoLabel,
+      dataGenerazione:new Date().toISOString(),
+      tecnici:tecniciGrid.map(t=>({
+        nome:t.nome, dipMatch:t.dipMatch||null,
+        efficienza:t.efficienza, performance:t.perfGlobale,
+        lavorazioni:t.lavorazioni.length,
+        lavorazioniZero:(conteggioTempoZero&&conteggioTempoZero[t.nome])||0,
+        // Dati grezzi che hanno prodotto efficienza/performance, per il dettaglio nella card
+        totStd:t.totStd, totEff:t.totEff, oreEff:t.oreEff, oreDisp:t.oreDisp,
+        // Elenco reale delle lavorazioni usate nel calcolo (stesse informazioni del file caricato),
+        // per poterle mostrare/esportare nel dettaglio della card
+        lavorazioniDettaglio:Object.values(tec_perFaseSafe(t)).flatMap(f=>f.lavorazioni.map(l=>({
+          Articolo:l.articolo, Fase:l.fase, "Data Fine":l.data,
+          "Tempo Reale (h)":Math.round((l.tempoEff||0)*100)/100,
+          "Tempo Standard (h)":Math.round((l.tStd||0)*100)/100
+        })))
+      })),
+      fantasmi:(fantasmi||[]).map(f=>({nome:f.nome, lavorazioniZero:f.lavorazioniZero})),
+      // Linee (LINEA 1, LINEA 2, LINEA 3...): performance/efficienza aggregata + dettaglio membri
+      linee:(linee||[]).map(l=>({
+        linea:l.linea, count:l.count, oreStd:l.oreStd, oreEff:l.oreEff, performance:l.performance,
+        membri:l.membri.map(nomeMembro=>{
+          const tt=(tecniciCompleti||[]).find(x=>x.nome===nomeMembro);
+          return tt?{nome:tt.nome, efficienza:tt.efficienza, performance:tt.perfGlobale, lavorazioni:tt.lavorazioni.length}:{nome:nomeMembro};
+        })
+      }))
+    };
+    // Salvato su Firestore (non più solo nel browser): visibile identico da qualsiasi PC/browser.
+    await setDoc(doc(db,"kpiClassifica",filiale), dati);
+  }catch(e){ console.warn("Impossibile salvare la Classifica Team sul cloud:", e); }
+}
+function tec_perFaseSafe(t){ return t.perFase||{}; }
+
+// Carica la Classifica Team dal cloud (Firestore) per la filiale selezionata
+window.caricaClassifica=async function(){
+  const filiale=document.getElementById("classificaFiliale").value;
+  const metaEl=document.getElementById("classificaMeta");
+  const contentEl=document.getElementById("classificaContent");
+  metaEl.innerHTML="";
+  contentEl.innerHTML='<div class="card" style="text-align:center;padding:2rem"><span class="spin"></span> Caricamento...</div>';
+  let dati=null;
+  try{
+    const snap=await getDoc(doc(db,"kpiClassifica",filiale));
+    if(snap.exists()) dati=snap.data();
+  }catch(e){
+    contentEl.innerHTML=`<div class="card"><div class="al a-danger" style="margin-bottom:0">Errore nel caricamento: ${e.message}</div></div>`;
+    return;
+  }
+  ultimoDatiClassificaCloud=dati;
+  renderClassificaTeam(dati);
+};
+
+function renderClassificaTeam(dati){
+  const metaEl=document.getElementById("classificaMeta");
+  const contentEl=document.getElementById("classificaContent");
+
+  if(!dati||!dati.tecnici||!dati.tecnici.length){
+    metaEl.innerHTML="";
+    contentEl.innerHTML=`<div class="card"><div class="al a-info" style="margin-bottom:0">Nessun report generato finora per questa filiale. Vai su "📥 Inserimento dati", carica Tempi Tecnici e Produzione, genera il report: la classifica comparirà qui automaticamente e resterà disponibile — identica — anche da un altro PC.</div></div>`;
+    return;
+  }
+
+
+  const dataFmt=new Date(dati.dataGenerazione).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  metaEl.innerHTML=`Ultimo caricamento: <b>${dati.filiale.toUpperCase()}</b> · ${dati.periodoLabel} — generato il ${dataFmt}. <button class="btn bg no-print" style="font-size:.65rem;padding:.2rem .5rem;margin-left:.4rem" onclick="switchTab('report')">Aggiorna con un nuovo caricamento</button>`;
+
+  // "Fantasmi": tecnici con SOLO lavorazioni a tempo=0 (nessuna lavorazione reale) — non
+  // compaiono nel report/tabella principale, ma li mostriamo qui in una card d'allarme dedicata.
+  const fantasmiTutti=dati.fantasmi||[];
+  const fantasmiEsclusi=fantasmiTutti.filter(f=>esclusiManuali.has(f.nome));
+  const fantasmiVisibili=fantasmiTutti.filter(f=>!esclusiManuali.has(f.nome));
+
+  // Escludi chi è stato depennato manualmente (es. ruolo diverso, lavorazioni non significative)
+  const esclusiInQuestoElenco=[...dati.tecnici.filter(t=>esclusiManuali.has(t.nome)), ...fantasmiEsclusi];
+  const tecniciVisibili=dati.tecnici.filter(t=>!esclusiManuali.has(t.nome));
+
+  const cardFantasma=f=>`<div class="classifica-card fantasma" onclick="apriDettaglioClassifica('${f.nome.replace(/'/g,"\\'")}')">
+      <button class="classifica-escludi" title="Escludi ${f.nome} dall'analisi" onclick="event.stopPropagation();escludiTecnicoManualmente('${f.nome.replace(/'/g,"\\'")}')">✕</button>
+      <div class="classifica-pericolo">☢️</div>
+      <div class="classifica-rank" style="color:#dc2626">NESSUNA LAVORAZIONE VALIDA</div>
+      <div class="classifica-nome">${f.nome}</div>
+      <div class="classifica-fantasma-msg">⚠️ ${f.lavorazioniZero} lavorazione/i, TUTTE a tempo = 0 minuti</div>
+      <div class="classifica-foot" style="margin-top:.5rem">Non risulta stia svolgendo un lavoro tracciabile: da verificare con urgenza.</div>
+      <div class="classifica-periodo">📅 ${dati.periodoLabel} · clicca per il dettaglio</div>
+    </div>`;
+
+  if(!tecniciVisibili.length && !fantasmiVisibili.length){
+    contentEl.innerHTML=`<div class="card"><div class="al a-info" style="margin-bottom:0">Tutti i tecnici di questo elenco sono stati esclusi manualmente. Ripristinane qualcuno dalla lista qui sotto per rivedere la classifica.</div></div>${renderElencoEsclusiManuali(esclusiInQuestoElenco)}`;
+    return;
+  }
+
+  // Ordina per efficienza (dato principale della classifica); chi non ha un valore va in fondo
+  const tecnici=[...tecniciVisibili].sort((a,b)=>{
+    const ea=a.efficienza??-1, eb=b.efficienza??-1;
+    return eb-ea;
+  });
+  const n=tecnici.length;
+  // Il "teschio" (da richiamare) va assegnato solo a chi ha un vero valore di efficienza basso,
+  // MAI a chi ha semplicemente il dato mancante (n/d) — altrimenti si penalizza ingiustamente
+  // chi magari è solo escluso dal calendario, invece di chi rende davvero poco.
+  const nValidi=tecnici.filter(t=>t.efficienza!==null&&t.efficienza!==undefined).length;
+  const sogliaTeschio=Math.min(3,Math.floor(nValidi*0.15)||1);
+
+  const medaglie=["🥇","🥈","🥉"];
+  const classiMedaglia=["oro","argento","bronzo"];
+
+  const cardsNormali=tecnici.map((t,i)=>{
+    const isTop3=i<3;
+    const isUltimi=nValidi>3 && i<nValidi && i>=nValidi-sogliaTeschio;
+    const cls=isTop3?classiMedaglia[i]:(isUltimi?"critico":"");
+    const e=t.efficienza, p=t.performance;
+    const zero=t.lavorazioniZero||0;
+    return `<div class="classifica-card ${cls}" onclick="apriDettaglioClassifica('${t.nome.replace(/'/g,"\\'")}')">
+      <button class="classifica-escludi" title="Escludi ${t.nome} dall'analisi (es. ruolo diverso, lavorazioni non significative)" onclick="event.stopPropagation();escludiTecnicoManualmente('${t.nome.replace(/'/g,"\\'")}')">✕</button>
+      ${isTop3?`<div class="classifica-medaglia">${medaglie[i]}</div>`:""}
+      ${!isTop3&&isUltimi?`<div class="classifica-teschio">💀</div>`:""}
+      <div class="classifica-rank">#${i+1} DI ${n}</div>
+      <div class="classifica-nome">${t.nome}</div>
+      <div class="classifica-metriche">
+        <div class="classifica-metrica">
+          <div class="classifica-metrica-val" style="color:${e!==null?(e>=95?'#059669':e>=80?'#d97706':'#dc2626'):'#9ca3af'}">${e!==null?fmt(e)+'%':'n/d'}</div>
+          <div class="classifica-metrica-lbl">Efficienza</div>
+        </div>
+        <div class="classifica-metrica">
+          <div class="classifica-metrica-val" style="color:${p!==null?(p>=95?'#059669':p>=80?'#d97706':'#dc2626'):'#9ca3af'}">${p!==null?fmt(p)+'%':'n/d'}</div>
+          <div class="classifica-metrica-lbl">Performance</div>
+        </div>
+      </div>
+      <div class="classifica-foot">${t.lavorazioni} lavorazioni${isUltimi&&!isTop3?" · ⚠️ da richiamare/formare":""}</div>
+      ${zero>0?`<div class="classifica-zero-badge">⏱️ ${zero} lavorazione${zero>1?'i':''} a tempo zero (escluse dal calcolo)</div>`:""}
+      <div class="classifica-periodo">📅 ${dati.periodoLabel} · clicca per il dettaglio</div>
+    </div>`;
+  }).join("");
+
+  const cardsFantasmi=fantasmiVisibili.map(cardFantasma).join("");
+
+  // Card LINEA (LINEA 1, LINEA 2, LINEA 3...): performance/efficienza aggregata, cliccabile per
+  // vedere il dettaglio dei membri che compongono quella linea.
+  const linee=dati.linee||[];
+  const cardsLinee=linee.map(l=>{
+    const perf=l.performance;
+    return `<div class="classifica-card linea" onclick="apriDettaglioLinea('${l.linea}')">
+      <div class="classifica-linea-badge">🏭 LINEA ${l.linea}</div>
+      <div class="classifica-nome" style="margin-top:.3rem">${l.membri.length} tecnici</div>
+      <div class="classifica-metriche">
+        <div class="classifica-metrica">
+          <div class="classifica-metrica-val" style="color:${perf!==null?(perf>=95?'#059669':perf>=80?'#d97706':'#dc2626'):'#9ca3af'}">${perf!==null?fmt(perf)+'%':'n/d'}</div>
+          <div class="classifica-metrica-lbl">Performance linea</div>
+        </div>
+      </div>
+      <div class="classifica-foot">${l.count} lavorazioni · ${fmt(l.oreStd)}h std / ${fmt(l.oreEff)}h reali</div>
+      <div class="classifica-periodo">📅 ${dati.periodoLabel} · clicca per il dettaglio dei membri</div>
+    </div>`;
+  }).join("");
+
+  contentEl.innerHTML=`
+    ${linee.length?`<div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">🏭 Linee di produzione</div><div class="classifica-grid" style="margin-bottom:1.5rem">${cardsLinee}</div><div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">👥 Team (senza linea assegnata)</div>`:""}
+    ${fantasmiVisibili.length?`<div class="al a-danger" style="margin-bottom:1rem">🚨 <b>${fantasmiVisibili.length} tecnico/i</b> con TUTTE le lavorazioni a tempo zero — non compaiono nel report perché non hanno nessun dato analizzabile, ma sono segnalati qui sotto in evidenza.</div>`:""}
+    <div class="classifica-grid">${cardsFantasmi}${cardsNormali}</div>
+    ${renderElencoEsclusiManuali(esclusiInQuestoElenco)}`;
+};
+
+// Elenco compatto di chi è stato escluso manualmente, con bottone per ripristinarlo nell'analisi
+function renderElencoEsclusiManuali(esclusi){
+  if(!esclusi.length)return "";
+  return `<div class="card" style="margin-top:1rem">
+    <div class="ct" style="font-size:.85rem">🙈 Esclusi manualmente dall'analisi (${esclusi.length})</div>
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+      ${esclusi.map(t=>`<span class="badge b-gray" style="display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .6rem">
+        ${t.nome}
+        <button style="border:none;background:none;color:#4f46e5;font-weight:700;cursor:pointer;font-size:.7rem" title="Ripristina ${t.nome} nell'analisi" onclick="rimuoviEsclusioneManuale('${t.nome.replace(/'/g,"\\'")}')">↩️ ripristina</button>
+      </span>`).join("")}
+    </div>
+  </div>`;
+}
+
+// ── ANALISI FASE/REPARTO: salvataggio persistente e rendering ───────────
+async function salvaAnalisiFaseInMemoria(filiale, periodoLabel, fasiFiliale, repartiFiliale){
+  try{
+    await setDoc(doc(db,"kpiAnalisiFase",filiale), {
+      filiale, periodoLabel, dataGenerazione:new Date().toISOString(),
+      fasiFiliale, repartiFiliale
+    });
+  }catch(e){ console.warn("Impossibile salvare l'Analisi Fase/Reparto sul cloud:", e); }
+}
+window.caricaAnalisiFase=async function(){
+  const filiale=document.getElementById("fasiFiliale").value;
+  const metaEl=document.getElementById("fasiMeta");
+  const contentEl=document.getElementById("fasiContent");
+  metaEl.innerHTML="";
+  contentEl.innerHTML='<div class="card" style="text-align:center;padding:2rem"><span class="spin"></span> Caricamento...</div>';
+  let dati=null;
+  try{
+    const snap=await getDoc(doc(db,"kpiAnalisiFase",filiale));
+    if(snap.exists()) dati=snap.data();
+  }catch(e){
+    contentEl.innerHTML=`<div class="card"><div class="al a-danger" style="margin-bottom:0">Errore nel caricamento: ${e.message}</div></div>`;
+    return;
+  }
+
+  if(!dati||!dati.fasiFiliale||!dati.fasiFiliale.length){
+    contentEl.innerHTML=`<div class="card"><div class="al a-info" style="margin-bottom:0">Nessun report generato finora per questa filiale. Vai su "📥 Inserimento dati", carica Tempi Tecnici e Produzione, genera il report: l'analisi per fase/reparto comparirà qui automaticamente e resterà disponibile — identica — anche da un altro PC.</div></div>`;
+    return;
+  }
+
+  const dataFmt=new Date(dati.dataGenerazione).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  metaEl.innerHTML=`Ultimo caricamento: <b>${dati.filiale.toUpperCase()}</b> · ${dati.periodoLabel} — generato il ${dataFmt}. <button class="btn bg no-print" style="font-size:.65rem;padding:.2rem .5rem;margin-left:.4rem" onclick="switchTab('report')">Aggiorna con un nuovo caricamento</button>`;
+
+  contentEl.innerHTML=`
+  <div class="card">
+    <div class="al a-info" style="font-size:.72rem;margin-bottom:.75rem">
+      Aggrega il confronto tempo standard vs tempo reale su <b>tutti</b> i tecnici, per ciascuna fase — utile per capire se un problema è di <b>processo/attrezzatura</b> (una fase è sempre lenta, indipendentemente da chi la fa) piuttosto che di singola persona.
+    </div>
+    <table>
+      <thead><tr><th>Fase</th><th style="text-align:right">Lavorazioni</th><th style="text-align:right">Ore Std</th><th style="text-align:right">Ore Reali</th><th style="text-align:right">Performance (std/reale)</th></tr></thead>
+      <tbody>
+        ${dati.fasiFiliale.map(f=>{
+          const perf=f.performance;
+          return `<tr>
+            <td><span class="fase-badge f${f.fase}">F${f.fase}</span> <small style="color:var(--text2)">${FASI[f.fase]?.label.replace(/^Fase \d+ — /,"")||""}</small></td>
+            <td style="text-align:right">${f.count}</td>
+            <td style="text-align:right;font-family:monospace">${fmt(f.oreStd)}h</td>
+            <td style="text-align:right;font-family:monospace">${fmt(f.oreEff)}h</td>
+            <td style="text-align:right">${perf!==null?`<span class="badge ${perfBcls(perf)}">${fmt(perf)}%</span>`:"<span class='badge b-gray'>n/d</span>"}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>
+    <div class="sep" style="margin:1rem 0"></div>
+    <div style="font-size:.78rem;font-weight:700;margin-bottom:.6rem">Raggruppamento per reparto</div>
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+      ${dati.repartiFiliale.map(r=>`<div class="kpi ${r.performance!==null?perfCls(r.performance):''}">
+        <div class="kpi-val">${r.performance!==null?fmt(r.performance)+'%':'n/d'}</div>
+        <div class="kpi-label">${r.nome}<br><small style="font-weight:400">${fmt(r.oreStd)}h std / ${fmt(r.oreEff)}h reali · ${r.count} lav.</small></div>
+      </div>`).join("")}
+    </div>
+  </div>`;
+};
+
+// ── STEP 2: PRODUZIONE ──────────────────────────────
+document.getElementById("fProd").addEventListener("change",function(){
+  const file=this.files[0];if(!file)return;
+  document.getElementById("prodStatus").innerHTML='<span style="font-size:.76rem;color:var(--text2)"><span class="spin"></span> Lettura...</span>';
+  parseExcel(file, wb=>{
+    // Legge e unisce TUTTI i fogli del file (es. lavorazioni "usato" + "nuovo"):
+    // nessuna riga viene persa anche se il file quotidiano ha più fogli.
+    let combined=[]; const perFoglio=[];
+    wb.SheetNames.forEach(sn=>{
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:"",raw:false});
+      perFoglio.push({nome:sn,righe:rows.length});
+      combined=combined.concat(rows);
+    });
+    rawProd=combined;
+    const colsSet=new Set();
+    rawProd.forEach(r=>Object.keys(r).forEach(k=>colsSet.add(k)));
+    const cols=[...colsSet];
+    popolaSelect("pTec",cols,["utente","tecnico","user","nome","operatore"]);
+    popolaSelect("pArt",cols,["prod. modello","prod.modello","modello","articolo","model","cod"]);
+    popolaSelect("pFase",cols,["fase","phase"]);
+    popolaSelect("pData",cols,["data fine","datafine","data complet","fine"]);
+    popolaSelect("pTempo",cols,["start minunti","start minuti","start","durata","tempo"]);
+    popolaSelect("pStop",cols,[]); // di default NON selezionare nulla: Start minuti è già il tempo effettivo
+    document.getElementById("prodStatus").innerHTML=
+      `<div class="al a-ok">✅ ${rawProd.length} righe caricate da ${wb.SheetNames.length} foglio/i (${perFoglio.map(f=>`${f.nome}: ${f.righe} righe`).join(" · ")})</div>`;
+    document.getElementById("prodMapping").style.display="block";
+    anteprima(rawProd,"prodPreview");
+  });
+});
+
+window.confermaProd=async function(){
+  const colTec=document.getElementById("pTec").value;
+  const colStop=document.getElementById("pStop").value;
+  const unitaProd=document.getElementById("unitaProd").value;
+  const colArt=document.getElementById("pArt").value;
+  const colFase=document.getElementById("pFase").value;
+  const colData=document.getElementById("pData").value;
+  const colTempo=document.getElementById("pTempo").value;
+  const produzioneGrezza=rawProd.map(r=>({
+    tecnico:String(r[colTec]||"").trim(),
+    articolo:String(r[colArt]||"").trim(),
+    fase:parseFase(r[colFase]),
+    data:parseData(r[colData]),
+    tempoEff:(()=>{
+      const start=parseFloat(String(r[colTempo]||"").replace(",","."))||0;
+      const stop=colStop?parseFloat(String(r[colStop]||"").replace(",","."))||0:0;
+      const netti=Math.max(0,start-stop);
+      return unitaProd==="min"?netti/60:netti;
+    })(),
+  })).filter(r=>r.tecnico&&r.fase);
+  // Conserva TUTTE le righe (ogni fase, incluse tempo=0) per la riconciliazione mostrata nel report:
+  // "quante ce ne sono nel file, quante escluse per fase non pertinente, quante per tempo zero"
+  ultimoProduzioneGrezza=produzioneGrezza;
+  // Righe con tecnico e fase validi ma tempo di lavorazione = 0 minuti (es. "Start minunti"=0):
+  // vengono escluse dal calcolo (non aggiungono ore né std né effettive), ma le teniamo traccia
+  // qui per segnalarle, invece di farle sparire senza spiegazione dal report.
+  const righeTempoZeroTutte=produzioneGrezza.filter(r=>!(r.tempoEff>0));
+  produzione=produzioneGrezza.filter(r=>r.tempoEff>0);
+  if(!produzione.length){alert("Nessuna riga valida. Controlla le colonne selezionate.");return;}
+  const tecnici=[...new Set(produzione.map(p=>p.tecnico))];
+  document.getElementById("prodMapping").style.display="none";
+  document.getElementById("prodOk").style.display="block";
+  document.getElementById("prodOkMsg").textContent=
+    `✅ ${produzione.length} lavorazioni · ${tecnici.length} tecnici · Fasi: ${[...new Set(produzione.map(p=>p.fase))].sort().join(", ")}`;
+  // Controllo match codici vs file Tempi Tecnici
+  const mancanti=trovaCodiciMancanti(produzione);
+  renderCodiciMancantiAlert(mancanti,"codiciMancantiImport");
+  // Controllo righe con tempo di lavorazione = 0 (silenziosamente escluse dal calcolo) —
+  // filtrate solo sui tecnici che appartengono al calendario presenze della filiale selezionata
+  // in questo Step, per non mostrare una lista infinita con nomi di altri siti produttivi.
+  const filialeSel=document.getElementById("filialeAnal").value;
+  if(!cacheS[filialeSel]){
+    try{
+      const snap=await getDoc(doc(db,"stato",filialeSel));
+      cacheS[filialeSel]=snap.exists()?snap.data():{dipendenti:[],entries:[]};
+    }catch(e){ cacheS[filialeSel]={dipendenti:[],entries:[]}; }
+  }
+  const dipsFiliale=(cacheS[filialeSel].dipendenti||[]).filter(d=>!d.cessato);
+  // NB: limitato alle fasi rilevanti per questa analisi (60-61-62-63-64-70) — le righe a tempo
+  // zero su altre fasi (verniciatura, lavaggio, ecc.) non sono pertinenti a Efficienza/Performance
+  // e non vanno contate qui, altrimenti il numero non coincide più con "173 lavorazioni valide
+  // + N a tempo zero = totale sulle fasi analizzate" mostrato nella card della Classifica Team.
+  const righeTempoZero=righeTempoZeroTutte.filter(r=>matchaDipendente(r.tecnico,dipsFiliale)&&FASI_VALIDE_ANALISI.has(r.fase));
+  renderRigheTempoZeroAlert(righeTempoZero,"righeTempoZeroImport");
+
+  // Conteggio lavorazioni a tempo=0 per tecnico (per mostrarlo poi nelle card della Classifica Team)
+  // e "fantasmi": tecnici con SOLO lavorazioni a tempo=0, nessuna lavorazione reale — questi non
+  // compariranno mai nel report/tabella principale (non hanno dati validi), quindi li teniamo da
+  // parte qui per poterli comunque segnalare in modo ben visibile nella Classifica Team.
+  ultimoConteggioTempoZero={};
+  righeTempoZero.forEach(r=>{ ultimoConteggioTempoZero[r.tecnico]=(ultimoConteggioTempoZero[r.tecnico]||0)+1; });
+  // Anche qui: "ha lavorazioni valide" deve intendersi SULLE FASI RILEVANTI a questa analisi —
+  // altrimenti chi lavora solo su verniciatura/lavaggio (fasi non pertinenti) rischierebbe di non
+  // essere segnalato come "fantasma" pur non avendo nessun dato di montaggio/collaudo utilizzabile.
+  const tecniciConLavorazioniValide=new Set(produzione.filter(p=>FASI_VALIDE_ANALISI.has(p.fase)).map(p=>p.tecnico));
+  ultimoFantasmiTempoZero=Object.keys(ultimoConteggioTempoZero)
+    .filter(t=>!tecniciConLavorazioniValide.has(t))
+    .map(t=>({nome:t, lavorazioniZero:ultimoConteggioTempoZero[t]}));
+
+  document.getElementById("step3").style.display="block";
+};
+window.resetProd=function(){
+  produzione=[];rawProd=[];
+  document.getElementById("fProd").value="";
+  document.getElementById("prodStatus").innerHTML="";
+  document.getElementById("prodMapping").style.display="none";
+  document.getElementById("prodOk").style.display="none";
+  document.getElementById("step3").style.display="none";
+  document.getElementById("risultati").style.display="none";
+};
+
+function parseData(val){
+  if(!val)return null;
+  if(val instanceof Date)return localDS(val);
+  const s=String(val).trim();
+  // Formato ISO
+  if(s.match(/^\d{4}-\d{2}-\d{2}/))return s.slice(0,10);
+  // Formato "06-08-2026 17:02" o "06/08/2026 17:02"
+  const m=s.match(/^(\d{1,2})[\-\/\.](\d{1,2})[\-\/\.](\d{4})/);
+  if(m)return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  return s;
+}
+
+// Normalizza un nome per il confronto: minuscolo, senza accenti (ò->o, à->a...) e senza
+// apostrofi/punteggiatura. Serve a far combinare "ALBERTO.DALO" (file produzione, senza
+// accenti/apostrofi) con "Alberto D'Alò" (calendario presenze, con accenti/apostrofi) —
+// altrimenti il match fallisce e il tecnico risulta erroneamente "sempre presente".
+const normNome=s=>String(s||"")
+  .toLowerCase()
+  .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+  .replace(/['’`]/g,"")
+  .replace(/[^a-z0-9.\s]/g,"")
+  .trim();
+
+// Trova, se esiste, il dipendente del calendario presenze che corrisponde al nome del tecnico
+// (stessa logica di match usata nel calcolo del report). Riusata anche per filtrare, già in
+// Step 2, gli alert diagnostici in base alla filiale selezionata.
+function matchaDipendente(nomeTecnico, dipsAll){
+  const tnParts=normNome(nomeTecnico).replace("."," ").split(" ").filter(p=>p.length>1);
+  return dipsAll.find(d=>{
+    const dnParts=normNome(d.nome).split(" ").filter(p=>p.length>1);
+    const matches=tnParts.filter(p=>dnParts.some(q=>q===p||q.startsWith(p)||p.startsWith(q)));
+    return matches.length>=Math.min(2,tnParts.length);
+  });
+}
+
+// Estrae il numero di linea da un testo libero (mansione o nota del calendario), es.
+// "LINEA 1", "linea n.2", "Linea3" → "1","2","3". Ritorna null se non trova nulla — è un
+// riconoscimento a pattern testuale (euristica), non un'interpretazione "intelligente" del testo:
+// funziona bene se le note sono scritte in modo riconoscibile (contengono la parola "linea" seguita
+// da un numero), ma non può indovinare intenzioni scritte in modo completamente diverso.
+function estraiNumeroLinea(testo){
+  const m=String(testo||"").match(/linea\s*n?\.?\s*(\d+)/i);
+  return m?m[1]:null;
+}
+// Rileva se una nota segnala esplicitamente un'assenza dalla linea SENZA indicare una linea
+// alternativa specifica (es. "non ha lavorato in linea", "fuori linea", "cambio mansione") —
+// in questo caso la giornata va esclusa dal conteggio di TUTTE le linee, non spostata altrove.
+function notaSegnalaFuoriLinea(testo){
+  return /non\s+(ha\s+)?(lavorato\s+)?in\s+linea|fuori\s+linea|non\s+inerent|cambi[oa]\s+(di\s+)?(linea|mansione)|assente\s+(dalla\s+)?linea|spostat[oa]\s+(dalla\s+)?linea/i.test(String(testo||""));
+}
+
+// Esporta un array di oggetti in un file Excel scaricabile (usa SheetJS, già caricato in pagina)
+window.esportaExcel=function(rows, filename, sheetName){
+  if(!rows||!rows.length){ alert("Nessun dato da esportare."); return; }
+  const ws=XLSX.utils.json_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName||"Dati");
+  XLSX.writeFile(wb, filename);
+};
+
+// Calcola tutti i KPI (tecnici, esclusi, giorni lavorativi, alert) per UN periodo specifico
+// (uno o più mesi dello stesso anno). Riusata sia per il report combinato sul periodo scelto,
+// sia — mese per mese — per il salvataggio multiplo nello storico.
+// Riconciliazione trasparente: quante lavorazioni ci sono davvero nel file per questo tecnico/periodo,
+// e perché il numero nel report è più basso (fasi non pertinenti all'analisi, tempo zero).
+function calcolaRiconciliazione(nomeTecnico, primoG, ultimoG){
+  const FASI_VALIDE=FASI_VALIDE_ANALISI;
+  const righeTec=ultimoProduzioneGrezza.filter(r=>{
+    if(r.tecnico!==nomeTecnico)return false;
+    if(!r.data)return true;
+    return r.data>=primoG&&r.data<=ultimoG;
+  });
+  const totaleFile=righeTec.length;
+  const fasiNonPertinenti=righeTec.filter(r=>!FASI_VALIDE.has(r.fase)).length;
+  const tempoZero=righeTec.filter(r=>FASI_VALIDE.has(r.fase)&&!(r.tempoEff>0)).length;
+  const valide=righeTec.filter(r=>FASI_VALIDE.has(r.fase)&&r.tempoEff>0).length;
+  return {totaleFile,fasiNonPertinenti,tempoZero,valide};
+}
+
+function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
+  const oggiStr=localDS(new Date());
+  const giorniLavPeriodo=getGiorniLav(anno,mesiArr);
+  const giorniLav=giorniLavPeriodo.filter(d=>d<=oggiStr);
+  const troncatoAOggi=giorniLav.length<giorniLavPeriodo.length;
+  const primoG=giorniLav[0]||"";
+  const ultimoG=giorniLav[giorniLav.length-1]||"";
+
+  const FASI_VALIDE=FASI_VALIDE_ANALISI;
+  const prodPeriodo=produzione.filter(p=>{
+    if(!p.data)return true;
+    return p.data>=primoG&&p.data<=ultimoG&&[...fasiSel].includes(p.fase)&&FASI_VALIDE.has(p.fase);
+  });
+
+  const perTecnico={};
+  prodPeriodo.forEach(p=>{
+    if(!perTecnico[p.tecnico])perTecnico[p.tecnico]={nome:p.tecnico,lavorazioni:[],oreEff:null,oreDisp:null};
+    perTecnico[p.tecnico].lavorazioni.push(p);
+  });
+
+  Object.values(perTecnico).forEach(tec=>{
+    const dipMatch=matchaDipendente(tec.nome, dipsAll);
+    if(dipMatch){
+      const entsT=entries.filter(e=>{
+        if(!e.data||e.data<primoG||e.data>ultimoG)return false;
+        return e.dipId===dipMatch.id&&isLav(e.data);
+      });
+      const orePerse=entsT.filter(e=>["ferie","rol","t104","assenza_extra","lavorazione_extra","ferie_prev","rol_prev"].includes(e.tipo))
+        .reduce((s,e)=>s+(parseFloat(e.ore)||0),0)+entsT.filter(e=>e.tipo==="malattia").length*8;
+      tec.oreDisp=giorniLav.length*8;
+      tec.oreEff=Math.max(0,tec.oreDisp-orePerse);
+      tec.dipMatch=dipMatch.nome;
+      tec.escluso=false;
+      // Linea di appartenenza (dalla mansione del calendario) e, se presenti, giorni in cui le
+      // note segnalano un cambio linea/lavorazione non inerente — per attribuire correttamente
+      // le ore di quel giorno alla linea giusta (o escluderle) nell'analisi per linea.
+      tec.lineaAssegnata=estraiNumeroLinea(dipMatch.mansione);
+      tec.overrideLinea={}; // "YYYY-MM-DD" -> numero linea alternativa, o "escludi"
+      if(tec.lineaAssegnata){
+        entsT.filter(e=>e.note).forEach(e=>{
+          const numTrovato=estraiNumeroLinea(e.note);
+          if(numTrovato && numTrovato!==tec.lineaAssegnata){
+            tec.overrideLinea[e.data]=numTrovato; // nota indica un'altra linea specifica quel giorno
+          } else if(!numTrovato && notaSegnalaFuoriLinea(e.note)){
+            tec.overrideLinea[e.data]="escludi"; // nota segnala assenza dalla linea senza indicarne un'altra
+          }
+        });
+      }
+    } else {
+      tec.oreDisp=null;
+      tec.oreEff=null;
+      tec.dipMatch=null;
+      tec.escluso=true;
+      tec.lineaAssegnata=null;
+      tec.overrideLinea={};
+    }
+  });
+
+  const tecniciEsclusi=Object.values(perTecnico).filter(t=>t.escluso).sort((a,b)=>b.lavorazioni.length-a.lavorazioni.length);
+  const tecniciMatchati=Object.values(perTecnico).filter(t=>!t.escluso).sort((a,b)=>a.nome.localeCompare(b.nome));
+  // Tecnici esclusi MANUALMENTE dall'analisi (es. ruolo diverso, lavorazioni troppo poche per
+  // essere statisticamente significative) — non contano nei calcoli né nelle medie del team.
+  const tecniciEsclusiManualmente=tecniciMatchati.filter(t=>esclusiManuali.has(t.nome));
+  const tecnici=tecniciMatchati.filter(t=>!esclusiManuali.has(t.nome));
+
+  tecnici.forEach(tec=>{
+    tec.perFase={};
+    tec.lavorazioni.forEach(lav=>{
+      if(!fasiSel.has(lav.fase))return;
+      if(!tec.perFase[lav.fase])tec.perFase[lav.fase]={fase:lav.fase,count:0,oreEff:0,oreStd:0,lavorazioni:[]};
+      const f=tec.perFase[lav.fase];
+      f.count++;
+      f.oreEff+=lav.tempoEff;
+      const artKey=(lav.articolo||"").toLowerCase();
+      const tempoObj=tempiIdx[artKey];
+      const tStd=tempoObj?parseOre(tempoObj.fasi[lav.fase])||parseOre(tempoObj.fasi.montaggio)||parseOre(tempoObj.fasi.collaudo):0;
+      f.oreStd+=tStd;
+      f.lavorazioni.push({...lav,tStd});
+    });
+    const totStd=Object.values(tec.perFase).reduce((s,f)=>s+f.oreStd,0);
+    const totEff=Object.values(tec.perFase).reduce((s,f)=>s+f.oreEff,0);
+    tec.perfGlobale=totEff>0&&totStd>0?(totStd/totEff)*100:null;
+    tec.totStd=totStd;
+    tec.totEff=totEff;
+    tec.efficienza=(tec.oreEff>0&&totStd>0)?(totStd/tec.oreEff)*100:null;
+  });
+
+  // ── ANALISI PER LINEA (LINEA 1, LINEA 2, LINEA 3...) ──────────────────
+  // I tecnici la cui mansione nel calendario indica una linea vengono raggruppati per linea,
+  // riattribuendo (o escludendo) le giornate segnalate come "fuori linea" nelle note del calendario.
+  const lineeTmp={}; // "1" -> {count,oreStd,oreEff,membriSet}
+  tecnici.forEach(tec=>{
+    if(!tec.lineaAssegnata)return;
+    Object.values(tec.perFase).forEach(f=>{
+      f.lavorazioni.forEach(lav=>{
+        const ov=tec.overrideLinea[lav.data];
+        if(ov==="escludi")return; // nota: giornata non inerente alla linea, esclusa dal conteggio
+        const linEff=ov||tec.lineaAssegnata; // nota con altra linea specifica -> sposta lì
+        if(!lineeTmp[linEff])lineeTmp[linEff]={count:0,oreStd:0,oreEff:0,membriSet:new Set()};
+        lineeTmp[linEff].count++;
+        lineeTmp[linEff].oreStd+=lav.tStd||0;
+        lineeTmp[linEff].oreEff+=lav.tempoEff||0;
+        lineeTmp[linEff].membriSet.add(tec.nome);
+      });
+    });
+  });
+  const lineeFiliale=Object.entries(lineeTmp).map(([linea,l])=>({
+    linea, count:l.count, oreStd:l.oreStd, oreEff:l.oreEff,
+    performance:l.oreEff>0&&l.oreStd>0?(l.oreStd/l.oreEff)*100:null,
+    membri:[...l.membriSet]
+  })).sort((a,b)=>a.linea.localeCompare(b.linea));
+  // Tecnici SENZA linea assegnata (restano nella griglia principale della Classifica Team);
+  // chi appartiene a una linea viene invece rappresentato solo tramite la card di linea.
+  const tecniciSenzaLinea=tecnici.filter(t=>!t.lineaAssegnata);
+
+  // ── ANALISI PER FASE/REPARTO (tutta la filiale, non per singolo tecnico) ──
+  // Aggrega lo scarto standard-vs-reale per ciascuna fase (60-64-70), sommando i dati di TUTTI
+  // i tecnici. Fa emergere problemi di processo/attrezzatura (una fase sistematicamente lenta,
+  // indipendentemente da chi la esegue) invece che di singola persona.
+  const perFaseFiliale={};
+  tecnici.forEach(tec=>{
+    Object.values(tec.perFase).forEach(f=>{
+      if(!perFaseFiliale[f.fase])perFaseFiliale[f.fase]={fase:f.fase,count:0,oreStd:0,oreEff:0};
+      perFaseFiliale[f.fase].count+=f.count;
+      perFaseFiliale[f.fase].oreStd+=f.oreStd;
+      perFaseFiliale[f.fase].oreEff+=f.oreEff;
+    });
+  });
+  const fasiFiliale=Object.values(perFaseFiliale)
+    .map(f=>({...f, performance: f.oreEff>0&&f.oreStd>0?(f.oreStd/f.oreEff)*100:null}))
+    .sort((a,b)=>a.fase.localeCompare(b.fase));
+
+  // Raggruppamento in REPARTI (secondo indicazione): la Fase 60 (montaggio singolo) va
+  // accorpata con la Fase 70 (collaudo) in UN reparto unico; le Fasi 61-64 (montaggio linea)
+  // formano l'altro reparto — NON usa il campo "tipo" di FASI (quello raggruppa 60 con 61-64).
+  const repartiTmp={linea:{count:0,oreStd:0,oreEff:0},singoloCollaudo:{count:0,oreStd:0,oreEff:0}};
+  fasiFiliale.forEach(f=>{
+    const key=(f.fase==="60"||f.fase==="70")?"singoloCollaudo":"linea"; // 61-64 -> linea
+    repartiTmp[key].count+=f.count;
+    repartiTmp[key].oreStd+=f.oreStd;
+    repartiTmp[key].oreEff+=f.oreEff;
+  });
+  const repartiFiliale=[
+    {nome:"🔧 Reparto Montaggio Linea (F61-F64)", ...repartiTmp.linea, performance:repartiTmp.linea.oreEff>0&&repartiTmp.linea.oreStd>0?(repartiTmp.linea.oreStd/repartiTmp.linea.oreEff)*100:null},
+    {nome:"🔩 Reparto Montaggio Singolo + Collaudo (F60+F70)", ...repartiTmp.singoloCollaudo, performance:repartiTmp.singoloCollaudo.oreEff>0&&repartiTmp.singoloCollaudo.oreStd>0?(repartiTmp.singoloCollaudo.oreStd/repartiTmp.singoloCollaudo.oreEff)*100:null}
+  ].filter(r=>r.count>0);
+
+  const codiciMancantiReport=trovaCodiciMancanti(prodPeriodo);
+  const fasiZeroReport=trovaFasiTempoZero(prodPeriodo);
+
+  return {tecnici,tecniciEsclusi,tecniciEsclusiManualmente,giorniLav,troncatoAOggi,ultimoG,primoG,prodPeriodo,codiciMancantiReport,fasiZeroReport,fasiFiliale,repartiFiliale,lineeFiliale,tecniciSenzaLinea};
+}
+
+// ── UI CHIPS ──────────────────────────────────────────
+function buildMesiChips(){
+  document.getElementById("mesiChips").innerHTML=MESI_B.map((m,i)=>
+    `<div class="mese-chip ${mesiSel.has(i)?"sel":""}" id="mc${i}" onclick="toggleMese(${i})">${m}</div>`).join("");
+}
+window.toggleMese=function(i){
+  mesiSel.has(i)?mesiSel.delete(i):mesiSel.add(i);
+  document.getElementById("mc"+i)?.classList.toggle("sel",mesiSel.has(i));
+};
+window.selMesi=function(arr){mesiSel=new Set(arr);buildMesiChips();};
+
+// ── Chips periodo per la tab Storico (indipendenti da quelle del Report) ──
+function buildStoricoMesiChips(){
+  const el=document.getElementById("storicoMesiChips");
+  if(!el)return;
+  el.innerHTML=MESI_B.map((m,i)=>
+    `<div class="mese-chip ${storicoMesiSel.has(i)?"sel":""}" id="smc${i}" onclick="toggleStoricoMese(${i})">${m}</div>`).join("");
+}
+window.toggleStoricoMese=function(i){
+  storicoMesiSel.has(i)?storicoMesiSel.delete(i):storicoMesiSel.add(i);
+  document.getElementById("smc"+i)?.classList.toggle("sel",storicoMesiSel.has(i));
+};
+window.selStoricoMesi=function(arr){storicoMesiSel=new Set(arr);buildStoricoMesiChips();};
+
+function buildFasiChips(){
+  document.getElementById("fasiChips").innerHTML=Object.entries(FASI).map(([k,v])=>
+    `<div class="mese-chip sel" id="fc${k}" onclick="toggleFase('${k}')" style="font-family:monospace">F${k}</div>`).join("");
+}
+window.toggleFase=function(k){
+  fasiSel.has(k)?fasiSel.delete(k):fasiSel.add(k);
+  document.getElementById("fc"+k)?.classList.toggle("sel",fasiSel.has(k));
+};
+
+// ── REPORT PRINCIPALE ──────────────────────────────────
+window.eseguiReport=async function(){
+  const filiale=document.getElementById("filialeAnal").value;
+  const anno=parseInt(document.getElementById("annoAnal").value)||2026;
+  const mesi=[...mesiSel];
+  if(!mesi.length){alert("Seleziona almeno un mese.");return;}
+  if(!fasiSel.size){alert("Seleziona almeno una fase.");return;}
+
+  const btn=document.getElementById("btnAnal");
+  const ld=document.getElementById("analLoad");
+  btn.disabled=true;btn.textContent="Elaborazione...";ld.style.display="inline-flex";
+
+  // Carica presenze Firebase
+  if(!cacheS[filiale]){
+    const snap=await getDoc(doc(db,"stato",filiale));
+    cacheS[filiale]=snap.exists()?snap.data():{dipendenti:[],entries:[]};
+  }
+  const S=cacheS[filiale];
+  btn.disabled=false;btn.innerHTML="▶ Genera ed analizza";ld.style.display="none";
+
+  const dipsAll=(S.dipendenti||[]).filter(d=>!d.cessato);
+  const entries=S.entries||[];
+  const labP=(mesi.length===12?"Anno "+anno:[...mesi].sort((a,b)=>a-b).map(m=>MESI_B[m]).join(", ")+" "+anno);
+
+  // Indice tempi medi per articolo/modello
+  const tempiIdx=buildTempiIdx();
+
+  // Calcolo KPI sul periodo combinato (per la visualizzazione del report)
+  const {tecnici,tecniciEsclusi,tecniciEsclusiManualmente,giorniLav,troncatoAOggi,ultimoG,primoG,prodPeriodo,codiciMancantiReport,fasiZeroReport,fasiFiliale,repartiFiliale,lineeFiliale,tecniciSenzaLinea}=
+    calcolaKPIPeriodo(filiale,anno,mesi,dipsAll,entries,tempiIdx);
+  const labPFull=labP+(troncatoAOggi?" (fino ad oggi)":"");
+
+  // Popola i buffer per gli export Excel di questi alert
+  ultimoExportCodiciMancantiReport=codiciMancantiReport.map(m=>({Codice:m.codice,Lavorazioni:m.count,"Tecnici coinvolti":m.tecnici.join(", ")}));
+  ultimoExportFasiZero=fasiZeroReport.map(m=>({Codice:m.codice,Fase:m.fase,Lavorazioni:m.count,"Tecnici coinvolti":m.tecnici.join(", ")}));
+  ultimoExportTecniciEsclusi=tecniciEsclusi.map(t=>({"Nominativo (file produzione)":t.nome,Lavorazioni:t.lavorazioni.length}));
+
+  // Salva i dati per i modal di dettaglio delle card KPI
+  ultimoTecniciReport=tecnici;
+  ultimoGiorniLavReport=giorniLav;
+
+  // Salva questo report (nomi, efficienza, performance, lavorazioni) nel browser: la tab
+  // "Classifica Team" lo ritrova sempre, anche riaprendo la pagina, senza dover rigenerare nulla.
+  await salvaClassificaInMemoria(filiale, labPFull, tecniciSenzaLinea, ultimoConteggioTempoZero, ultimoFantasmiTempoZero, lineeFiliale, tecnici);
+  await salvaAnalisiFaseInMemoria(filiale, labPFull, fasiFiliale, repartiFiliale);
+
+  // Prepara lo/gli snapshot per il salvataggio nello storico.
+  // - 1 solo mese selezionato -> uno snapshot singolo (comportamento di sempre)
+  // - più mesi selezionati (es. un intero semestre caricato in un colpo) -> uno snapshot PER
+  //   OGNI mese incluso, calcolato singolarmente, così da poterli salvare tutti insieme con un
+  //   click senza dover rigenerare il report mese per mese.
+  function costruisciSnapshot(meseSing,datiPeriodo){
+    return {
+      filiale, anno, mese:meseSing,
+      giorniLav:datiPeriodo.giorniLav.length, troncatoAOggi:datiPeriodo.troncatoAOggi, ultimoGiornoConsiderato:datiPeriodo.ultimoG,
+      dataSalvataggio:new Date().toISOString(),
+      tecnici:datiPeriodo.tecnici.map(t=>({
+        nome:t.nome, dipMatch:t.dipMatch||null,
+        efficienza:t.efficienza, performance:t.perfGlobale,
+        totStd:t.totStd, totEff:t.totEff, oreEff:t.oreEff, oreDisp:t.oreDisp,
+        lavorazioni:t.lavorazioni.length
+      }))
+    };
+  }
+  if(mesi.length===1){
+    ultimoReportSnapshot=costruisciSnapshot(mesi[0],{tecnici,giorniLav,troncatoAOggi,ultimoG});
+    ultimoReportSnapshotMulti=null;
+  } else {
+    ultimoReportSnapshot=null;
+    ultimoReportSnapshotMulti=mesi.map(m=>{
+      const datiMese=calcolaKPIPeriodo(filiale,anno,[m],dipsAll,entries,tempiIdx);
+      return costruisciSnapshot(m,datiMese);
+    });
+  }
+
+  // ── RENDER ──────────────────────────────────────────
+  const nTec=tecnici.length;
+  const nLav=prodPeriodo.length;
+  const perfMedia=tecnici.filter(t=>t.perfGlobale!==null).reduce((s,t,_,a)=>s+(t.perfGlobale/a.length),0);
+  const percOk=tecnici.filter(t=>t.perfGlobale>=95).length;
+  const effList=tecnici.filter(t=>t.efficienza!==null);
+  const effMedia=effList.length?effList.reduce((s,t,_,a)=>s+(t.efficienza/a.length),0):0;
+  const percEffOk=tecnici.filter(t=>t.efficienza>=95).length;
+
+  let html=`
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <div class="ct" style="border-bottom:none;margin-bottom:0;padding-bottom:0">📊 REPORT KPI — ${filiale.toUpperCase()} · ${labPFull}</div>
+      ${ultimoReportSnapshot?`<button class="btn bp no-print" style="font-size:.75rem" onclick="salvaMeseStorico()">💾 Salva mese nello storico</button>`
+        :ultimoReportSnapshotMulti?`<button class="btn bp no-print" style="font-size:.75rem" onclick="salvaMultiMesiStorico()">💾 Salva tutti i ${ultimoReportSnapshotMulti.length} mesi nello storico</button>`
+        :`<span class="badge b-gray no-print">💾 Salvataggio storico non disponibile</span>`}
+    </div>
+    <div id="storicoSaveMsg" style="margin:.5rem 0 0"></div>
+    <div class="kpi-grid" style="margin-top:.85rem">
+      <div class="kpi accent kpi-click" onclick="apriDettaglioKpi('tecnici')"><div class="kpi-val">${nTec}</div><div class="kpi-label">Tecnici analizzati</div></div>
+      <div class="kpi blue kpi-click" onclick="apriDettaglioKpi('lavorazioni')"><div class="kpi-val">${nLav}</div><div class="kpi-label">Lavorazioni totali</div></div>
+      <div class="kpi ${perfCls(effMedia)} kpi-click" onclick="apriDettaglioKpi('effMedia')"><div class="kpi-val">${fmt(effMedia)}%</div><div class="kpi-label">Efficienza media<br><small style="font-weight:400">(ore std / ore presenza)</small></div></div>
+      <div class="kpi ok kpi-click" onclick="apriDettaglioKpi('percEffOk')"><div class="kpi-val">${percEffOk}/${nTec}</div><div class="kpi-label">Tecnici ≥95% efficienza</div></div>
+      <div class="kpi ${perfCls(perfMedia)} kpi-click" onclick="apriDettaglioKpi('perfMedia')"><div class="kpi-val">${fmt(perfMedia)}%</div><div class="kpi-label">Performance media<br><small style="font-weight:400">(ore std / ore lavorazione)</small></div></div>
+      <div class="kpi blue kpi-click" onclick="apriDettaglioKpi('giorniLav')"><div class="kpi-val">${giorniLav.length}</div><div class="kpi-label">Giorni lavorativi${troncatoAOggi?"<br><small style='font-weight:400'>(da inizio mese a oggi)</small>":""}</div></div>
+    </div>
+    ${troncatoAOggi?`<div class="al a-info" style="margin-top:.75rem;margin-bottom:0">ℹ️ Il periodo selezionato include il mese in corso: <b>ore presenza ed efficienza sono calcolate da inizio mese fino a oggi (${ultimoG})</b>, non sull'intero mese, per non conteggiare giorni futuri non ancora lavorati.</div>`:""}
+  </div>
+  ${codiciMancantiReport.length?`<div class="card">
+    <div class="ct">⚠️ Codici non trovati nel file Tempi Tecnici</div>
+    <div class="al a-danger" style="margin-bottom:0">
+      <b>${codiciMancantiReport.length} codice/i</b> presenti in produzione ma assenti nel file tempi medi (${codiciMancantiReport.reduce((s,m)=>s+m.count,0)} lavorazioni escluse dal calcolo std/efficienza per queste voci):
+      <div style="margin-top:.5rem;max-height:180px;overflow-y:auto">
+        <table><thead><tr><th>Codice</th><th style="text-align:right">Lavorazioni</th><th>Tecnici coinvolti</th></tr></thead>
+        <tbody>${codiciMancantiReport.map(m=>`<tr>
+          <td style="font-family:monospace;font-weight:700">${m.codice}</td>
+          <td style="text-align:right">${m.count}</td>
+          <td style="font-size:.72rem;color:var(--text2)">${m.tecnici.join(", ")}</td>
+        </tr>`).join("")}</tbody></table>
+      </div>
+      <button class="btn bg no-print" style="font-size:.68rem;margin-top:.5rem" onclick="esportaExcel(ultimoExportCodiciMancantiReport,'codici_non_trovati_${filiale}_${labP.replace(/[ ,]/g,'_')}.xlsx','Codici non trovati')">📥 Esporta in Excel</button>
+    </div>
+  </div>`:""}
+  ${fasiZeroReport.length?`<div class="card">
+    <div class="ct">⚠️ Codici trovati ma con tempo standard = 0 per la fase</div>
+    <div class="al a-warn" style="margin-bottom:0">
+      <b>${fasiZeroReport.length} combinazione/i codice+fase</b> con tempo standard mancante nel file Tempi Tecnici (${fasiZeroReport.reduce((s,m)=>s+m.count,0)} lavorazioni escluse dal calcolo std/efficienza per queste voci — il codice è riconosciuto ma la colonna della fase è vuota/0):
+      <div style="margin-top:.5rem;max-height:180px;overflow-y:auto">
+        <table><thead><tr><th>Codice</th><th>Fase</th><th style="text-align:right">Lavorazioni</th><th>Tecnici coinvolti</th></tr></thead>
+        <tbody>${fasiZeroReport.map(m=>`<tr>
+          <td style="font-family:monospace;font-weight:700">${m.codice}</td>
+          <td><span class="fase-badge f${m.fase}">F${m.fase}</span></td>
+          <td style="text-align:right">${m.count}</td>
+          <td style="font-size:.72rem;color:var(--text2)">${m.tecnici.join(", ")}</td>
+        </tr>`).join("")}</tbody></table>
+      </div>
+      <div style="margin-top:.5rem;font-size:.72rem">💡 Torna al file Tempi Tecnici (foglio USATO) e completa la colonna della fase indicata per questi codici.</div>
+      <button class="btn bg no-print" style="font-size:.68rem;margin-top:.5rem" onclick="esportaExcel(ultimoExportFasiZero,'fasi_tempo_zero_${filiale}_${labP.replace(/[ ,]/g,'_')}.xlsx','Fasi tempo zero')">📥 Esporta in Excel</button>
+    </div>
+  </div>`:""}
+
+  ${tecniciEsclusiManualmente.length?`<div class="card">
+    <div class="ct">🙈 Tecnici esclusi manualmente dall'analisi</div>
+    <div class="al a-info" style="margin-bottom:0">
+      <b>${tecniciEsclusiManualmente.length} nominativo/i</b> esclusi a mano (ruolo diverso, lavorazioni non statisticamente significative, ecc. — non contano né nelle card KPI né nelle medie):
+      <div style="margin-top:.5rem;max-height:150px;overflow-y:auto">
+        <table><thead><tr><th>Tecnico</th><th style="text-align:right">Lavorazioni (escluse)</th></tr></thead>
+        <tbody>${tecniciEsclusiManualmente.map(t=>`<tr>
+          <td style="font-family:monospace;font-weight:700">${t.nome}</td>
+          <td style="text-align:right">${t.lavorazioni.length}</td>
+        </tr>`).join("")}</tbody></table>
+      </div>
+      <div style="margin-top:.5rem;font-size:.72rem">💡 Gestisci chi escludere/ripristinare dalla tab "🏆 Classifica Team" (bottone ✕ su ogni card).</div>
+    </div>
+  </div>`:""}
+
+  ${tecniciEsclusi.length?`<div class="card">
+    <div class="ct">🚫 Tecnici esclusi dal report — nessuna corrispondenza nel calendario presenze</div>
+    <div class="al a-danger" style="margin-bottom:0">
+      <b>${tecniciEsclusi.length} nominativo/i</b> presenti nel file Produzione ma non trovati nel calendario presenze di <b>${filiale.toUpperCase()}</b> (${tecniciEsclusi.reduce((s,t)=>s+t.lavorazioni.length,0)} lavorazioni escluse da performance ed efficienza):
+      <div style="margin-top:.5rem;max-height:180px;overflow-y:auto">
+        <table><thead><tr><th>Nominativo (file produzione)</th><th style="text-align:right">Lavorazioni</th></tr></thead>
+        <tbody>${tecniciEsclusi.map(t=>`<tr>
+          <td style="font-family:monospace;font-weight:700">${t.nome}</td>
+          <td style="text-align:right">${t.lavorazioni.length}</td>
+        </tr>`).join("")}</tbody></table>
+      </div>
+      <div style="margin-top:.5rem;font-size:.72rem">💡 Possibili cause: (1) il tecnico appartiene a un'altra filiale — verifica di aver selezionato il sito produttivo giusto nello Step 2; (2) il nome nel file produzione non corrisponde a nessun dipendente nel calendario di questa filiale (refuso, nome/cognome invertito, ecc.); (3) il tecnico non è ancora presente nel calendario presenze di questa filiale.</div>
+      <button class="btn bg no-print" style="font-size:.68rem;margin-top:.5rem" onclick="esportaExcel(ultimoExportTecniciEsclusi,'tecnici_esclusi_${filiale}_${labP.replace(/[ ,]/g,'_')}.xlsx','Tecnici esclusi')">📥 Esporta in Excel</button>
+    </div>
+  </div>`:""}
+
+  <!-- RIEPILOGO TABELLA -->
+  <div class="card">
+    <div class="ct">📋 Riepilogo per tecnico</div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr>
+        <th>Tecnico</th><th>Ore presenza</th>
+        <th style="text-align:right">Lavorazioni</th>
+        <th style="text-align:right">Ore std totali</th>
+        <th style="text-align:right">Efficienza<br><small style="font-weight:400">(std/presenza)</small></th>
+        <th style="text-align:right">Ore lavorazione</th>
+        <th style="text-align:right">Performance<br><small style="font-weight:400">(std/lavorazione)</small></th>
+        ${[...fasiSel].sort().map(f=>`<th style="text-align:right">F${f}</th>`).join("")}
+      </tr></thead>
+      <tbody>
+        ${tecnici.map(tec=>{
+          const p=tec.perfGlobale;
+          const e=tec.efficienza;
+          return `<tr>
+            <td><b>${tec.nome}</b>${tec.dipMatch?`<br><small style="color:#9ca3af;font-size:.6rem">→ ${tec.dipMatch}</small>`:''}</td>
+            <td style="font-family:monospace;color:${tec.oreEff<tec.oreDisp?"#dc2626":"#059669"}">${fmt(tec.oreEff)}h<small style="color:#9ca3af"> / ${fmt(tec.oreDisp)}h</small></td>
+            <td style="text-align:right;font-weight:700">${tec.lavorazioni.length}</td>
+            <td style="text-align:right;font-family:monospace">${fmt(tec.totStd)}h</td>
+            <td style="text-align:right">
+              ${e!==null?`<span class="badge ${perfBcls(e)}">${fmt(e)}%</span>
+              <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(e,100)}%;background:${e>=95?"#059669":e>=80?"#d97706":"#dc2626"}"></div></div>`:`<span class='badge b-gray' title="${motivoNoEfficienza(tec)}">n/d</span><div style="font-size:.6rem;color:#9ca3af;margin-top:.2rem;max-width:140px">${motivoNoEfficienza(tec)}</div>`}
+            </td>
+            <td style="text-align:right;font-family:monospace">${fmt(tec.totEff)}h</td>
+            <td style="text-align:right">
+              ${p!==null?`<span class="badge ${perfBcls(p)}">${fmt(p)}%</span>
+              <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(p,100)}%;background:${p>=95?"#059669":p>=80?"#d97706":"#dc2626"}"></div></div>`:"<span class='badge b-gray'>n/d</span>"}
+            </td>
+            ${[...fasiSel].sort().map(f=>{
+              const pf=tec.perFase[f];
+              if(!pf)return `<td style="text-align:right;color:#9ca3af">—</td>`;
+              const perf=pf.oreEff>0&&pf.oreStd>0?(pf.oreStd/pf.oreEff)*100:null;
+              return `<td style="text-align:right">${perf!==null?`<span class="badge ${perfBcls(perf)}">${fmt(perf)}%</span>`:"<span class='badge b-gray'>n/d</span>"}</td>`;
+            }).join("")}
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table></div>
+  </div>
+
+  <!-- DETTAGLIO PER TECNICO -->
+  <div class="card">
+    <div class="ct">👤 Dettaglio per tecnico (clicca per espandere)</div>`;
+
+  tecnici.forEach(tec=>{
+    const p=tec.perfGlobale;
+    const e=tec.efficienza;
+    html+=`
+    <div class="tecnico-card">
+      <div class="tecnico-head" onclick="toggleTec(this)">
+        <span class="tecnico-nome">${tec.nome}</span>
+        ${e!==null?`<span class="badge ${perfBcls(e)}" style="font-size:.72rem">${fmt(e)}% efficienza</span>`:`<span class="badge b-gray" style="font-size:.72rem" title="${motivoNoEfficienza(tec)}">efficienza n/d ⓘ</span>`}
+        ${p!==null?`<span class="badge b-gray" style="font-size:.72rem">${fmt(p)}% performance</span>`:""}
+        <span style="font-size:.72rem;color:var(--text2)">${tec.lavorazioni.length} lavorazioni</span>
+        <span style="font-size:.72rem;color:#6b7280;margin-left:auto">▼</span>
+      </div>
+      <div class="tecnico-body">
+        <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin-bottom:.75rem">
+          <div class="kpi"><div class="kpi-val">${fmt(tec.oreDisp)}h</div><div class="kpi-label">Ore presenza teoriche</div></div>
+          <div class="kpi ${tec.oreEff<tec.oreDisp?"warn":"ok"}"><div class="kpi-val">${fmt(tec.oreEff)}h</div><div class="kpi-label">Ore presenza effettive<br><small style="font-weight:400">(da calendario)</small></div></div>
+          <div class="kpi"><div class="kpi-val">${fmt(tec.totStd)}h</div><div class="kpi-label">Ore std prodotte</div></div>
+          ${e!==null?`<div class="kpi ${perfCls(e)}"><div class="kpi-val">${fmt(e)}%</div><div class="kpi-label">Efficienza<br><small style="font-weight:400">std / presenza</small></div></div>`:`<div class="kpi"><div class="kpi-val" style="color:#9ca3af;font-size:1.1rem">n/d</div><div class="kpi-label">Efficienza<br><small style="font-weight:400;color:#dc2626">${motivoNoEfficienza(tec)}</small></div></div>`}
+          <div class="kpi"><div class="kpi-val">${fmt(tec.totEff)}h</div><div class="kpi-label">Ore lavorazione</div></div>
+          ${p!==null?`<div class="kpi ${perfCls(p)}"><div class="kpi-val">${fmt(p)}%</div><div class="kpi-label">Performance<br><small style="font-weight:400">std / lavorazione</small></div></div>`:""}
+        </div>
+        ${(()=>{
+          const r=calcolaRiconciliazione(tec.nome, primoG, ultimoG);
+          if(r.totaleFile===tec.lavorazioni.length)return ""; // nessuna differenza, non serve mostrare nulla
+          return `<div class="al a-info" style="font-size:.72rem;margin-bottom:.75rem">
+            🔎 <b>Riconciliazione con il file:</b> nel file ci sono <b>${r.totaleFile}</b> righe per questo tecnico nel periodo selezionato →
+            ${r.fasiNonPertinenti>0?`<b>${r.fasiNonPertinenti}</b> su fasi non pertinenti a questa analisi (diverse da 60-61-62-63-64-70, es. lavaggio/verniciatura/test/chiusura) → `:""}
+            ${r.tempoZero>0?`<b>${r.tempoZero}</b> a tempo = 0 minuti (vedi alert dedicato) → `:""}
+            <b>${r.valide}</b> valide e considerate in questo calcolo.
+          </div>`;
+        })()}
+        ${Object.entries(tec.perFase).sort((a,b)=>a[0].localeCompare(b[0])).map(([fase,pf])=>{
+          const perf=pf.oreEff>0&&pf.oreStd>0?(pf.oreStd/pf.oreEff)*100:null;
+          const fInfo=FASI[fase]||{label:"Fase "+fase,col:"#6b7280"};
+          return `<div style="margin-bottom:.85rem">
+            <div style="font-size:.78rem;font-weight:700;color:${fInfo.col};margin-bottom:.4rem">
+              ${fInfo.label} — ${pf.count} lavorazioni · ${fmt(pf.oreStd)}h std · ${fmt(pf.oreEff)}h eff.
+              ${perf!==null?`· <span class="badge ${perfBcls(perf)}">${fmt(perf)}%</span>`:""}
+            </div>
+            <table><thead><tr>
+              <th>Articolo/Modello</th><th>Data</th>
+              <th style="text-align:right">T.Standard (h)</th>
+              <th style="text-align:right">T.Effettivo (h)</th>
+              <th style="text-align:right">Scarto</th>
+              <th style="text-align:right">Efficienza</th>
+            </tr></thead><tbody>
+              ${pf.lavorazioni.map(lav=>{
+                const scarto=lav.tStd>0?lav.tempoEff-lav.tStd:null;
+                const eff=lav.tStd>0&&lav.tempoEff>0?(lav.tStd/lav.tempoEff)*100:null;
+                return `<tr>
+                  <td style="font-family:monospace;font-size:.72rem">${lav.articolo||"—"}</td>
+                  <td style="font-size:.72rem;color:var(--text2)">${lav.data||"—"}</td>
+                  <td style="text-align:right;font-family:monospace">${lav.tStd>0?fmt(lav.tStd,2)+"h":"<span style='color:#9ca3af'>n/d</span>"}</td>
+                  <td style="text-align:right;font-family:monospace;font-weight:600">${fmt(lav.tempoEff,2)}h</td>
+                  <td style="text-align:right;font-family:monospace;color:${scarto!==null?(scarto>0?"#dc2626":"#059669"):"#9ca3af"}">
+                    ${scarto!==null?(scarto>0?"+":"")+fmt(scarto,2)+"h":"—"}
+                  </td>
+                  <td style="text-align:right">
+                    ${eff!==null?`<span class="badge ${perfBcls(eff)}">${fmt(eff)}%</span>`:"<span class='badge b-gray'>n/d</span>"}
+                  </td>
+                </tr>`;
+              }).join("")}
+            </tbody></table>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+  });
+  html+="</div>";
+
+  document.getElementById("risultati").innerHTML=html;
+  document.getElementById("risultati").style.display="block";
+  // Il report generato si vede nella tab "KPI Produzione", insieme a tutte le altre analisi
+  switchTab("storico");
+  document.getElementById("risultati").scrollIntoView({behavior:"smooth"});
+};
+
+window.toggleTec=function(head){
+  head.nextElementSibling.classList.toggle("open");
+  head.querySelector("span:last-child").textContent=head.nextElementSibling.classList.contains("open")?"▲":"▼";
+};
+
+// Drag & drop
+["uzTempi","uzProd"].forEach((id,i)=>{
+  const uz=document.getElementById(id);
+  const inp=document.getElementById(i===0?"fTempi":"fProd");
+  uz.addEventListener("dragover",e=>{e.preventDefault();uz.classList.add("drag");});
+  uz.addEventListener("dragleave",()=>uz.classList.remove("drag"));
+  uz.addEventListener("drop",e=>{
+    e.preventDefault();uz.classList.remove("drag");
+    const file=e.dataTransfer.files[0];
+    if(file){inp.files=e.dataTransfer.files;inp.dispatchEvent(new Event("change"));}
+  });
+});
+
+// ── TAB SWITCH ──────────────────────────────────────────
+window.switchTab=function(tab){
+  document.getElementById("tab-report").classList.toggle("active",tab==="report");
+  document.getElementById("tab-storico").classList.toggle("active",tab==="storico");
+  document.getElementById("tab-classifica").classList.toggle("active",tab==="classifica");
+  document.getElementById("tab-fasi").classList.toggle("active",tab==="fasi");
+  document.getElementById("tabBtnReport").classList.toggle("active",tab==="report");
+  document.getElementById("tabBtnStorico").classList.toggle("active",tab==="storico");
+  document.getElementById("tabBtnClassifica").classList.toggle("active",tab==="classifica");
+  document.getElementById("tabBtnFasi").classList.toggle("active",tab==="fasi");
+  if(tab==="classifica") caricaClassifica();
+  if(tab==="fasi") caricaAnalisiFase();
+};
+
+// ── STORICO: SALVATAGGIO ────────────────────────────────
+window.salvaMeseStorico=async function(){
+  if(!ultimoReportSnapshot){alert("Nessun report a mese singolo da salvare. Seleziona un solo mese nello Step 3 e genera il report.");return;}
+  const s=ultimoReportSnapshot;
+  const docId=`${s.filiale}_${s.anno}_${String(s.mese+1).padStart(2,"0")}`;
+  const msgEl=document.getElementById("storicoSaveMsg");
+  msgEl.innerHTML='<span style="font-size:.76rem;color:var(--text2)"><span class="spin"></span> Salvataggio...</span>';
+  try{
+    await setDoc(doc(db,"kpiStorico",docId), s);
+    msgEl.innerHTML=`<div class="al a-ok" style="margin-bottom:0">✅ Salvato: ${MESI_B[s.mese]} ${s.anno} — ${s.filiale.toUpperCase()} (${s.tecnici.length} tecnici). Vai alla tab "📈 KPI Produzione" per vederlo.</div>`;
+  }catch(err){
+    msgEl.innerHTML=`<div class="al a-danger" style="margin-bottom:0">❌ Errore nel salvataggio: ${err.message}</div>`;
+  }
+};
+
+// Salva TUTTI i mesi selezionati in un colpo solo (es. un intero semestre caricato con un unico
+// file produzione): ogni mese viene scritto come documento separato nello storico, esattamente
+// come se li avessi generati e salvati uno per uno.
+window.salvaMultiMesiStorico=async function(){
+  if(!ultimoReportSnapshotMulti||!ultimoReportSnapshotMulti.length){alert("Nessun report multi-mese da salvare. Seleziona più mesi nello Step 3 e genera il report.");return;}
+  const lista=ultimoReportSnapshotMulti;
+  const msgEl=document.getElementById("storicoSaveMsg");
+  msgEl.innerHTML=`<span style="font-size:.76rem;color:var(--text2)"><span class="spin"></span> Salvataggio di ${lista.length} mesi...</span>`;
+  const riusciti=[], falliti=[];
+  for(const s of lista){
+    const docId=`${s.filiale}_${s.anno}_${String(s.mese+1).padStart(2,"0")}`;
+    try{
+      await setDoc(doc(db,"kpiStorico",docId), s);
+      riusciti.push(s);
+    }catch(err){
+      falliti.push({mese:s.mese,anno:s.anno,errore:err.message});
+    }
+  }
+  const elenco=riusciti.map(s=>`${MESI_B[s.mese]} ${s.anno} (${s.tecnici.length} tecnici)`).join(" · ");
+  msgEl.innerHTML=`
+    <div class="al ${falliti.length?'a-warn':'a-ok'}" style="margin-bottom:0">
+      ${falliti.length?"⚠️":"✅"} Salvati <b>${riusciti.length}/${lista.length}</b> mesi — ${elenco||"nessuno"}.
+      ${falliti.length?`<br>Errori su: ${falliti.map(f=>`${MESI_B[f.mese]} ${f.anno} (${f.errore})`).join(", ")}.`:""}
+      Vai alla tab "📈 KPI Produzione" per vedere lo storico aggiornato.
+    </div>`;
+};
+
+// ── STORICO: CARICAMENTO E RENDER ───────────────────────
+window.caricaStorico=async function(){
+  const filiale=document.getElementById("storicoFiliale").value;
+  const annoSel=parseInt(document.getElementById("storicoAnnoSel").value)||new Date().getFullYear();
+  const el=document.getElementById("storicoContent");
+  if(!storicoMesiSel.size){alert("Seleziona almeno un mese nel periodo storico.");return;}
+  el.innerHTML='<div class="card" style="text-align:center;padding:2rem"><span class="spin"></span> Caricamento storico...</div>';
+  let docsTutti=[];
+  try{
+    const snap=await getDocs(collection(db,"kpiStorico"));
+    snap.forEach(d=>{const data=d.data();if(data.filiale===filiale)docsTutti.push(data);});
+  }catch(err){
+    el.innerHTML=`<div class="al a-danger">Errore nel caricamento: ${err.message}</div>`;
+    return;
+  }
+  docsTutti.sort((a,b)=>(a.anno-b.anno)||(a.mese-b.mese));
+  if(!docsTutti.length){
+    el.innerHTML=`<div class="card"><div class="al a-info" style="margin-bottom:0">Nessun dato storico salvato per <b>${filiale.toUpperCase()}</b>. Genera un report da un singolo mese nella tab "Report" e clicca "💾 Salva mese nello storico".</div></div>`;
+    return;
+  }
+  // Filtra per anno + mesi selezionati nel periodo storico
+  const docs=docsTutti.filter(d=>d.anno===annoSel&&storicoMesiSel.has(d.mese));
+  if(!docs.length){
+    const anniDisponibili=[...new Set(docsTutti.map(d=>d.anno))].sort();
+    el.innerHTML=`<div class="card"><div class="al a-info" style="margin-bottom:0">Nessun dato storico per <b>${filiale.toUpperCase()}</b> nel periodo selezionato (${annoSel}).<br>Anni disponibili nello storico: <b>${anniDisponibili.join(", ")}</b>. Prova a cambiare anno o ad allargare la selezione dei mesi.</div></div>`;
+    return;
+  }
+  renderStorico(docs,filiale,el);
+};
+
+// Aggrega i dati storico (più mesi) per tecnico: somma lavorazioni/ore, media di efficienza e performance
+function aggregaStorico(docsFiltrati){
+  const map={};
+  docsFiltrati.forEach(d=>{
+    d.tecnici.forEach(t=>{
+      if(!map[t.nome]) map[t.nome]={nome:t.nome,lavorazioni:0,totStd:0,totEff:0,oreEff:0,effList:[],perfList:[]};
+      const m=map[t.nome];
+      m.lavorazioni+=t.lavorazioni||0;
+      m.totStd+=t.totStd||0;
+      m.totEff+=t.totEff||0;
+      m.oreEff+=t.oreEff||0;
+      if(t.efficienza!==null&&t.efficienza!==undefined) m.effList.push(t.efficienza);
+      if(t.performance!==null&&t.performance!==undefined) m.perfList.push(t.performance);
+    });
+  });
+  return Object.values(map).map(m=>({
+    nome:m.nome,
+    lavorazioni:m.lavorazioni,
+    totStd:m.totStd,
+    totEff:m.totEff,
+    oreEff:m.oreEff,
+    efficienzaMedia:m.effList.length?m.effList.reduce((s,v)=>s+v,0)/m.effList.length:null,
+    performanceMedia:m.perfList.length?m.perfList.reduce((s,v)=>s+v,0)/m.perfList.length:null,
+    mesiConDati:m.effList.length
+  }));
+}
+
+function renderStorico(docs,filiale,el){
+  const labelMese=d=>`${MESI_B[d.mese]} ${d.anno}`;
+  // Trend medio filiale (efficienza e performance)
+  const trendEff=docs.map(d=>{
+    const arr=d.tecnici.filter(t=>t.efficienza!==null&&t.efficienza!==undefined);
+    return arr.length?arr.reduce((s,t)=>s+t.efficienza,0)/arr.length:null;
+  });
+  const trendPerf=docs.map(d=>{
+    const arr=d.tecnici.filter(t=>t.performance!==null&&t.performance!==undefined);
+    return arr.length?arr.reduce((s,t)=>s+t.performance,0)/arr.length:null;
+  });
+  const labels=docs.map(labelMese);
+
+  // Matrice tecnico x mese (Performance = dato principale da esporre)
+  const nomiTecnici=[...new Set(docs.flatMap(d=>d.tecnici.map(t=>t.nome)))].sort();
+  const matrice=nomiTecnici.map(nome=>{
+    const valori=docs.map(d=>{
+      const t=d.tecnici.find(x=>x.nome===nome);
+      return t?t.performance:null;
+    });
+    const validi=valori.filter(v=>v!==null&&v!==undefined);
+    const media=validi.length?validi.reduce((s,v)=>s+v,0)/validi.length:null;
+    const ultimo=valori[valori.length-1];
+    const precedente=valori.length>1?valori[valori.length-2]:null;
+    const trend=(ultimo!==null&&ultimo!==undefined&&precedente!==null&&precedente!==undefined)?ultimo-precedente:null;
+    return {nome,valori,media,trend};
+  });
+
+  // Aggregazione per le card KPI del periodo selezionato (somma/medie su tutti i mesi filtrati)
+  const aggregato=aggregaStorico(docs);
+  ultimoAggregatoStorico=aggregato;
+  ultimoDocsFiltratiStorico=docs;
+  const nTecStor=aggregato.length;
+  const nLavStor=aggregato.reduce((s,t)=>s+t.lavorazioni,0);
+  const effValideStor=aggregato.filter(t=>t.efficienzaMedia!==null);
+  const effMediaStor=effValideStor.length?effValideStor.reduce((s,t)=>s+t.efficienzaMedia,0)/effValideStor.length:0;
+  const percEffOkStor=aggregato.filter(t=>t.efficienzaMedia!==null&&t.efficienzaMedia>=95).length;
+  const perfValideStor=aggregato.filter(t=>t.performanceMedia!==null);
+  const perfMediaStor=perfValideStor.length?perfValideStor.reduce((s,t)=>s+t.performanceMedia,0)/perfValideStor.length:0;
+  const giorniLavTotStor=docs.reduce((s,d)=>s+(d.giorniLav||0),0);
+  const periodoLabel=docs.length===1?labelMese(docs[0]):`${labelMese(docs[0])} → ${labelMese(docs[docs.length-1])} (${docs.length} mesi)`;
+
+  let html=`
+  <div class="card">
+    <div class="ct">📊 Riepilogo periodo — ${filiale.toUpperCase()} · ${periodoLabel}</div>
+    <div class="kpi-grid">
+      <div class="kpi accent kpi-click" onclick="apriDettaglioKpiStorico('tecnici')"><div class="kpi-val">${nTecStor}</div><div class="kpi-label">Tecnici nel periodo</div></div>
+      <div class="kpi blue kpi-click" onclick="apriDettaglioKpiStorico('lavorazioni')"><div class="kpi-val">${nLavStor}</div><div class="kpi-label">Lavorazioni totali</div></div>
+      <div class="kpi ${perfCls(effMediaStor)} kpi-click" onclick="apriDettaglioKpiStorico('effMedia')"><div class="kpi-val">${fmt(effMediaStor)}%</div><div class="kpi-label">Efficienza media<br><small style="font-weight:400">(media dei mesi)</small></div></div>
+      <div class="kpi ok kpi-click" onclick="apriDettaglioKpiStorico('percEffOk')"><div class="kpi-val">${percEffOkStor}/${nTecStor}</div><div class="kpi-label">Tecnici ≥95% efficienza<br><small style="font-weight:400">(media nel periodo)</small></div></div>
+      <div class="kpi ${perfCls(perfMediaStor)} kpi-click" onclick="apriDettaglioKpiStorico('perfMedia')"><div class="kpi-val">${fmt(perfMediaStor)}%</div><div class="kpi-label">Performance media<br><small style="font-weight:400">(media dei mesi)</small></div></div>
+      <div class="kpi blue kpi-click" onclick="apriDettaglioKpiStorico('giorniLav')"><div class="kpi-val">${giorniLavTotStor}</div><div class="kpi-label">Giorni lavorativi totali</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct">📈 Andamento medio Performance — ${filiale.toUpperCase()}</div>
+    ${renderTrendChart(labels,trendPerf,trendEff)}
+  </div>
+
+  <div class="card">
+    <div class="ct">🧑‍🔧 Performance per tecnico — mese per mese</div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr>
+        <th style="position:sticky;left:0;background:var(--surface)">Tecnico</th>
+        ${labels.map(l=>`<th style="text-align:right">${l}</th>`).join("")}
+        <th style="text-align:right">Media</th>
+        <th style="text-align:right">Trend</th>
+      </tr></thead>
+      <tbody>
+        ${matrice.map(r=>`<tr>
+          <td style="position:sticky;left:0;background:#fff;font-weight:700">${r.nome}</td>
+          ${r.valori.map(v=>`<td style="text-align:right">${v!==null&&v!==undefined?`<span class="badge ${perfBcls(v)}">${fmt(v)}%</span>`:"<span style='color:#9ca3af'>—</span>"}</td>`).join("")}
+          <td style="text-align:right;font-weight:700">${r.media!==null?fmt(r.media)+"%":"—"}</td>
+          <td style="text-align:right">${r.trend===null?"—":r.trend>0?`<span style="color:#059669">▲ +${fmt(Math.abs(r.trend))}%</span>`:r.trend<0?`<span style="color:#dc2626">▼ -${fmt(Math.abs(r.trend))}%</span>`:`<span style="color:#9ca3af">= 0%</span>`}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="card">
+    <div class="ct">📋 Riepilogo mensile filiale</div>
+    <table>
+      <thead><tr><th>Mese</th><th style="text-align:right">Tecnici</th><th style="text-align:right">Performance media</th><th style="text-align:right">Efficienza media</th><th style="text-align:right">Giorni lav.</th></tr></thead>
+      <tbody>
+        ${docs.map((d,i)=>`<tr>
+          <td><b>${labelMese(d)}</b>${d.troncatoAOggi?` <small style="color:#9ca3af">(fino al ${d.ultimoGiornoConsiderato})</small>`:""}</td>
+          <td style="text-align:right">${d.tecnici.length}</td>
+          <td style="text-align:right">${trendPerf[i]!==null?`<span class="badge ${perfBcls(trendPerf[i])}">${fmt(trendPerf[i])}%</span>`:"—"}</td>
+          <td style="text-align:right">${trendEff[i]!==null?`<span class="badge ${perfBcls(trendEff[i])}">${fmt(trendEff[i])}%</span>`:"—"}</td>
+          <td style="text-align:right">${d.giorniLav}</td>
+        </tr>`).join("")}
+      </tbody>
+    </table>
+  </div>`;
+  el.innerHTML=html;
+}
+
+// Grafico "fatto in casa" (nessuna libreria esterna): Performance a BARRE (dato principale,
+// ben visibile e con valore numerico sopra ogni barra) + Efficienza come linea sottile di contesto.
+function renderTrendChart(labels,valoriPerf,valoriEff){
+  const n=labels.length;
+  const barW=54, gap=26;
+  const w=Math.max(620, n*(barW+gap)+80), h=320;
+  const padL=52, padR=24, padT=34, padB=46;
+  const innerW=w-padL-padR, innerH=h-padT-padB;
+  const maxVal=Math.max(140, ...valoriPerf.filter(v=>v!==null), ...valoriEff.filter(v=>v!==null))*1.15;
+  const slot=innerW/n;
+  const xCenter=i=>padL+slot*i+slot/2;
+  const y=v=>padT+innerH-(v/maxVal)*innerH;
+  const colBar=v=>v>=95?"#059669":v>=80?"#d97706":"#dc2626";
+  const gridY=[0,25,50,75,100,125,150].filter(v=>v<=maxVal);
+
+  let svg=`<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;max-width:100%;font-family:Inter,sans-serif">`;
+  // Griglia orizzontale + etichette asse Y
+  gridY.forEach(v=>{
+    svg+=`<line x1="${padL}" y1="${y(v)}" x2="${w-padR}" y2="${y(v)}" stroke="#eef1f5" stroke-width="1"/>`;
+    svg+=`<text x="${padL-10}" y="${y(v)+4}" font-size="12" fill="#9ca3af" text-anchor="end">${v}%</text>`;
+  });
+  // Linea di riferimento 100%
+  svg+=`<line x1="${padL}" y1="${y(100)}" x2="${w-padR}" y2="${y(100)}" stroke="#059669" stroke-width="1.5" stroke-dasharray="5,4" opacity=".55"/>`;
+  svg+=`<text x="${w-padR}" y="${y(100)-6}" font-size="11" fill="#059669" text-anchor="end" opacity=".8">obiettivo 100%</text>`;
+
+  // Barre Performance (dato principale)
+  valoriPerf.forEach((v,i)=>{
+    if(v===null||v===undefined)return;
+    const bx=xCenter(i)-barW/2, by=y(v), bh=padT+innerH-by;
+    const col=colBar(v);
+    svg+=`<rect x="${bx}" y="${by}" width="${barW}" height="${bh}" rx="5" fill="${col}" opacity=".88"/>`;
+    svg+=`<text x="${xCenter(i)}" y="${by-9}" font-size="14" font-weight="700" fill="${col}" text-anchor="middle">${fmt(v)}%</text>`;
+  });
+
+  // Linea Efficienza (contesto secondario)
+  const ptsEff=valoriEff.map((v,i)=>v===null?null:`${xCenter(i)},${y(v)}`).filter(Boolean).join(" ");
+  if(ptsEff) svg+=`<polyline points="${ptsEff}" fill="none" stroke="#4338ca" stroke-width="2" stroke-dasharray="6,4"/>`;
+  valoriEff.forEach((v,i)=>{
+    if(v===null||v===undefined)return;
+    svg+=`<circle cx="${xCenter(i)}" cy="${y(v)}" r="4" fill="#fff" stroke="#4338ca" stroke-width="2"/>`;
+  });
+
+  // Etichette asse X (mesi)
+  labels.forEach((l,i)=>{
+    svg+=`<text x="${xCenter(i)}" y="${h-16}" font-size="12" font-weight="600" fill="#374151" text-anchor="middle">${l}</text>`;
+  });
+  svg+="</svg>";
+
+  const legend=`<div style="display:flex;gap:1.25rem;flex-wrap:wrap;margin-bottom:.6rem">
+    <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:600;color:var(--text)"><span style="width:14px;height:14px;border-radius:3px;background:#059669;display:inline-block"></span>Performance media (barre, dato principale)</span>
+    <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--text2)"><span style="width:14px;height:2px;background:#4338ca;display:inline-block;border-top:2px dashed #4338ca"></span>Efficienza media (linea, contesto)</span>
+  </div>`;
+  return `${legend}${svg}`;
+}
+
+// ── MODAL DETTAGLIO CARD KPI ────────────────────────────
+window.chiudiDettaglioKpi=function(){
+  document.getElementById("kpiModalOverlay").classList.remove("open");
+};
+
+// Dettaglio completo per una singola card della Classifica Team: andamento mensile delle
+// percentuali (dallo storico salvato) + elenco reale delle lavorazioni usate nel calcolo,
+// esportabile in Excel.
+let ultimoDettaglioLavorazioniExport=[]; // buffer per l'export della card aperta
+// Dettaglio di una LINEA: performance/efficienza dei singoli tecnici che la compongono
+window.apriDettaglioLinea=function(numeroLinea){
+  const dati=ultimoDatiClassificaCloud;
+  if(!dati)return;
+  const l=(dati.linee||[]).find(x=>x.linea===numeroLinea);
+  if(!l)return;
+
+  document.getElementById("kpiModalTitle").innerHTML=`🏭 LINEA ${numeroLinea}`;
+  const perf=l.performance;
+  let body=`
+    <div style="background:#eff6ff;border-radius:10px;padding:.75rem;margin-bottom:.85rem">
+      <div style="font-size:.78rem;color:var(--text2);margin-bottom:.3rem">Performance aggregata della linea (std/reale)</div>
+      <div style="font-size:1.4rem;font-weight:800;color:${perf!==null?(perf>=95?'#059669':perf>=80?'#d97706':'#dc2626'):'#9ca3af'}">${perf!==null?fmt(perf)+'%':'n/d'}</div>
+      <div style="font-size:.72rem;color:var(--text2);margin-top:.2rem">${fmt(l.oreStd)}h standard su ${fmt(l.oreEff)}h reali · ${l.count} lavorazioni · ${l.membri.length} tecnici</div>
+    </div>
+    <div style="font-size:.78rem;font-weight:800;margin-bottom:.5rem">👥 Tecnici della linea</div>
+    <table><thead><tr><th>Tecnico</th><th style="text-align:right">Efficienza</th><th style="text-align:right">Performance</th></tr></thead>
+    <tbody>${[...l.membri].sort((a,b)=>(b.efficienza??-1)-(a.efficienza??-1)).map(m=>`<tr>
+      <td style="font-weight:700;font-size:.82rem">${m.nome}</td>
+      <td style="text-align:right">${m.efficienza!=null?`<span class="badge ${perfBcls(m.efficienza)}">${fmt(m.efficienza)}%</span>`:"—"}</td>
+      <td style="text-align:right">${m.performance!=null?`<span class="badge ${perfBcls(m.performance)}">${fmt(m.performance)}%</span>`:"—"}</td>
+    </tr>`).join("")}</tbody></table>
+    <div style="margin-top:.75rem;font-size:.68rem;color:var(--text2)">ℹ️ Le giornate segnalate nelle note del calendario come "cambio linea" o "fuori linea" sono state riattribuite alla linea indicata (o escluse se non specificata) — non contano nella linea di appartenenza originale.</div>`;
+
+  document.getElementById("kpiModalBody").innerHTML=body;
+  document.getElementById("kpiModalOverlay").classList.add("open");
+};
+
+window.apriDettaglioClassifica=async function(nome){
+  const dati=ultimoDatiClassificaCloud;
+  if(!dati)return;
+  const t=(dati.tecnici||[]).find(x=>x.nome===nome) || (dati.fantasmi||[]).find(x=>x.nome===nome);
+  if(!t)return;
+  const isFantasma=!("efficienza" in t);
+
+  document.getElementById("kpiModalTitle").innerHTML=`👤 ${nome}`;
+  document.getElementById("kpiModalBody").innerHTML=`<div style="text-align:center;padding:1.5rem"><span class="spin"></span> Carico l'andamento mensile...</div>`;
+  document.getElementById("kpiModalOverlay").classList.add("open");
+
+  // ── Andamento mensile: legge tutti i mesi già salvati nello storico (Firestore) per questa filiale
+  let trendMesi=[];
+  try{
+    const snap=await getDocs(collection(db,"kpiStorico"));
+    const docsFiliale=[];
+    snap.forEach(d=>{ const data=d.data(); if(data.filiale===dati.filiale) docsFiliale.push(data); });
+    docsFiliale.sort((a,b)=>(a.anno-b.anno)||(a.mese-b.mese));
+    trendMesi=docsFiliale.map(d=>{
+      const tt=(d.tecnici||[]).find(x=>x.nome===nome);
+      return {label:`${MESI_B[d.mese]} ${d.anno}`, efficienza:tt?tt.efficienza:null, performance:tt?tt.performance:null};
+    }).filter(m=>m.efficienza!==null||m.performance!==null);
+  }catch(e){ console.warn("Impossibile leggere lo storico per l'andamento mensile:", e); }
+
+  const lavorazioniDett=t.lavorazioniDettaglio||[];
+  ultimoDettaglioLavorazioniExport=lavorazioniDett;
+
+  let body=`<div style="font-size:.75rem;color:var(--text2);margin-bottom:.75rem">Periodo corrente: <b>${dati.periodoLabel}</b> · Filiale: <b>${dati.filiale.toUpperCase()}</b></div>`;
+
+  if(isFantasma){
+    body+=`<div class="al a-danger" style="margin-bottom:.75rem">☢️ <b>Nessuna lavorazione valida</b> — ${t.lavorazioniZero} lavorazione/i, tutte a tempo = 0 minuti.</div>`;
+  }
+
+  // Sezione andamento mensile
+  body+=`<div style="font-size:.82rem;font-weight:800;margin:.5rem 0">📈 Andamento mensile</div>`;
+  if(trendMesi.length){
+    body+=renderTrendChart(trendMesi.map(m=>m.label), trendMesi.map(m=>m.performance), trendMesi.map(m=>m.efficienza));
+    body+=`<table style="margin-top:.5rem"><thead><tr><th>Mese</th><th style="text-align:right">Efficienza</th><th style="text-align:right">Performance</th></tr></thead><tbody>
+      ${trendMesi.map(m=>`<tr>
+        <td>${m.label}</td>
+        <td style="text-align:right">${m.efficienza!==null?`<span class="badge ${perfBcls(m.efficienza)}">${fmt(m.efficienza)}%</span>`:"—"}</td>
+        <td style="text-align:right">${m.performance!==null?`<span class="badge ${perfBcls(m.performance)}">${fmt(m.performance)}%</span>`:"—"}</td>
+      </tr>`).join("")}
+    </tbody></table>`;
+  } else {
+    body+=`<div class="al a-info" style="margin-bottom:0">Nessun mese ancora salvato nello storico per questo tecnico. Vai su "📈 KPI Produzione" e clicca "💾 Salva mese nello storico" per iniziare a costruire l'andamento.</div>`;
+  }
+
+  // Sezione lavorazioni (elenco reale, formato simile al file caricato)
+  body+=`<div style="font-size:.82rem;font-weight:800;margin:1rem 0 .5rem">🧰 Lavorazioni considerate nel calcolo (${lavorazioniDett.length})</div>`;
+  if(lavorazioniDett.length){
+    body+=`<div style="max-height:220px;overflow-y:auto">
+      <table><thead><tr><th>Articolo</th><th>Fase</th><th>Data Fine</th><th style="text-align:right">Tempo Reale (h)</th><th style="text-align:right">Tempo Standard (h)</th></tr></thead>
+      <tbody>${lavorazioniDett.map(l=>`<tr>
+        <td style="font-family:monospace">${l.Articolo}</td>
+        <td><span class="fase-badge f${l.Fase}">F${l.Fase}</span></td>
+        <td style="font-family:monospace">${l["Data Fine"]||"—"}</td>
+        <td style="text-align:right;font-family:monospace">${l["Tempo Reale (h)"]}</td>
+        <td style="text-align:right;font-family:monospace">${l["Tempo Standard (h)"]}</td>
+      </tr>`).join("")}</tbody></table>
+    </div>
+    <button class="btn bp no-print" style="font-size:.7rem;margin-top:.65rem" onclick="esportaExcel(ultimoDettaglioLavorazioniExport,'lavorazioni_${nome.replace(/[^a-zA-Z0-9]/g,'_')}.xlsx','Lavorazioni')">📥 Esporta lavorazioni in Excel</button>`;
+  } else {
+    body+=`<div class="al a-info" style="margin-bottom:0">Nessuna lavorazione valida disponibile per l'export.</div>`;
+  }
+
+  document.getElementById("kpiModalBody").innerHTML=body;
+};
+
+window.apriDettaglioKpi=function(tipo){
+  const tec=ultimoTecniciReport||[];
+  let title="", body="";
+  const rigaSemplice=(nome,valore,extra="")=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:.55rem 0;border-bottom:1px solid #f3f4f6;gap:.75rem">
+      <div style="min-width:0"><div style="font-weight:700;font-size:.85rem">${nome}</div>${extra?`<div style="font-size:.68rem;color:var(--text2);margin-top:.1rem">${extra}</div>`:""}</div>
+      ${valore}
+    </div>`;
+
+  if(tipo==="tecnici"){
+    title=`👥 Tecnici analizzati (${tec.length})`;
+    const ordinati=[...tec].sort((a,b)=>(b.efficienza??-1)-(a.efficienza??-1));
+    body=ordinati.map(t=>rigaSemplice(
+      t.nome,
+      `<span class="badge ${t.efficienza!==null?perfBcls(t.efficienza):"b-gray"}" style="min-width:60px;text-align:center;flex-shrink:0">${t.efficienza!==null?fmt(t.efficienza)+"%":"n/d"}</span>`,
+      `${t.lavorazioni.length} lavorazioni${t.dipMatch?` · → ${t.dipMatch}`:""}`
+    )).join("") || "<div class='al a-info'>Nessun tecnico nel periodo selezionato.</div>";
+
+  } else if(tipo==="lavorazioni"){
+    const tot=tec.reduce((s,t)=>s+t.lavorazioni.length,0);
+    title=`🧰 Lavorazioni per tecnico (totale ${tot})`;
+    const ordinati=[...tec].sort((a,b)=>b.lavorazioni.length-a.lavorazioni.length);
+    body=ordinati.map(t=>rigaSemplice(t.nome,`<b style="font-size:.85rem">${t.lavorazioni.length}</b>`)).join("") || "<div class='al a-info'>Nessuna lavorazione nel periodo selezionato.</div>";
+
+  } else if(tipo==="effMedia"){
+    title="📐 Efficienza per tecnico — dal più al meno efficiente";
+    const ordinati=[...tec].filter(t=>t.efficienza!==null).sort((a,b)=>b.efficienza-a.efficienza);
+    body=ordinati.map(t=>rigaSemplice(t.nome,`<span class="badge ${perfBcls(t.efficienza)}">${fmt(t.efficienza)}%</span>`,`${fmt(t.totStd)}h std / ${fmt(t.oreEff)}h presenza`)).join("") || "<div class='al a-info'>Nessun dato di efficienza disponibile nel periodo.</div>";
+
+  } else if(tipo==="percEffOk"){
+    const migliori=[...tec].filter(t=>t.efficienza!==null&&t.efficienza>=95).sort((a,b)=>b.efficienza-a.efficienza);
+    title=`🏆 Tecnici con Efficienza ≥95% (${migliori.length} su ${tec.length})`;
+    body= migliori.length ? migliori.map((t,i)=>`
+      <div style="display:flex;align-items:center;gap:.65rem;padding:.6rem 0;border-bottom:1px solid #f3f4f6">
+        <span style="font-weight:800;color:#9ca3af;width:20px;flex-shrink:0">${i+1}°</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:.85rem">${t.nome}</div>
+          <div style="font-size:.68rem;color:var(--text2);margin-top:.1rem">${t.lavorazioni.length} lavorazioni · ${fmt(t.totStd)}h std su ${fmt(t.oreEff)}h presenza</div>
+        </div>
+        <span class="badge b-ok" style="font-size:.8rem;flex-shrink:0">${fmt(t.efficienza)}%</span>
+      </div>`).join("") : "<div class='al a-info'>Nessun tecnico ha raggiunto il 95% di efficienza nel periodo selezionato.</div>";
+
+  } else if(tipo==="perfMedia"){
+    title="⚙️ Performance per tecnico — dal più al meno performante";
+    const ordinati=[...tec].filter(t=>t.perfGlobale!==null).sort((a,b)=>b.perfGlobale-a.perfGlobale);
+    body=ordinati.map(t=>rigaSemplice(t.nome,`<span class="badge ${perfBcls(t.perfGlobale)}">${fmt(t.perfGlobale)}%</span>`,`${fmt(t.totStd)}h std / ${fmt(t.totEff)}h lavorazione`)).join("") || "<div class='al a-info'>Nessun dato di performance disponibile nel periodo.</div>";
+
+  } else if(tipo==="giorniLav"){
+    const gg=ultimoGiorniLavReport||[];
+    title=`📅 Giorni lavorativi considerati (${gg.length})`;
+    body=gg.length
+      ? `<div style="display:flex;flex-wrap:wrap;gap:.4rem">${gg.map(d=>`<span class="badge b-gray" style="font-family:monospace">${d}</span>`).join("")}</div>`
+      : "<div class='al a-info'>Nessun giorno lavorativo nel periodo selezionato.</div>";
+  }
+
+  document.getElementById("kpiModalTitle").innerHTML=title;
+  document.getElementById("kpiModalBody").innerHTML=body;
+  document.getElementById("kpiModalOverlay").classList.add("open");
+};
+
+// ── MODAL DETTAGLIO CARD KPI — tab Storico (dati aggregati su più mesi) ──
+window.apriDettaglioKpiStorico=function(tipo){
+  const tec=ultimoAggregatoStorico||[];
+  let title="", body="";
+  const riga=(nome,valoreHtml,extra="")=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:.55rem 0;border-bottom:1px solid #f3f4f6;gap:.75rem">
+      <div style="min-width:0"><div style="font-weight:700;font-size:.85rem">${nome}</div>${extra?`<div style="font-size:.68rem;color:var(--text2);margin-top:.1rem">${extra}</div>`:""}</div>
+      ${valoreHtml}
+    </div>`;
+
+  if(tipo==="tecnici"){
+    title=`👥 Tecnici nel periodo (${tec.length})`;
+    const ord=[...tec].sort((a,b)=>(b.efficienzaMedia??-1)-(a.efficienzaMedia??-1));
+    body=ord.map(t=>riga(t.nome,`<span class="badge ${t.efficienzaMedia!==null?perfBcls(t.efficienzaMedia):"b-gray"}" style="min-width:60px;text-align:center;flex-shrink:0">${t.efficienzaMedia!==null?fmt(t.efficienzaMedia)+"%":"n/d"}</span>`,`${t.lavorazioni} lavorazioni nel periodo`)).join("") || "<div class='al a-info'>Nessun dato nel periodo selezionato.</div>";
+
+  } else if(tipo==="lavorazioni"){
+    title=`🧰 Lavorazioni per tecnico nel periodo (totale ${tec.reduce((s,t)=>s+t.lavorazioni,0)})`;
+    const ord=[...tec].sort((a,b)=>b.lavorazioni-a.lavorazioni);
+    body=ord.map(t=>riga(t.nome,`<b style="font-size:.85rem">${t.lavorazioni}</b>`)).join("") || "<div class='al a-info'>Nessun dato nel periodo selezionato.</div>";
+
+  } else if(tipo==="effMedia"){
+    title="📐 Efficienza media per tecnico nel periodo";
+    const ord=[...tec].filter(t=>t.efficienzaMedia!==null).sort((a,b)=>b.efficienzaMedia-a.efficienzaMedia);
+    body=ord.map(t=>riga(t.nome,`<span class="badge ${perfBcls(t.efficienzaMedia)}">${fmt(t.efficienzaMedia)}%</span>`,`media su ${t.mesiConDati} mesi`)).join("") || "<div class='al a-info'>Nessun dato di efficienza nel periodo.</div>";
+
+  } else if(tipo==="percEffOk"){
+    const mig=[...tec].filter(t=>t.efficienzaMedia!==null&&t.efficienzaMedia>=95).sort((a,b)=>b.efficienzaMedia-a.efficienzaMedia);
+    title=`🏆 Tecnici con Efficienza media ≥95% nel periodo (${mig.length} su ${tec.length})`;
+    body= mig.length ? mig.map((t,i)=>`
+      <div style="display:flex;align-items:center;gap:.65rem;padding:.6rem 0;border-bottom:1px solid #f3f4f6">
+        <span style="font-weight:800;color:#9ca3af;width:20px;flex-shrink:0">${i+1}°</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:.85rem">${t.nome}</div>
+          <div style="font-size:.68rem;color:var(--text2);margin-top:.1rem">${t.lavorazioni} lavorazioni · media su ${t.mesiConDati} mesi</div>
+        </div>
+        <span class="badge b-ok" style="font-size:.8rem;flex-shrink:0">${fmt(t.efficienzaMedia)}%</span>
+      </div>`).join("") : "<div class='al a-info'>Nessun tecnico ha una media di Efficienza ≥95% nel periodo selezionato.</div>";
+
+  } else if(tipo==="perfMedia"){
+    title="⚙️ Performance media per tecnico nel periodo";
+    const ord=[...tec].filter(t=>t.performanceMedia!==null).sort((a,b)=>b.performanceMedia-a.performanceMedia);
+    body=ord.map(t=>riga(t.nome,`<span class="badge ${perfBcls(t.performanceMedia)}">${fmt(t.performanceMedia)}%</span>`,`media su ${t.mesiConDati} mesi`)).join("") || "<div class='al a-info'>Nessun dato di performance nel periodo.</div>";
+
+  } else if(tipo==="giorniLav"){
+    const docsF=ultimoDocsFiltratiStorico||[];
+    title=`📅 Giorni lavorativi nel periodo, per mese (tot. ${docsF.reduce((s,d)=>s+(d.giorniLav||0),0)})`;
+    body=docsF.map(d=>riga(`${MESI_B[d.mese]} ${d.anno}`,`<b style="font-size:.85rem">${d.giorniLav}</b> gg`,d.troncatoAOggi?`fino al ${d.ultimoGiornoConsiderato}`:"")).join("") || "<div class='al a-info'>Nessun dato nel periodo selezionato.</div>";
+  }
+
+  document.getElementById("kpiModalTitle").innerHTML=title;
+  document.getElementById("kpiModalBody").innerHTML=body;
+  document.getElementById("kpiModalOverlay").classList.add("open");
+};
+
+window.addEventListener("DOMContentLoaded",async()=>{
+  buildMesiChips();buildFasiChips();buildStoricoMesiChips();
+  ripristinaTempiDaMemoria(); // ricarica i Tempi Tecnici salvati in precedenza (se presenti), senza richiedere un nuovo upload
+  await caricaEsclusiManuali(); // ricarica dal cloud l'elenco di chi è stato escluso manualmente dall'analisi
+  // Apertura diretta della tab KPI Produzione se la pagina viene raggiunta con #storico (es. da index.html)
+  if(window.location.hash==="#storico") switchTab("storico");
+  if(window.location.hash==="#classifica") switchTab("classifica");
+  if(window.location.hash==="#fasi") switchTab("fasi");
+});
+</script>
+</body>
+</html>
