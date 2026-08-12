@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gestione Presenze 2026 — Dashboard Filiali</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;min-height:100vh;color:#1f2937}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 2rem;background:#fff;border-bottom:1px solid #e5e7eb;box-shadow:0 1px 3px rgba(0,0,0,.06);position:sticky;top:0;z-index:1000}
+.hdr-logo{font-size:1.15rem;font-weight:800;color:#1f2937;display:flex;align-items:center;gap:.5rem}
+.hdr-sub{font-size:.72rem;color:#6b7280;font-weight:400;margin-left:.4rem}
+.hdr-date{font-size:.75rem;color:#6b7280}
+.layout{display:flex;height:calc(100vh - 58px)}
+
+/* MAPPA LEAFLET */
+#map{flex:1;z-index:1}
+
+/* SIDEBAR */
+.sidebar{width:300px;padding:1.1rem;display:flex;flex-direction:column;gap:.65rem;overflow-y:auto;background:#fff;border-left:1px solid #e5e7eb;z-index:2}
+.panel-title{font-size:.58rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9ca3af;margin-bottom:.15rem}
+.card{background:#f8fafc;border:1.5px solid #e5e7eb;border-radius:10px;padding:.75rem .9rem;cursor:pointer;text-decoration:none;display:block;transition:all .15s}
+.card:hover{border-color:#6366f1;background:#eef2ff;transform:translateX(3px)}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.35rem}
+.card-nome{font-size:.82rem;font-weight:700;color:#1f2937}
+.card-apri{font-size:.62rem;color:#6366f1;font-weight:500}
+.card-stats{display:flex;gap:.9rem;align-items:center;flex-wrap:wrap}
+.stat-label{font-size:.56rem;color:#9ca3af;text-transform:uppercase;letter-spacing:.05em;display:block}
+.stat-val{font-size:.82rem;font-weight:700;color:#1f2937}
+.badge-eff{display:inline-flex;align-items:center;padding:.15rem .45rem;border-radius:20px;font-size:.62rem;font-weight:700}
+.badge-eff.ok{background:#d1fae5;color:#065f46}
+.badge-eff.warn{background:#fef3c7;color:#92400e}
+.badge-eff.danger{background:#fee2e2;color:#991b1b}
+.badge-eff.na{background:#f1f5f9;color:#94a3b8}
+.totali{background:#eef2ff;border:1.5px solid #c7d2fe;border-radius:10px;padding:.8rem}
+.tot-row{display:flex;justify-content:space-between;align-items:center;padding:.22rem 0;border-bottom:1px solid #e0e7ff}
+.tot-row:last-child{border-bottom:none}
+.tot-label{font-size:.7rem;color:#6b7280}
+.tot-val{font-size:.82rem;font-weight:700;color:#1f2937}
+.tot-val.ok{color:#059669}.tot-val.warn{color:#d97706}.tot-val.danger{color:#dc2626}
+.spin{display:inline-block;width:10px;height:10px;border:2px solid #e5e7eb;border-top-color:#6366f1;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* CLUSTER PERSONALIZZATO */
+.cluster-bergamo{
+  background:none!important;
+  border:none!important;
+}
+.cluster-inner{
+  background:#4f46e5;
+  border:3px solid #fff;
+  border-radius:50%;
+  width:46px;height:46px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  box-shadow:0 4px 14px rgba(79,70,229,.5);
+  cursor:pointer;
+  font-family:'Inter',sans-serif;
+}
+.cluster-inner .cl-label{font-size:.55rem;font-weight:800;color:#fff;letter-spacing:.04em;line-height:1}
+.cluster-inner .cl-sub{font-size:.48rem;color:rgba(255,255,255,.8);line-height:1;margin-top:.1rem}
+/* Override cluster default */
+.marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background:rgba(79,70,229,.2)!important}
+.marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background:#4f46e5!important;color:#fff!important;font-family:'Inter',sans-serif!important;font-weight:700!important;font-size:.78rem!important}
+.leaflet-popup-content-wrapper{border-radius:10px!important;box-shadow:0 8px 24px rgba(0,0,0,.12)!important;border:1px solid #e5e7eb!important}
+.leaflet-popup-content{margin:10px 14px!important;font-family:'Inter',sans-serif!important}
+.popup-nome{font-weight:800;font-size:.85rem;color:#1f2937;margin-bottom:.3rem}
+.popup-row{font-size:.72rem;color:#6b7280;margin:.15rem 0}
+.popup-row b{color:#1f2937}
+.popup-btn{display:block;margin-top:.5rem;background:#4f46e5;color:#fff;border:none;border-radius:6px;padding:.35rem .7rem;font-size:.72rem;font-weight:600;cursor:pointer;text-align:center;text-decoration:none;font-family:'Inter',sans-serif}
+.popup-btn:hover{background:#4338ca}
+</style>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyDw6gFXrMA3hgShlk4S9XzYwBt2WGN6HKE",
+  authDomain:"presenze2026.firebaseapp.com",
+  projectId:"presenze2026",
+  storageBucket:"presenze2026.firebasestorage.app",
+  messagingSenderId:"1073603463859",
+  appId:"1:1073603463859:web:23a1a363bbaabdc5077ec6"
+};
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+
+// Coordinate geografiche reali
+const FILIALI=[
+  {id:'seriate', nome:'SERIATE', file:'seriate.html', doc:'seriate', lat:45.685, lng:9.722,  citta:'Bergamo (BG)'},
+  {id:'orio',    nome:'ORIO',    file:'orio.html',    doc:'orio',    lat:45.673, lng:9.698,  citta:'Orio al Serio (BG)'},
+  {id:'pomezia', nome:'POMEZIA', file:'pomezia.html', doc:'pomezia', lat:41.672, lng:12.502, citta:'Pomezia (RM)'},
+  {id:'perugia', nome:'PERUGIA', file:'perugia.html', doc:'perugia', lat:43.112, lng:12.389, citta:'Perugia (PG)'},
+  {id:'modugno', nome:'MODUGNO', file:'modugno.html', doc:'modugno', lat:41.086, lng:16.779, citta:'Modugno (BA)'},
+  {id:'elmas',   nome:'ELMAS',   file:'elmas.html',   doc:'elmas',   lat:39.264, lng:9.048,  citta:'Elmas (CA)'},
+];
+
+const ESCLUSI=['AREA SERIATE S.ITALIA',"SERIATE REPARTO CONTROLLO QUALITA'",'SERIATE REPARTO LABORATORIO','SERIATE REPARTO MAGAZZINO','SERIATE REPARTO FRIGORISTA','SERIATE REPARTO BRANDIZZAZIONE','BRANDIZZAZIONE'];
+
+function isoD(y,m,d){return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
+function localDateStr(dt){return isoD(dt.getFullYear(),dt.getMonth(),dt.getDate());}
+
+function calcolaEfficienza(s){
+  if(!s||!s.dipendenti||!s.tempistiche)return null;
+  const oggi=new Date(),anno=oggi.getFullYear(),mese=oggi.getMonth();
+  const attivi=s.dipendenti.filter(d=>!d.cessato&&!ESCLUSI.includes(d.reparto));
+  const reps=['SERIATE REPARTO 1°FASE','SERIATE REPARTO MONTAGGIO','SERIATE REPARTO COLLAUDI'];
+  const prod=s.produzione||{},ents=s.entries||[],temp=s.tempistiche||{};
+  let totR=0,totT=0;
+  let cur=new Date(anno,mese,1);
+  while(cur<=new Date(anno,mese+1,0)){
+    const ds=localDateStr(cur),wd=cur.getDay();
+    if(wd!==0&&wd!==6){
+      const p=prod[ds];
+      reps.forEach(rep=>{
+        const dr=attivi.filter(d=>d.reparto===rep);
+        const t=parseFloat(temp[rep])||0;
+        if(!dr.length||!t)return;
+        let ore=dr.length*8;
+        const eg=ents.filter(e=>e.data===ds&&dr.some(d=>d.id===e.dipId));
+        ore=Math.max(0,ore-eg.filter(e=>['ferie','rol','t104','lavorazione_extra','ferie_prev','rol_prev'].includes(e.tipo)).reduce((a,e)=>a+(parseFloat(e.ore)||0),0)-eg.filter(e=>e.tipo==='malattia').length*8);
+        let daR=null;
+        if(p){
+          if(rep==='SERIATE REPARTO 1°FASE')daR=((parseInt(p.smontati)||0)+(parseInt(p.carrelli)||0)+(parseInt(p.verniciati)||0))/3;
+          else if(rep==='SERIATE REPARTO MONTAGGIO')daR=parseInt(p.linee)||0;
+          else if(rep==='SERIATE REPARTO COLLAUDI')daR=parseInt(p.evase)||0;
+        }
+        if(daR!==null&&daR>0&&t>0){totR+=daR;totT+=ore/t;}
+      });
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  return totT===0?null:Math.round(totR/totT*100);
+}
+
+function effClass(eff){return eff===null?'na':eff>=100?'ok':eff>=80?'warn':'danger';}
+function effColor(eff){return eff===null?'#6366f1':eff>=100?'#059669':eff>=80?'#d97706':'#dc2626';}
+
+function makeIcon(color){
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">
+    <ellipse cx="18" cy="40" rx="8" ry="3" fill="rgba(0,0,0,.18)"/>
+    <path d="M18 2C10.268 2 4 8.268 4 16c0 10 14 26 14 26S32 26 32 16C32 8.268 25.732 2 18 2z" fill="${color}" stroke="#fff" stroke-width="2"/>
+    <circle cx="18" cy="16" r="7" fill="#fff" opacity=".3"/>
+  </svg>`;
+  return L.divIcon({
+    html: svg,
+    iconSize:[36,44],iconAnchor:[18,44],popupAnchor:[0,-44],
+    className:''
+  });
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('hdr-date').textContent=new Date().toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+  // Inizializza mappa Leaflet centrata sull'Italia
+  const map=L.map('map',{
+    center:[42.5,12.5],
+    zoom:6,
+    zoomControl:true,
+    attributionControl:true
+  });
+
+  // Tile layer OpenStreetMap
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom:18
+  }).addTo(map);
+
+  // Gruppo cluster solo per le filiali bergamasche (Seriate + Orio)
+  const clusterGroup = L.markerClusterGroup({
+    maxClusterRadius: 60,
+    iconCreateFunction: function(cluster){
+      const count = cluster.getChildCount();
+      return L.divIcon({
+        html: `<div class="cluster-inner">
+          <span class="cl-label">BERGAMO</span>
+          <span class="cl-sub">${count} filiali</span>
+        </div>`,
+        className: 'cluster-bergamo',
+        iconSize: [46,46],
+        iconAnchor: [23,23]
+      });
+    }
+  });
+
+  // Aggiunge i marker
+  const markers={};
+  FILIALI.forEach(f=>{
+    const marker=L.marker([f.lat,f.lng],{icon:makeIcon('#6366f1')});
+    marker.bindPopup(`<div class="popup-nome">🏢 ${f.nome}</div>
+      <div class="popup-row">📍 ${f.citta}</div>
+      <div class="popup-row">👥 <b id="pp-dip-${f.id}">caricamento...</b></div>
+      <div class="popup-row">⚡ <b id="pp-eff-${f.id}">—</b></div>
+      <a class="popup-btn" href="${f.file}">Apri filiale →</a>`);
+
+    // Seriate e Orio vanno nel cluster, gli altri direttamente sulla mappa
+    if(f.id==='seriate'||f.id==='orio'){
+      clusterGroup.addLayer(marker);
+    } else {
+      marker.addTo(map);
+    }
+    markers[f.id]=marker;
+  });
+  clusterGroup.addTo(map);
+
+  // Carica dati Firebase
+  Promise.allSettled(FILIALI.map(f=>getDoc(doc(db,'stato',f.doc)))).then(res=>{
+    let totP=0,effs=[],totF=0;
+    res.forEach((r,i)=>{
+      const f=FILIALI[i];
+      const cEl=document.getElementById('card-'+f.id);
+      if(r.status==='fulfilled'&&r.value.exists()){
+        const st=r.value.data();
+        const att=(st.dipendenti||[]).filter(d=>!d.cessato).length;
+        const eff=calcolaEfficienza(st);
+        const cls=effClass(eff);
+        const col=effColor(eff);
+        totP+=att;if(eff!==null)effs.push(eff);totF++;
+        // Aggiorna marker colore
+        markers[f.id].setIcon(makeIcon(col));
+        // Aggiorna popup
+        const dp=document.getElementById('pp-dip-'+f.id);
+        const ep=document.getElementById('pp-eff-'+f.id);
+        if(dp)dp.textContent=att+' dipendenti';
+        if(ep)ep.textContent=eff!==null?eff+'%':'nessun dato';
+        // Aggiorna card sidebar
+        if(cEl){
+          cEl.querySelector('.dip-val').textContent=att+' dip.';
+          const eEl=cEl.querySelector('.eff-badge');
+          eEl.className='badge-eff '+cls;
+          eEl.textContent=eff!==null?'⚡ '+eff+'%':'— n/d';
+        }
+      } else {
+        if(cEl){
+          cEl.querySelector('.dip-val').textContent='—';
+          const eEl=cEl.querySelector('.eff-badge');
+          eEl.className='badge-eff na';eEl.textContent='DB vuoto';
+        }
+      }
+    });
+    document.getElementById('tot-p').textContent=totP;
+    document.getElementById('tot-f').textContent=totF+'/6';
+    if(effs.length){
+      const m=Math.round(effs.reduce((a,b)=>a+b,0)/effs.length);
+      const el=document.getElementById('tot-e');
+      el.textContent=m+'%';el.className='tot-val '+effClass(m);
+    } else document.getElementById('tot-e').textContent='—';
+  });
+});
+</script>
+</head>
+<body>
+<div class="hdr">
+  <div class="hdr-logo">🏭 Gestione Presenze 2026<span class="hdr-sub">Dashboard Filiali</span></div>
+  <div class="hdr-date" id="hdr-date"></div>
+</div>
+<div class="layout">
+  <div id="map"></div>
+  <div class="sidebar">
+    <div>
+      <div class="panel-title">Riepilogo aziendale</div>
+      <div class="totali">
+        <div class="tot-row"><span class="tot-label">👥 Personale totale</span><span class="tot-val" id="tot-p"><span class="spin"></span></span></div>
+        <div class="tot-row"><span class="tot-label">🏢 Filiali con dati</span><span class="tot-val" id="tot-f"><span class="spin"></span></span></div>
+        <div class="tot-row"><span class="tot-label">⚡ Efficienza media</span><span class="tot-val" id="tot-e"><span class="spin"></span></span></div>
+      </div>
+    </div>
+    <div class="panel-title">Seleziona filiale</div>
+    <a id="card-seriate" class="card" href="seriate.html"><div class="card-head"><span class="card-nome">🏢 SERIATE</span><span class="card-apri">Bergamo →</span></div><div class="card-stats"><div><span class="stat-label">Personale</span><span class="stat-val dip-val"><span class="spin"></span></span></div><div><span class="stat-label">Efficienza mese</span><span class="eff-badge badge-eff na"><span class="spin"></span></span></div></div></a>
+    <a id="card-orio" class="card" href="orio.html"><div class="card-head"><span class="card-nome">🏢 ORIO</span><span class="card-apri">Bergamo →</span></div><div class="card-stats"><div><span class="stat-label">Personale</span><span class="stat-val dip-val"><span class="spin"></span></span></div><div><span class="stat-label">Efficienza mese</span><span class="eff-badge badge-eff na"><span class="spin"></span></span></div></div></a>
+    <a id="card-pomezia" class="card" href="pomezia.html"><div class="card-head"><span class="card-nome">🏢 POMEZIA</span><span class="card-apri">Roma →</span></div><div class="card-stats"><div><span class="stat-label">Personale</span><span class="stat-val dip-val"><span class="spin"></span></span></div><div><span class="stat-label">Efficienza mese</span><span class="eff-badge badge-eff na"><span class="spin"></span></span></div></div></a>
+    <a id="card-perugia" class="card" href="perugia.html"><div class="card-head"><span class="card-nome">🏢 PERUGIA</span><span class="card-apri">Umbria →</span></div><div class="card-stats"><div><span class="stat-label">Personale</span><span class="stat-val dip-val"><span class="spin"></span></span></div><div><span class="stat-label">Efficienza mese</span><span class="eff-badge badge-eff na"><span class="spin"></span></span></div></div></a>
+    <a id="card-modugno" class="card" href="modugno.html"><div class="card-head"><span class="card-nome">🏢 MODUGNO</span><span class="card-apri">Bari →</span></div><div class="card-stats"><div><span class="stat-label">Personale</span><span class="stat-val dip-val"><span class="spin"></span></span></div><div><span class="stat-label">Efficienza mese</span><span class="eff-badge badge-eff na"><span class="spin"></span></span></div></div></a>
+    <a id="card-elmas" class="card" href="elmas.html"><div class="card-head"><span class="card-nome">🏢 ELMAS</span><span class="card-apri">Cagliari →</span></div><div class="card-stats"><div><span class="stat-label">Personale</span><span class="stat-val dip-val"><span class="spin"></span></span></div><div><span class="stat-label">Efficienza mese</span><span class="eff-badge badge-eff na"><span class="spin"></span></span></div></div></a>
+
+    <div style="border-top:1px solid #e5e7eb;margin:.25rem 0;padding-top:.75rem">
+      <div style="font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#9ca3af;margin-bottom:.5rem">Report</div>
+      <a href="analisi-assenteismo.html" style="display:flex;align-items:center;gap:.6rem;background:linear-gradient(135deg,#eef2ff,#f0fdf4);border:1.5px solid #c7d2fe;border-radius:10px;padding:.75rem .9rem;text-decoration:none;transition:all .18s" onmouseover="this.style.borderColor='#4f46e5';this.style.transform='translateX(3px)'" onmouseout="this.style.borderColor='#c7d2fe';this.style.transform='none'">
+        <span style="font-size:1.4rem">📊</span>
+        <div>
+          <div style="font-size:.8rem;font-weight:700;color:#1f2937">Analisi Assenteismo</div>
+          <div style="font-size:.65rem;color:#6b7280">Multi-filiale · Tutti i periodi</div>
+        </div>
+        <span style="margin-left:auto;color:#4f46e5;font-size:.72rem;font-weight:600">Apri →</span>
+      </a>
+      <a href="report-ida.html#storico" style="display:flex;align-items:center;gap:.6rem;background:linear-gradient(135deg,#fff7ed,#fef2f2);border:1.5px solid #fed7aa;border-radius:10px;padding:.75rem .9rem;text-decoration:none;transition:all .18s;margin-top:.5rem" onmouseover="this.style.borderColor='#ea580c';this.style.transform='translateX(3px)'" onmouseout="this.style.borderColor='#fed7aa';this.style.transform='none'">
+        <span style="font-size:1.4rem">⚙️</span>
+        <div>
+          <div style="font-size:.8rem;font-weight:700;color:#1f2937">KPI Produzione</div>
+          <div style="font-size:.65rem;color:#6b7280">Efficienza e performance tecnici · Storico mensile</div>
+        </div>
+        <span style="margin-left:auto;color:#ea580c;font-size:.72rem;font-weight:600">Apri →</span>
+      </a>
+      <a href="evasione-commesse.html" style="display:flex;align-items:center;gap:.6rem;background:linear-gradient(135deg,#ecfdf5,#eff6ff);border:1.5px solid #a7f3d0;border-radius:10px;padding:.75rem .9rem;text-decoration:none;transition:all .18s;margin-top:.5rem" onmouseover="this.style.borderColor='#059669';this.style.transform='translateX(3px)'" onmouseout="this.style.borderColor='#a7f3d0';this.style.transform='none'">
+        <span style="font-size:1.4rem">📅</span>
+        <div>
+          <div style="font-size:.8rem;font-weight:700;color:#1f2937">Evasione Commesse</div>
+          <div style="font-size:.65rem;color:#6b7280">Stima tempi di produzione · Prima Fase → Montaggio → Collaudo</div>
+        </div>
+        <span style="margin-left:auto;color:#059669;font-size:.72rem;font-weight:600">Apri →</span>
+      </a>
+    </div>
+  </div>
+</div>
+</body>
+</html>
