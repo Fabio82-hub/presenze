@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evasione Commesse — Gestione Presenze 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--accent:#059669;--ok:#059669;--warn:#d97706;--danger:#dc2626;--border:#e5e7eb;--surface:#f8fafc;--text:#1f2937;--text2:#6b7280}
+body{font-family:"Inter",sans-serif;background:#f1f5f9;color:var(--text)}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem;background:#fff;border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06);flex-wrap:wrap;gap:.5rem;position:sticky;top:0;z-index:100}
+.hdr-title{font-size:1.1rem;font-weight:800}.hdr-sub{font-size:.72rem;color:var(--text2)}
+.main{max-width:1300px;margin:0 auto;padding:1.5rem}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.25rem;margin-bottom:1.25rem}
+.ct{font-size:.85rem;font-weight:700;margin-bottom:.85rem;padding-bottom:.55rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem}
+.step-num{width:22px;height:22px;background:var(--accent);color:#fff;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;flex-shrink:0}
+.fr{display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end}
+.fg{display:flex;flex-direction:column;gap:.28rem}
+.lbl{font-size:.65rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:.3rem}
+input,select{border:1.5px solid var(--border);border-radius:8px;padding:.48rem .7rem;font-size:.82rem;font-family:"Inter",sans-serif;outline:none;color:var(--text);transition:border-color .15s;background:#fff}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(5,150,105,.12)}
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.48rem 1rem;border-radius:8px;font-family:"Inter",sans-serif;font-size:.78rem;font-weight:600;cursor:pointer;border:none;transition:all .12s;white-space:nowrap}
+.bp{background:var(--accent);color:#fff}.bp:hover{background:#047857;transform:translateY(-1px)}
+.bg{background:#f1f5f9;color:var(--text);border:1.5px solid var(--border)}.bg:hover{background:#e5e7eb}
+.btn-lg{font-size:.9rem;padding:.65rem 1.75rem}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:.7rem;margin-bottom:1rem}
+.kpi{background:var(--surface);border-radius:10px;padding:.85rem;text-align:center;border-bottom:3px solid var(--border)}
+.kpi-val{font-size:1.3rem;font-weight:800}.kpi-label{font-size:.66rem;color:var(--text2);margin-top:.25rem;line-height:1.3}
+.kpi.ok{border-bottom-color:var(--ok)}.kpi.warn{border-bottom-color:var(--warn)}.kpi.danger{border-bottom-color:var(--danger)}.kpi.accent{border-bottom-color:var(--accent)}.kpi.blue{border-bottom-color:#1e40af}
+.al{padding:.75rem 1rem;border-radius:8px;font-size:.78rem;margin-bottom:.75rem;line-height:1.5}
+.a-ok{background:#d1fae5;border:1px solid #a7f3d0;color:#065f46}
+.a-warn{background:#fef3c7;border:1px solid #fde68a;color:#92400e}
+.a-info{background:#dbeafe;border:1px solid #bfdbfe;color:#1e40af}
+.a-danger{background:#fee2e2;border:1px solid #fca5a5;color:#991b1b}
+.upload-zone{border:2px dashed var(--border);border-radius:10px;padding:1.25rem;text-align:center;cursor:pointer;transition:all .18s;background:#fafafa}
+.upload-zone:hover{border-color:var(--accent);background:#ecfdf5}
+.uz-icon{font-size:1.6rem}.uz-text{font-size:.82rem;font-weight:600;margin-top:.35rem}.uz-sub{font-size:.68rem;color:var(--text2);margin-top:.15rem}
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+th{text-align:left;padding:.5rem .6rem;background:var(--surface);color:var(--text2);font-size:.66rem;text-transform:uppercase;letter-spacing:.04em;font-weight:700;border-bottom:1px solid var(--border)}
+td{padding:.5rem .6rem;border-bottom:1px solid #f1f5f9}
+.badge{display:inline-block;padding:.2rem .55rem;border-radius:20px;font-size:.68rem;font-weight:700}
+.b-ok{background:#d1fae5;color:#065f46}.b-warn{background:#fef3c7;color:#92400e}.b-danger{background:#fee2e2;color:#991b1b}.b-gray{background:#f1f5f9;color:var(--text2)}
+.fase-badge{display:inline-block;padding:.15rem .45rem;border-radius:5px;font-size:.65rem;font-weight:700;color:#fff;background:#6366f1}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #ddd;border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle}
+@keyframes sp{to{transform:rotate(360deg)}}
+.sep{height:1px;background:var(--border);margin:.75rem 0}
+.preview-box{max-height:180px;overflow:auto;font-size:.72rem}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <div class="hdr-title">📅 Calcolatore Evasione Commesse</div>
+    <div class="hdr-sub">Stima tempi di produzione — Prima Fase → Montaggio → Collaudo</div>
+  </div>
+  <a href="index.html" class="btn bg" style="text-decoration:none">🏠 Torna alla Home</a>
+</div>
+
+<div class="main">
+
+<!-- STEP 1: FILE TEMPI MEDI -->
+<div class="card">
+  <div class="ct"><span class="step-num">1</span> File tempi medi (Excel con 2 fogli: "Usati" e "Nuovi")</div>
+  <div class="al a-info">
+    <b>Foglio 1 — Distributori USATI:</b> Articolo · Modello · Descrizione · T.Montaggio · T.Collaudo · Fase60 · Fase61 · Fase62 · Fase63 · Fase64 · Fase70<br>
+    <b>Foglio 2 — Distributori NUOVI:</b> Articolo · Modello · Descrizione · T.Collaudo (solo Fase 70)<br>
+    <small style="color:#6b7280">Il sistema riconosce automaticamente le colonne — potrai abbinarle manualmente se necessario. Se hai già caricato questo file nella pagina "KPI Produzione", da questo stesso PC/browser è già pronto qui, senza dover ricaricarlo.</small>
+  </div>
+  <div class="upload-zone" id="uzTempi" onclick="document.getElementById('fTempi').click()">
+    <div class="uz-icon">📋</div>
+    <div class="uz-text">Carica file tempi medi (.xlsx)</div>
+    <div class="uz-sub">trascina qui o clicca per selezionare</div>
+  </div>
+  <input type="file" id="fTempi" accept=".xlsx,.xls" style="display:none">
+  <div id="tempiStatus" style="margin-top:.65rem"></div>
+  <div id="tempiMapping" style="display:none;margin-top:1rem">
+    <div class="sep"></div>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap">
+      <div style="flex:1;min-width:280px">
+        <b style="font-size:.78rem">Foglio USATI — abbina colonne</b>
+        <div class="fr" style="margin-top:.6rem;gap:.5rem">
+          <div class="fg"><label class="lbl">Articolo/Codice</label><select id="uCod" style="width:140px"></select></div>
+          <div class="fg"><label class="lbl">Modello</label><select id="uMod" style="width:140px"></select></div>
+          <div class="fg"><label class="lbl">Descrizione</label><select id="uDesc" style="width:140px"></select></div>
+        </div>
+        <div class="fr" style="margin-top:.5rem;gap:.5rem">
+          <div class="fg"><label class="lbl">T.Montaggio (h)</label><select id="uTmont" style="width:120px"></select></div>
+          <div class="fg"><label class="lbl">T.Collaudo (h)</label><select id="uTcoll" style="width:120px"></select></div>
+        </div>
+        <div class="fr" style="margin-top:.5rem;gap:.5rem">
+          <div class="fg"><label class="lbl">Fase 60</label><select id="uF60" style="width:100px"><option value="">—</option></select></div>
+          <div class="fg"><label class="lbl">Fase 61</label><select id="uF61" style="width:100px"><option value="">—</option></select></div>
+          <div class="fg"><label class="lbl">Fase 62</label><select id="uF62" style="width:100px"><option value="">—</option></select></div>
+          <div class="fg"><label class="lbl">Fase 63</label><select id="uF63" style="width:100px"><option value="">—</option></select></div>
+          <div class="fg"><label class="lbl">Fase 64</label><select id="uF64" style="width:100px"><option value="">—</option></select></div>
+          <div class="fg"><label class="lbl">Fase 70</label><select id="uF70" style="width:100px"><option value="">—</option></select></div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:280px">
+        <b style="font-size:.78rem">Foglio NUOVI — abbina colonne</b>
+        <div class="fr" style="margin-top:.6rem;gap:.5rem">
+          <div class="fg"><label class="lbl">Articolo/Codice</label><select id="nCod" style="width:140px"></select></div>
+          <div class="fg"><label class="lbl">Modello</label><select id="nMod" style="width:140px"></select></div>
+          <div class="fg"><label class="lbl">Descrizione</label><select id="nDesc" style="width:140px"></select></div>
+        </div>
+        <div class="fr" style="margin-top:.5rem;gap:.5rem">
+          <div class="fg"><label class="lbl">Fase 70 (T.Collaudo)</label><select id="nF70" style="width:140px"></select></div>
+        </div>
+        <div class="al a-info" style="margin-top:.6rem;font-size:.7rem">I distributori nuovi hanno solo la fase di collaudo (Fase 70)</div>
+      </div>
+    </div>
+    <div id="tempiPreview" class="preview-box" style="margin-top:.75rem"></div>
+    <div style="display:flex;align-items:center;gap:1rem;margin-top:.75rem;flex-wrap:wrap">
+      <div class="fg">
+        <label class="lbl">Unità di misura dei tempi nel file</label>
+        <select id="unitaTempi" style="width:180px">
+          <option value="min">Minuti (es. 360 = 6 ore) ✓ Tuo file</option>
+          <option value="ore">Ore (es. 6.0 = 6 ore)</option>
+        </select>
+      </div>
+      <button class="btn bp" onclick="confermaTempi()">✓ Conferma tempi medi</button>
+    </div>
+  </div>
+  <div id="tempiOk" style="display:none;margin-top:.65rem">
+    <div class="al a-ok" id="tempiOkMsg"></div>
+    <div style="display:flex;gap:.5rem;margin-top:.5rem">
+      <button class="btn bg" style="font-size:.7rem" onclick="resetTempi()">🔄 Sostituisci file (drag&amp;drop)</button>
+      <button class="btn bg" style="font-size:.7rem;color:#dc2626" onclick="resetTempi()">🗑 Rimuovi</button>
+    </div>
+  </div>
+</div>
+
+<!-- STEP 2: PARAMETRI -->
+<div class="card">
+  <div class="ct"><span class="step-num">2</span> Parametri</div>
+  <div class="fr" style="align-items:flex-end">
+    <div class="fg">
+      <label class="lbl">Filiale</label>
+      <select id="commesseFiliale" style="width:180px">
+        <option value="seriate">SERIATE</option>
+        <option value="pomezia">POMEZIA</option>
+        <option value="orio">ORIO</option>
+        <option value="perugia">PERUGIA</option>
+        <option value="elmas">ELMAS</option>
+        <option value="modugno">MODUGNO</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="lbl">Ore fisse Prima Fase (h/D.A.)</label>
+      <input type="number" id="commesseOrePrimaFase" value="6.3" step="0.1" style="width:110px">
+      <small style="color:#9ca3af;font-size:.62rem;display:block;margin-top:.15rem">Solo per i D.A. USATI — i NUOVI saltano questo stadio</small>
+    </div>
+  </div>
+  <div class="al a-info" style="margin-top:.75rem;font-size:.75rem">
+    Stima la data di evasione di ogni commessa simulando il flusso <b>Prima Fase → Montaggio → Collaudo</b> (in sequenza, reparti diversi), in base alla capacità reale disponibile (dal calendario presenze, assenze già pianificate incluse). I D.A. <b>USATI</b> passano per tutti e 3 gli stadi; i D.A. <b>NUOVI</b> saltano Prima Fase e Montaggio, vanno dritti al Collaudo.
+  </div>
+</div>
+
+<!-- STEP 3: FILE COMMESSE -->
+<div class="card">
+  <div class="ct"><span class="step-num">3</span> Carica elenco commesse (Excel con 2 fogli: "USATO" e "NUOVO")</div>
+  <div class="al a-info" style="font-size:.72rem;margin-bottom:.6rem">
+    Colonne attese: <b>N° Commessa</b> · <b>N° Offerta</b> · <b>N° Protocollo</b> · <b>Modello</b> · <b>Data Produzione</b>
+  </div>
+  <div class="upload-zone" id="uzCommesse" onclick="document.getElementById('fCommesse').click()">
+    <div style="font-size:1.4rem">📁</div>
+    <div style="font-size:.8rem;font-weight:600;margin-top:.3rem">Carica file Excel commesse</div>
+    <div style="font-size:.68rem;color:#9ca3af;margin-top:.2rem">Click o drag & drop</div>
+  </div>
+  <input type="file" id="fCommesse" accept=".xlsx,.xls" style="display:none">
+  <div id="commesseStatus" style="margin-top:.6rem"></div>
+  <div id="commesseMapping" style="display:none;margin-top:.6rem">
+    <div class="fr">
+      <div class="fg"><label class="lbl">N° Commessa</label><select id="cmN_Commessa" style="width:150px"></select></div>
+      <div class="fg"><label class="lbl">N° Offerta</label><select id="cmN_Offerta" style="width:150px"></select></div>
+      <div class="fg"><label class="lbl">N° Protocollo</label><select id="cmN_Protocollo" style="width:150px"></select></div>
+      <div class="fg"><label class="lbl">Modello</label><select id="cmModello" style="width:150px"></select></div>
+      <div class="fg"><label class="lbl">Data Produzione</label><select id="cmDataProd" style="width:150px"></select></div>
+    </div>
+    <button class="btn bp" style="margin-top:.7rem" onclick="confermaCommesse()">✓ Conferma mapping</button>
+  </div>
+</div>
+
+<div class="card">
+  <div class="ct">🔍 Cerca evasione commessa</div>
+  <div class="al a-info" style="font-size:.7rem;margin-bottom:.6rem">Inserisci N° Commessa, N° Offerta o N° Protocollo (anche parziale) — funziona sull'ultimo calcolo effettuato.</div>
+  <div class="fr" style="align-items:flex-end">
+    <div class="fg" style="flex:1;min-width:220px">
+      <input type="text" id="commesseCercaInput" placeholder="es. 2026/0451, OFF-330, PROT-88..." style="width:100%" onkeydown="if(event.key==='Enter')cercaEvasioneCommessa()">
+    </div>
+    <button class="btn bp" onclick="cercaEvasioneCommessa()">▶ Cerca</button>
+  </div>
+  <div id="commesseCercaRisultato" style="margin-top:.7rem"></div>
+</div>
+
+<div id="commesseListaCard" style="display:none"></div>
+<div id="commesseRisultati"></div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const firebaseConfig={apiKey:"AIzaSyDw6gFXrMA3hgShlk4S9XzYwBt2WGN6HKE",authDomain:"presenze2026.firebaseapp.com",projectId:"presenze2026",storageBucket:"presenze2026.firebasestorage.app",messagingSenderId:"1073603463859",appId:"1:1073603463859:web:23a1a363bbaabdc5077ec6"};
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+
+// ── VARIABILI GLOBALI ────────────────────────────────
+let rawUsati=[], rawNuovi=[], tempiUsati=[], tempiNuovi=[];
+let ultimoNomeFileTempi="";
+const LS_KEY_TEMPI="kpiProduzione_tempiTecnici_v1"; // STESSA chiave usata da "KPI Produzione": se già caricato lì, è già pronto qui
+
+// ── FUNZIONI DI UTILITÀ ──────────────────────────────
+function isoD(y,m,d){return y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");}
+function localDS(dt){return isoD(dt.getFullYear(),dt.getMonth(),dt.getDate());}
+function fmt(v,d=1){v=parseFloat(v)||0;return v%1===0?v.toFixed(0):v.toFixed(d).replace(/\.?0+$/,"");}
+function parseFase(val){return String(val||"").replace(/[^0-9]/g,"").trim();}
+function parseOre(val){
+  val=String(val||"").replace(",",".").trim();
+  if(val.includes(":")){const[h,m]=val.split(":");return parseFloat(h)+(parseFloat(m)||0)/60;}
+  return parseFloat(val)||0;
+}
+function isFestivo(ds){
+  const[y,m,d]=ds.split("-").map(Number);
+  const fisse=[[1,1],[6,1],[25,4],[1,5],[2,6],[15,8],[1,11],[8,12],[25,12],[26,12]];
+  if(fisse.some(([dd,mm])=>mm===m&&dd===d))return true; // array in formato [giorno,mese]: FIX bug inversione giorno/mese
+  const a=y%19,b=Math.floor(y/100),c=y%100,d2=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25);
+  const g=Math.floor((b-f+1)/3),h=(19*a+b-d2-g+15)%30,i=Math.floor(c/4),k=c%4;
+  const l=(32+2*e+2*i-h-k)%7,m2=Math.floor((a+11*h+22*l)/451);
+  const month=Math.floor((h+l-7*m2+114)/31),day2=(h+l-7*m2+114)%31+1;
+  const pasqua=isoD(y,month-1,day2);
+  const pm=new Date(pasqua+"T00:00:00");pm.setDate(pm.getDate()+1);
+  return ds===pasqua||ds===localDS(pm);
+}
+function isLav(ds){const w=new Date(ds+"T00:00:00").getDay();return w!==0&&w!==6&&!isFestivo(ds);}
+function parseExcel(file, cb){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:"binary",cellDates:true});
+    cb(wb);
+  };
+  reader.readAsBinaryString(file);
+}
+function popolaSelect(selId, cols, keywords=[]){
+  const sel=document.getElementById(selId);
+  const hasEmpty=sel.innerHTML.includes("—");
+  sel.innerHTML=(hasEmpty?'<option value="">—</option>':"")+cols.map(c=>`<option value="${c}">${c}</option>`).join("");
+  const match=cols.find(c=>keywords.some(k=>c.toLowerCase().includes(k.toLowerCase())));
+  if(match) sel.value=match;
+}
+function anteprima(data, el, maxRows=4){
+  if(!data.length){document.getElementById(el).innerHTML="";return;}
+  const cols=Object.keys(data[0]);
+  document.getElementById(el).innerHTML=`<table>
+    <thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead>
+    <tbody>${data.slice(0,maxRows).map(r=>`<tr>${cols.map(c=>`<td>${r[c]??""}</td>`).join("")}</tr>`).join("")}</tbody>
+  </table>`;
+}
+function convertiTempi(val){
+  const unita=document.getElementById("unitaTempi").value;
+  if(unita==="min") return (parseFloat(val)||0)/60;
+  return parseFloat(val)||0;
+}
+function parseData(val){
+  if(!val)return null;
+  if(val instanceof Date)return localDS(val);
+  const s=String(val).trim();
+  if(s.match(/^\d{4}-\d{2}-\d{2}/))return s.slice(0,10);
+  const m=s.match(/^(\d{1,2})[\-\/\.](\d{1,2})[\-\/\.](\d{4})/);
+  if(m)return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  return s;
+}
+window.esportaExcel=function(rows, filename, sheetName){
+  if(!rows||!rows.length){ alert("Nessun dato da esportare."); return; }
+  const ws=XLSX.utils.json_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName||"Dati");
+  XLSX.writeFile(wb, filename);
+};
+
+// ── STEP 1: TEMPI MEDI ──────────────────────────────
+document.getElementById("fTempi").addEventListener("change",function(){
+  const file=this.files[0];if(!file)return;
+  ultimoNomeFileTempi=file.name;
+  document.getElementById("tempiStatus").innerHTML='<span style="font-size:.76rem;color:var(--text2)"><span class="spin"></span> Lettura...</span>';
+  parseExcel(file, wb=>{
+    const fogli=wb.SheetNames;
+    const nUsati=fogli.find(n=>n.toLowerCase().includes("usat"))||fogli[0];
+    const nNuovi=fogli.find(n=>n.toLowerCase().includes("nuov"))||fogli[1]||fogli[0];
+    rawUsati=XLSX.utils.sheet_to_json(wb.Sheets[nUsati],{defval:""});
+    rawNuovi=XLSX.utils.sheet_to_json(wb.Sheets[nNuovi],{defval:""});
+    const colU=rawUsati.length?Object.keys(rawUsati[0]):[];
+    const colN=rawNuovi.length?Object.keys(rawNuovi[0]):[];
+    popolaSelect("uCod",colU,["articolo","cod","art"]);
+    popolaSelect("uMod",colU,["cod_mod","modello","model","tipo","codmod"]);
+    popolaSelect("uDesc",colU,["modello","descr","desc","nome","name"]);
+    popolaSelect("uTmont",colU,["mont","asm","assembl"]);
+    popolaSelect("uTcoll",colU,["coll","test","70"]);
+    ["uF60","uF61","uF62","uF63","uF64","uF70"].forEach((id,i)=>{
+      const fase=["60","61","62","63","64","70"][i];
+      const sel=document.getElementById(id);
+      sel.innerHTML='<option value="">—</option>'+colU.map(c=>`<option value="${c}">${c}</option>`).join("");
+      const m=colU.find(c=>c.includes(fase));if(m)sel.value=m;
+    });
+    popolaSelect("nCod",colN,["articolo","cod","art"]);
+    popolaSelect("nMod",colN,["cod_mod","modello","model","tipo"]);
+    popolaSelect("nDesc",colN,["modello","descr","desc","nome","name"]);
+    popolaSelect("nF70",colN,["70","coll","test"]);
+    document.getElementById("tempiStatus").innerHTML=
+      `<div class="al a-ok">✅ File caricato: foglio "<b>${nUsati}</b>" (${rawUsati.length} righe) + foglio "<b>${nNuovi}</b>" (${rawNuovi.length} righe)</div>`;
+    document.getElementById("tempiMapping").style.display="block";
+    anteprima(rawUsati,"tempiPreview");
+  });
+});
+
+window.confermaTempi=function(){
+  tempiUsati=rawUsati.map(r=>({
+    codice:String(r[document.getElementById("uCod").value]||"").trim(),
+    modello:String(r[document.getElementById("uMod").value]||"").trim(),
+    descr:String(r[document.getElementById("uDesc").value]||"").trim(),
+    tipo:"usato",
+    fasi:{
+      "60":convertiTempi(r[document.getElementById("uF60").value]),
+      "61":convertiTempi(r[document.getElementById("uF61").value]),
+      "62":convertiTempi(r[document.getElementById("uF62").value]),
+      "63":convertiTempi(r[document.getElementById("uF63").value]),
+      "64":convertiTempi(r[document.getElementById("uF64").value]),
+      "70":convertiTempi(r[document.getElementById("uF70").value]),
+      montaggio:convertiTempi(r[document.getElementById("uTmont").value]),
+      collaudo:convertiTempi(r[document.getElementById("uTcoll").value]),
+    }
+  })).filter(r=>r.codice);
+  tempiNuovi=rawNuovi.map(r=>({
+    codice:String(r[document.getElementById("nCod").value]||"").trim(),
+    modello:String(r[document.getElementById("nMod").value]||"").trim(),
+    descr:String(r[document.getElementById("nDesc").value]||"").trim(),
+    tipo:"nuovo",
+    fasi:{"70":convertiTempi(r[document.getElementById("nF70").value])}
+  })).filter(r=>r.codice);
+  const tot=tempiUsati.length+tempiNuovi.length;
+  if(!tot){alert("Nessuna riga valida. Controlla le colonne selezionate.");return;}
+  salvaTempiInMemoria();
+  mostraTempiOk();
+};
+
+function salvaTempiInMemoria(){
+  try{
+    localStorage.setItem(LS_KEY_TEMPI, JSON.stringify({
+      tempiUsati, tempiNuovi,
+      fileName: ultimoNomeFileTempi||"file.xlsx",
+      savedAt: new Date().toISOString()
+    }));
+  }catch(e){ console.warn("Impossibile salvare i Tempi Tecnici in memoria locale:", e); }
+}
+function mostraTempiOk(){
+  let meta={fileName:ultimoNomeFileTempi,savedAt:new Date().toISOString()};
+  try{ const raw=localStorage.getItem(LS_KEY_TEMPI); if(raw) meta=JSON.parse(raw); }catch(e){}
+  const dataFmt=meta.savedAt?new Date(meta.savedAt).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"";
+  document.getElementById("uzTempi").style.display="none";
+  document.getElementById("tempiStatus").innerHTML="";
+  document.getElementById("tempiMapping").style.display="none";
+  document.getElementById("tempiOk").style.display="block";
+  document.getElementById("tempiOkMsg").innerHTML=
+    `✅ <b>Tempi Tecnici in memoria</b>: ${meta.fileName||"file.xlsx"} — ${tempiUsati.length} D.A. usati + ${tempiNuovi.length} D.A. nuovi${dataFmt?` <small style="color:var(--text2)">(caricati il ${dataFmt})</small>`:""}<br>
+    <small style="color:var(--text2)">Non serve ricaricarlo ad ogni apertura: resta qui finché non lo rimuovi o lo sostituisci. Se lo carichi anche nella pagina "KPI Produzione" (stesso PC/browser), sarà condiviso automaticamente tra le due pagine.</small>`;
+}
+window.resetTempi=function(){
+  tempiUsati=[];tempiNuovi=[];rawUsati=[];rawNuovi=[];ultimoNomeFileTempi="";
+  try{ localStorage.removeItem(LS_KEY_TEMPI); }catch(e){}
+  document.getElementById("fTempi").value="";
+  document.getElementById("tempiStatus").innerHTML="";
+  document.getElementById("tempiMapping").style.display="none";
+  document.getElementById("tempiOk").style.display="none";
+  document.getElementById("uzTempi").style.display="block";
+};
+function ripristinaTempiDaMemoria(){
+  let raw;
+  try{ raw=localStorage.getItem(LS_KEY_TEMPI); }catch(e){ return; }
+  if(!raw)return;
+  try{
+    const dati=JSON.parse(raw);
+    if(!dati||!Array.isArray(dati.tempiUsati))return;
+    tempiUsati=dati.tempiUsati||[];
+    tempiNuovi=dati.tempiNuovi||[];
+    ultimoNomeFileTempi=dati.fileName||"";
+    if(tempiUsati.length+tempiNuovi.length>0) mostraTempiOk();
+  }catch(e){ console.warn("Impossibile ripristinare i Tempi Tecnici salvati:", e); }
+}
+
+// ── EVASIONE COMMESSE ────────────────────────────────────────────────
+let rawCommesse=[], commesseCaricate=[]; // righe grezze / righe mappate {commessa,offerta,protocollo,modello,dataProd,priorita}
+let ultimoRisultatoCommesse=null; // {righe,compPrima,compMontaggio,compCollaudo,filiale} — per la ricerca senza dover ricalcolare
+const LS_KEY_COMMESSE="kpiProduzione_commesse_v1"; // elenco commesse caricato, resta in memoria finché non se ne carica un altro
+const LS_KEY_COMMESSE_RISULTATI="kpiProduzione_commesseRisultati_v1"; // ultimo calcolo evasione, per la ricerca rapida
+
+function salvaCommesseInMemoria(){
+  try{ localStorage.setItem(LS_KEY_COMMESSE, JSON.stringify(commesseCaricate)); }
+  catch(e){ console.warn("Impossibile salvare le commesse in memoria locale:", e); }
+}
+function salvaRisultatoCommesseInMemoria(){
+  try{ localStorage.setItem(LS_KEY_COMMESSE_RISULTATI, JSON.stringify(ultimoRisultatoCommesse)); }
+  catch(e){ console.warn("Impossibile salvare il risultato evasione in memoria locale:", e); }
+}
+function ripristinaCommesseDaMemoria(){
+  try{
+    const rawC=localStorage.getItem(LS_KEY_COMMESSE);
+    if(rawC){
+      const dati=JSON.parse(rawC);
+      if(Array.isArray(dati)&&dati.length){ commesseCaricate=dati; renderListaCommesse(); }
+    }
+    const rawR=localStorage.getItem(LS_KEY_COMMESSE_RISULTATI);
+    if(rawR){
+      const dati=JSON.parse(rawR);
+      if(dati&&dati.righe){
+        ultimoRisultatoCommesse=dati;
+        renderRisultatiCommesse(dati.righe, dati.compPrima, dati.compMontaggio, dati.compCollaudo, dati.filiale, new Set(dati.modelliMancanti||[]));
+      }
+    }
+  }catch(e){ console.warn("Impossibile ripristinare le commesse salvate:", e); }
+}
+
+document.getElementById("fCommesse").addEventListener("change",function(){
+  const file=this.files[0];if(!file)return;
+  document.getElementById("commesseStatus").innerHTML='<span style="font-size:.76rem;color:var(--text2)"><span class="spin"></span> Lettura...</span>';
+  parseExcel(file, wb=>{
+    // Come per i Tempi Tecnici, il file può avere 2 fogli: USATO e NUOVO. Tag ogni riga con il
+    // foglio di provenienza — serve dopo per applicare la pipeline giusta (i NUOVI saltano
+    // Prima Fase e Montaggio, vanno dritti al Collaudo).
+    let combined=[];
+    let fogliRiconosciuti={usato:0,nuovo:0,altro:0};
+    wb.SheetNames.forEach(sn=>{
+      const righe=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:"",raw:false});
+      const snLower=sn.toLowerCase();
+      const tipo=/nuov/.test(snLower)?"nuovo":/usat/.test(snLower)?"usato":null;
+      if(tipo)fogliRiconosciuti[tipo]+=righe.length; else fogliRiconosciuti.altro+=righe.length;
+      righe.forEach(r=>combined.push({...r, __tipoFoglio:tipo||"usato"})); // default USATO se il foglio non è riconoscibile
+    });
+    rawCommesse=combined;
+    const cols=[...new Set(rawCommesse.flatMap(r=>Object.keys(r)))].filter(c=>c!=="__tipoFoglio");
+    popolaSelect("cmN_Commessa",cols,["n° commessa","n.commessa","commessa","n commessa"]);
+    popolaSelect("cmN_Offerta",cols,["n° offerta","n.offerta","offerta"]);
+    popolaSelect("cmN_Protocollo",cols,["n° protocollo","n.protocollo","protocollo"]);
+    popolaSelect("cmModello",cols,["modello","articolo","prod. modello","cod"]);
+    popolaSelect("cmDataProd",cols,["data produzione","data prod","data inizio"]);
+    document.getElementById("commesseStatus").innerHTML=`<div class="al a-ok">✅ ${rawCommesse.length} righe caricate — USATO: ${fogliRiconosciuti.usato} · NUOVO: ${fogliRiconosciuti.nuovo}${fogliRiconosciuti.altro?` · non riconosciuti (trattati come USATO): ${fogliRiconosciuti.altro}`:""}</div>`;
+    document.getElementById("commesseMapping").style.display="block";
+  });
+});
+
+window.confermaCommesse=function(){
+  const cC=document.getElementById("cmN_Commessa").value;
+  const cO=document.getElementById("cmN_Offerta").value;
+  const cP=document.getElementById("cmN_Protocollo").value;
+  const cM=document.getElementById("cmModello").value;
+  const cD=document.getElementById("cmDataProd").value;
+  commesseCaricate=rawCommesse.map((r,i)=>({
+    id:"cm"+i,
+    commessa:String(r[cC]||"").trim(),
+    offerta:String(r[cO]||"").trim(),
+    protocollo:String(r[cP]||"").trim(),
+    modello:String(r[cM]||"").trim(),
+    dataProd:parseData(r[cD])||"",
+    tipo:r.__tipoFoglio||"usato", // "usato" (pipeline completa) o "nuovo" (salta Prima Fase e Montaggio)
+    priorita:100+i // priorità di default = ordine di caricamento; più basso = più urgente
+  })).filter(r=>r.modello);
+  if(!commesseCaricate.length){alert("Nessuna riga valida. Controlla le colonne selezionate.");return;}
+  ultimoRisultatoCommesse=null;
+  try{ localStorage.removeItem(LS_KEY_COMMESSE_RISULTATI); }catch(e){}
+  document.getElementById("commesseRisultati").innerHTML="";
+  salvaCommesseInMemoria();
+  document.getElementById("commesseMapping").style.display="none";
+  renderListaCommesse();
+};
+
+function renderListaCommesse(){
+  const el=document.getElementById("commesseListaCard");
+  el.style.display="block";
+  const ordinate=[...commesseCaricate].sort((a,b)=>a.priorita-b.priorita);
+  el.innerHTML=`
+  <div class="card">
+    <div class="ct"><span class="step-num">4</span> Commesse caricate (${commesseCaricate.length}) — imposta priorità/urgenze se necessario</div>
+    <div class="al a-info" style="font-size:.7rem;margin-bottom:.6rem">Ordine di lavorazione predefinito: per Data Produzione (dalla più vicina). Usa "🔺 Urgente" per far passare una riga davanti a tutte le altre.</div>
+    <div style="max-height:320px;overflow-y:auto">
+      <table><thead><tr><th>Commessa</th><th>Offerta</th><th>Protocollo</th><th>Modello</th><th>Tipo</th><th>Data Produzione</th><th style="text-align:right">Priorità</th><th></th></tr></thead>
+      <tbody>${ordinate.map(r=>`<tr>
+        <td style="font-family:monospace">${r.commessa}</td>
+        <td style="font-family:monospace">${r.offerta}</td>
+        <td style="font-family:monospace">${r.protocollo}</td>
+        <td style="font-family:monospace;font-weight:700">${r.modello}</td>
+        <td><span class="badge ${r.tipo==='nuovo'?'b-warn':'b-ok'}" style="font-size:.62rem">${r.tipo.toUpperCase()}</span></td>
+        <td style="font-family:monospace">${r.dataProd||"—"}</td>
+        <td style="text-align:right"><input type="number" value="${r.priorita}" style="width:70px;text-align:right" onchange="impostaPrioritaCommessa('${r.id}',this.value)"></td>
+        <td><button class="btn bg" style="font-size:.65rem;padding:.2rem .5rem" onclick="impostaPrioritaCommessa('${r.id}',0)">🔺 Urgente</button></td>
+      </tr>`).join("")}</tbody></table>
+    </div>
+    <button class="btn bp btn-lg" style="margin-top:.85rem" onclick="calcolaEvasioneCommesse()">▶ Calcola Evasione</button>
+  </div>`;
+}
+window.impostaPrioritaCommessa=function(id,valore){
+  const r=commesseCaricate.find(x=>x.id===id);
+  if(r){ r.priorita=parseFloat(valore)||0; salvaCommesseInMemoria(); renderListaCommesse(); }
+};
+
+// Trova, tra i reparti configurati in questa filiale, quello che corrisponde a "Prima Fase",
+// "Montaggio" o "Collaudo" — riconoscimento a pattern testuale, perché il nome esatto del
+// reparto può variare tra filiali (es. "SERIATE REPARTO 1°FASE" vs altri nomi).
+function trovaRepartoPer(tipo, repartiList){
+  const pattern={
+    prima:/1\s*°?\s*fase|prima\s*fase/i,
+    montaggio:/montaggio/i,
+    collaudo:/collaud/i
+  }[tipo];
+  return (repartiList||[]).find(r=>pattern.test(r))||null;
+}
+
+function prossimoGiornoDS(ds){
+  const d=new Date(ds+"T00:00:00");
+  d.setDate(d.getDate()+1);
+  return localDS(d);
+}
+
+function capacitaRepartoGiorno(dipendenti, entries, repartoKey, ds, cache){
+  const cacheKey=repartoKey+"|"+ds;
+  if(cache[cacheKey]!==undefined) return cache[cacheKey];
+  if(!isLav(ds)){ cache[cacheKey]=0; return 0; }
+  const dipsRep=dipendenti.filter(d=>!d.cessato && d.reparto===repartoKey);
+  if(!dipsRep.length){ cache[cacheKey]=0; return 0; }
+  let ore=dipsRep.length*8;
+  const ents=entries.filter(e=>e.data===ds && dipsRep.some(d=>d.id===e.dipId));
+  const perse=ents.filter(e=>["ferie","ferie_prev","rol","rol_prev","t104","assenza_extra"].includes(e.tipo)).reduce((s,e)=>s+(parseFloat(e.ore)||0),0)
+             + ents.filter(e=>e.tipo==="malattia").length*8;
+  ore=Math.max(0,ore-perse);
+  cache[cacheKey]=ore;
+  return ore;
+}
+
+function simulaRepartoCommesse(items, dipendenti, entries, repartoKey, cache){
+  const completamento={};
+  if(!items.length) return completamento;
+  const residuo={}; items.forEach(it=>residuo[it.id]=it.oreNecessarie);
+  const oggiStr=localDS(new Date());
+  let ds=items.reduce((min,it)=>it.readyDate<min?it.readyDate:min,items[0].readyDate);
+  if(ds<oggiStr) ds=oggiStr;
+  let iter=0;
+  while(Object.keys(completamento).length<items.length && iter<1095){
+    let cap=capacitaRepartoGiorno(dipendenti,entries,repartoKey,ds,cache);
+    if(cap>0){
+      for(const it of items){
+        if(completamento[it.id])continue;
+        if(it.readyDate>ds)continue;
+        if(cap<=0)break;
+        const usa=Math.min(cap,residuo[it.id]);
+        residuo[it.id]-=usa; cap-=usa;
+        if(residuo[it.id]<=0.001) completamento[it.id]=ds;
+      }
+    }
+    ds=prossimoGiornoDS(ds); iter++;
+  }
+  items.forEach(it=>{ if(!completamento[it.id]) completamento[it.id]=null; });
+  return completamento;
+}
+
+window.calcolaEvasioneCommesse=async function(){
+  const filiale=document.getElementById("commesseFiliale").value;
+  const risEl=document.getElementById("commesseRisultati");
+  risEl.innerHTML='<div class="card" style="text-align:center;padding:2rem"><span class="spin"></span> Calcolo in corso...</div>';
+
+  if(!tempiUsati.length && !tempiNuovi.length){
+    risEl.innerHTML=`<div class="card"><div class="al a-danger" style="margin-bottom:0">Nessun file Tempi Tecnici caricato. Caricalo nello Step 1 sopra prima di calcolare l'evasione (serve per i tempi di Montaggio e Collaudo per modello).</div></div>`;
+    return;
+  }
+  if(!commesseCaricate.length){
+    risEl.innerHTML=`<div class="card"><div class="al a-danger" style="margin-bottom:0">Nessuna commessa caricata.</div></div>`;
+    return;
+  }
+
+  let S;
+  try{
+    const snap=await getDoc(doc(db,"stato",filiale));
+    S=snap.exists()?snap.data():{dipendenti:[],entries:[],reparti:[],tempistiche:{}};
+  }catch(e){
+    risEl.innerHTML=`<div class="card"><div class="al a-danger" style="margin-bottom:0">Errore nel caricamento del calendario presenze: ${e.message}</div></div>`;
+    return;
+  }
+  const dipendenti=(S.dipendenti||[]).filter(d=>!d.cessato);
+  const entries=S.entries||[];
+  const reparti=S.reparti||[];
+
+  const repPrima=trovaRepartoPer("prima",reparti);
+  const repMontaggio=trovaRepartoPer("montaggio",reparti);
+  const repCollaudo=trovaRepartoPer("collaudo",reparti);
+  const mancanti=[];
+  if(!repPrima)mancanti.push("Prima Fase");
+  if(!repMontaggio)mancanti.push("Montaggio");
+  if(!repCollaudo)mancanti.push("Collaudo");
+  if(mancanti.length){
+    risEl.innerHTML=`<div class="card"><div class="al a-danger" style="margin-bottom:0">Non trovo nel calendario presenze di ${filiale.toUpperCase()} un reparto corrispondente a: <b>${mancanti.join(", ")}</b>. Controlla i nomi dei reparti nelle Impostazioni del calendario presenze.</div></div>`;
+    return;
+  }
+
+  // ── DIAGNOSTICA: quanti dipendenti sono davvero assegnati a ciascun reparto? ──
+  // Se un reparto ha 0 dipendenti, la capacità sarà sempre 0 e nessuna data potrà mai essere
+  // calcolata (tutto resterà "n/d") — meglio dirlo chiaramente qui, prima di far girare a vuoto
+  // la simulazione per giorni/anni senza produrre nessun risultato.
+  const dipsPrima=dipendenti.filter(d=>d.reparto===repPrima);
+  const dipsMontaggio=dipendenti.filter(d=>d.reparto===repMontaggio);
+  const dipsCollaudo=dipendenti.filter(d=>d.reparto===repCollaudo);
+  const repartiVuoti=[];
+  if(!dipsPrima.length)repartiVuoti.push(`Prima Fase ("${repPrima}")`);
+  if(!dipsMontaggio.length)repartiVuoti.push(`Montaggio ("${repMontaggio}")`);
+  if(!dipsCollaudo.length)repartiVuoti.push(`Collaudo ("${repCollaudo}")`);
+  const cacheDiag={};
+  const oggiDiag=localDS(new Date());
+  const capPrimaOggi=capacitaRepartoGiorno(dipendenti,entries,repPrima,oggiDiag,cacheDiag);
+  const capMontaggioOggi=capacitaRepartoGiorno(dipendenti,entries,repMontaggio,oggiDiag,cacheDiag);
+  const capCollaudoOggi=capacitaRepartoGiorno(dipendenti,entries,repCollaudo,oggiDiag,cacheDiag);
+  const diagnosticaHtml=`<div class="card">
+    <div class="ct">🔎 Diagnostica reparti — verifica prima di leggere i risultati</div>
+    <table><thead><tr><th>Stadio</th><th>Reparto trovato (nome esatto)</th><th style="text-align:right">Dipendenti assegnati</th><th style="text-align:right">Capacità oggi (${oggiDiag})</th></tr></thead>
+    <tbody>
+      <tr><td>Prima Fase</td><td style="font-family:monospace">${repPrima}</td><td style="text-align:right;font-weight:800;color:${dipsPrima.length?'#059669':'#dc2626'}">${dipsPrima.length}</td><td style="text-align:right;font-family:monospace;color:${capPrimaOggi>0?'#059669':'#dc2626'}">${fmt(capPrimaOggi)}h</td></tr>
+      <tr><td>Montaggio</td><td style="font-family:monospace">${repMontaggio}</td><td style="text-align:right;font-weight:800;color:${dipsMontaggio.length?'#059669':'#dc2626'}">${dipsMontaggio.length}</td><td style="text-align:right;font-family:monospace;color:${capMontaggioOggi>0?'#059669':'#dc2626'}">${fmt(capMontaggioOggi)}h</td></tr>
+      <tr><td>Collaudo</td><td style="font-family:monospace">${repCollaudo}</td><td style="text-align:right;font-weight:800;color:${dipsCollaudo.length?'#059669':'#dc2626'}">${dipsCollaudo.length}</td><td style="text-align:right;font-family:monospace;color:${capCollaudoOggi>0?'#059669':'#dc2626'}">${fmt(capCollaudoOggi)}h</td></tr>
+    </tbody></table>
+    ${repartiVuoti.length?`<div class="al a-danger" style="margin-top:.65rem;margin-bottom:0">⚠️ <b>${repartiVuoti.join(", ")}</b> ${repartiVuoti.length>1?'hanno':'ha'} ZERO dipendenti assegnati nell'anagrafica presenze. Senza nessuno assegnato, la capacità di quel reparto è sempre 0 ore/giorno e la simulazione non potrà MAI completare quello stadio (risulterà sempre "n/d") — per questo lo stadio successivo resta bloccato in coda all'infinito. Vai nell'anagrafica dipendenti del calendario presenze e verifica che il campo "Reparto" di chi lavora lì corrisponda esattamente a questo nome.</div>`
+      :(capPrimaOggi===0||capMontaggioOggi===0||capCollaudoOggi===0)?`<div class="al a-warn" style="margin-top:.65rem;margin-bottom:0">ℹ️ Oggi (${oggiDiag}) uno o più reparti hanno capacità 0h — probabilmente festivo/weekend, oppure tutti i dipendenti di quel reparto risultano assenti oggi. Non è necessariamente un problema: la simulazione userà i giorni successivi con capacità disponibile.</div>`:""}
+  </div>`;
+
+  const oreFisePrimaFase=parseFloat(document.getElementById("commesseOrePrimaFase").value)||6.3;
+  const oggiStr=localDS(new Date());
+  const cache={};
+
+  function costruisciIndice(lista){
+    const idx={};
+    lista.forEach(t=>{ if(t.codice)idx[t.codice.toLowerCase()]=t; if(t.modello)idx[t.modello.toLowerCase()]=t; });
+    return idx;
+  }
+  const idxUsati=costruisciIndice(tempiUsati);
+  const idxNuovi=costruisciIndice(tempiNuovi);
+
+  const modelliMancanti=new Set();
+  const righeConTempi=commesseCaricate.map(r=>{
+    const isNuovo=r.tipo==="nuovo";
+    const tObj=isNuovo?idxNuovi[(r.modello||"").toLowerCase()]:idxUsati[(r.modello||"").toLowerCase()];
+    const tMontaggio=isNuovo?0:(tObj?parseOre(tObj.fasi["60"]):null);
+    const tCollaudo=tObj?parseOre(tObj.fasi["70"]):null;
+    if(!tObj) modelliMancanti.add(`${r.modello} (${r.tipo.toUpperCase()})`);
+    return {...r, tMontaggio:tMontaggio||0, tCollaudo:tCollaudo||0, trovato:!!tObj};
+  });
+
+  const rigaUsato=r=>r.tipo!=="nuovo";
+  const itemsPrima=righeConTempi.filter(rigaUsato).map(r=>({id:r.id,oreNecessarie:oreFisePrimaFase,readyDate:(r.dataProd&&r.dataProd>oggiStr)?r.dataProd:oggiStr}))
+    .sort((a,b)=>{
+      const ra=righeConTempi.find(x=>x.id===a.id), rb=righeConTempi.find(x=>x.id===b.id);
+      if(ra.priorita!==rb.priorita) return ra.priorita-rb.priorita;
+      return a.readyDate.localeCompare(b.readyDate);
+    });
+  const compPrima=simulaRepartoCommesse(itemsPrima, dipendenti, entries, repPrima, cache);
+
+  const itemsMontaggio=righeConTempi.filter(r=>rigaUsato(r)&&r.trovato).map(r=>({
+    id:r.id, oreNecessarie:r.tMontaggio,
+    readyDate:compPrima[r.id]?prossimoGiornoDS(compPrima[r.id]):null
+  })).filter(it=>it.readyDate)
+    .sort((a,b)=>{
+      const ra=righeConTempi.find(x=>x.id===a.id), rb=righeConTempi.find(x=>x.id===b.id);
+      if(ra.priorita!==rb.priorita) return ra.priorita-rb.priorita;
+      return a.readyDate.localeCompare(b.readyDate);
+    });
+  const compMontaggio=simulaRepartoCommesse(itemsMontaggio, dipendenti, entries, repMontaggio, cache);
+
+  const itemsCollaudo=righeConTempi.filter(r=>{
+    if(!r.trovato)return false;
+    return rigaUsato(r)?!!compMontaggio[r.id]:true;
+  }).map(r=>({
+    id:r.id, oreNecessarie:r.tCollaudo,
+    readyDate:rigaUsato(r)?prossimoGiornoDS(compMontaggio[r.id]):((r.dataProd&&r.dataProd>oggiStr)?r.dataProd:oggiStr)
+  })).sort((a,b)=>{
+      const ra=righeConTempi.find(x=>x.id===a.id), rb=righeConTempi.find(x=>x.id===b.id);
+      if(ra.priorita!==rb.priorita) return ra.priorita-rb.priorita;
+      return a.readyDate.localeCompare(b.readyDate);
+    });
+  const compCollaudo=simulaRepartoCommesse(itemsCollaudo, dipendenti, entries, repCollaudo, cache);
+
+  ultimoRisultatoCommesse={righe:righeConTempi, compPrima, compMontaggio, compCollaudo, filiale, modelliMancanti:[...modelliMancanti]};
+  salvaRisultatoCommesseInMemoria();
+  renderRisultatiCommesse(righeConTempi, compPrima, compMontaggio, compCollaudo, filiale, modelliMancanti);
+  // Antepone il pannello diagnostico ai risultati (calcolato più sopra, prima della simulazione)
+  document.getElementById("commesseRisultati").innerHTML = diagnosticaHtml + document.getElementById("commesseRisultati").innerHTML;
+};
+
+window.cercaEvasioneCommessa=function(){
+  const query=(document.getElementById("commesseCercaInput").value||"").trim().toLowerCase();
+  const el=document.getElementById("commesseCercaRisultato");
+  if(!query){ el.innerHTML=`<div class="al a-info" style="margin-bottom:0">Scrivi un N° Commessa, Offerta o Protocollo da cercare.</div>`; return; }
+  if(!ultimoRisultatoCommesse||!ultimoRisultatoCommesse.righe||!ultimoRisultatoCommesse.righe.length){
+    el.innerHTML=`<div class="al a-info" style="margin-bottom:0">Nessun calcolo di evasione disponibile. Carica le commesse e clicca "▶ Calcola Evasione" prima di cercare.</div>`;
+    return;
+  }
+  const {righe,compPrima,compMontaggio,compCollaudo}=ultimoRisultatoCommesse;
+  const trovate=righe.filter(r=>
+    (r.commessa||"").toLowerCase().includes(query) ||
+    (r.offerta||"").toLowerCase().includes(query) ||
+    (r.protocollo||"").toLowerCase().includes(query)
+  );
+  if(!trovate.length){ el.innerHTML=`<div class="al a-info" style="margin-bottom:0">Nessuna commessa trovata per "<b>${query}</b>".</div>`; return; }
+
+  el.innerHTML=trovate.map(r=>{
+    const isNuovo=r.tipo==="nuovo";
+    const evasione=compCollaudo[r.id];
+    const ritardo=(r.dataProd&&evasione)?Math.round((new Date(evasione)-new Date(r.dataProd))/86400000):null;
+    return `<div class="card" style="margin-bottom:.6rem">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:.5rem">
+        <div>
+          <div style="font-size:.95rem;font-weight:800">Commessa ${r.commessa} <span class="badge ${isNuovo?'b-warn':'b-ok'}" style="font-size:.6rem">${r.tipo.toUpperCase()}</span></div>
+          <div style="font-size:.75rem;color:var(--text2);margin-top:.15rem">Offerta: <b>${r.offerta||"—"}</b> · Protocollo: <b>${r.protocollo||"—"}</b> · Modello: <b>${r.modello}</b></div>
+        </div>
+      </div>
+      <div class="kpi-grid" style="margin-top:.75rem;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+        <div class="kpi"><div class="kpi-val" style="font-size:1rem">${r.dataProd||"—"}</div><div class="kpi-label">Data Prod. richiesta</div></div>
+        <div class="kpi"><div class="kpi-val" style="font-size:1rem;color:${isNuovo?'#9ca3af':'inherit'}">${isNuovo?"— saltata":(compPrima[r.id]||"n/d")}</div><div class="kpi-label">Prima Fase</div></div>
+        <div class="kpi"><div class="kpi-val" style="font-size:1rem;color:${isNuovo?'#9ca3af':'inherit'}">${isNuovo?"— saltato":(compMontaggio[r.id]||"n/d")}</div><div class="kpi-label">Montaggio</div></div>
+        <div class="kpi ${evasione?'ok':''}"><div class="kpi-val" style="font-size:1.1rem;font-weight:800">${evasione||"n/d"}</div><div class="kpi-label">📅 Evasione stimata</div></div>
+      </div>
+      ${ritardo!==null?`<div class="al ${ritardo>0?'a-warn':'a-ok'}" style="margin-top:.65rem;margin-bottom:0">${ritardo>0?`⚠️ Stimato con ${ritardo} giorno/i di ritardo rispetto alla data produzione richiesta.`:ritardo===0?"✅ In linea con la data produzione richiesta.":`✅ Stimato con ${Math.abs(ritardo)} giorno/i di anticipo.`}</div>`:""}
+    </div>`;
+  }).join("");
+};
+
+function renderRisultatiCommesse(righe, compPrima, compMontaggio, compCollaudo, filiale, modelliMancanti){
+  const risEl=document.getElementById("commesseRisultati");
+  const righeOrdinate=[...righe].sort((a,b)=>{
+    const ea=compCollaudo[a.id]||"9999", eb=compCollaudo[b.id]||"9999";
+    return ea.localeCompare(eb);
+  });
+  const isNuovo=r=>r.tipo==="nuovo";
+
+  const exportRows=righeOrdinate.map(r=>({
+    "N° Commessa":r.commessa,"N° Offerta":r.offerta,"N° Protocollo":r.protocollo,"Modello":r.modello,"Tipo":r.tipo.toUpperCase(),
+    "Data Produzione richiesta":r.dataProd||"",
+    "Prima Fase completata":isNuovo(r)?"— (saltata, D.A. nuovo)":(compPrima[r.id]||"n/d"),
+    "Montaggio completato":isNuovo(r)?"— (saltato, D.A. nuovo)":(compMontaggio[r.id]||"n/d"),
+    "Evasione stimata (Collaudo)":compCollaudo[r.id]||"n/d",
+    "Ritardo (giorni)":(r.dataProd&&compCollaudo[r.id])?Math.round((new Date(compCollaudo[r.id])-new Date(r.dataProd))/86400000):""
+  }));
+  window.ultimoExportCommesse=exportRows;
+
+  risEl.innerHTML=`
+  ${modelliMancanti.size?`<div class="card">
+    <div class="ct">⚠️ Modelli non trovati nel file Tempi Tecnici</div>
+    <div class="al a-danger" style="margin-bottom:0">
+      <b>${modelliMancanti.size} modello/i</b> non trovato/i nel foglio corrispondente, esclusi dalla simulazione: ${[...modelliMancanti].join(", ")}
+    </div>
+  </div>`:""}
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <div class="ct" style="border-bottom:none;margin-bottom:0;padding-bottom:0">📅 Evasione stimata — ${filiale.toUpperCase()}</div>
+      <button class="btn bg no-print" style="font-size:.7rem" onclick="esportaExcel(window.ultimoExportCommesse,'evasione_commesse_${filiale}.xlsx','Evasione')">📥 Esporta in Excel</button>
+    </div>
+    <div style="overflow-x:auto;max-height:480px;overflow-y:auto;margin-top:.6rem">
+      <table><thead><tr>
+        <th>Commessa</th><th>Offerta</th><th>Protocollo</th><th>Modello</th><th>Tipo</th>
+        <th>Data Prod. richiesta</th><th>Prima Fase</th><th>Montaggio</th><th>Evasione (Collaudo)</th><th style="text-align:right">Ritardo</th>
+      </tr></thead>
+      <tbody>${righeOrdinate.map(r=>{
+        const evasione=compCollaudo[r.id];
+        const ritardo=(r.dataProd&&evasione)?Math.round((new Date(evasione)-new Date(r.dataProd))/86400000):null;
+        const colRitardo=ritardo===null?"":ritardo>0?"#dc2626":"#059669";
+        return `<tr>
+          <td style="font-family:monospace">${r.commessa}</td>
+          <td style="font-family:monospace">${r.offerta}</td>
+          <td style="font-family:monospace">${r.protocollo}</td>
+          <td style="font-family:monospace;font-weight:700">${r.modello}${!r.trovato?' <span class="badge b-danger" style="font-size:.6rem">no tempi</span>':''}</td>
+          <td><span class="badge ${isNuovo(r)?'b-warn':'b-ok'}" style="font-size:.6rem">${r.tipo.toUpperCase()}</span></td>
+          <td style="font-family:monospace">${r.dataProd||"—"}</td>
+          <td style="font-family:monospace;color:${isNuovo(r)?'#9ca3af':'inherit'}">${isNuovo(r)?"— (saltata)":(compPrima[r.id]||"n/d")}</td>
+          <td style="font-family:monospace;color:${isNuovo(r)?'#9ca3af':'inherit'}">${isNuovo(r)?"— (saltato)":(compMontaggio[r.id]||"n/d")}</td>
+          <td style="font-family:monospace;font-weight:700">${evasione||"n/d"}</td>
+          <td style="text-align:right;font-family:monospace;color:${colRitardo}">${ritardo===null?"—":ritardo>0?`+${ritardo}g`:ritardo===0?"in orario":`${ritardo}g`}</td>
+        </tr>`;
+      }).join("")}</tbody></table>
+    </div>
+  </div>`;
+}
+
+window.addEventListener("DOMContentLoaded",()=>{
+  ripristinaTempiDaMemoria();
+  ripristinaCommesseDaMemoria();
+});
+</script>
+</body>
+</html>
