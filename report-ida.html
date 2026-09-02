@@ -344,13 +344,13 @@ tr:hover td{background:#fafafa}
 <div class="tc" id="tab-classifica">
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
-      <div class="ct" style="border-bottom:none;margin-bottom:0;padding-bottom:0">🏆 Classifica Team — efficienza e performance dell'ultimo caricamento</div>
+      <div class="ct" style="border-bottom:none;margin-bottom:0;padding-bottom:0">🏆 Classifica Team — efficienza e performance per periodo</div>
       <button class="btn bp" onclick="switchTab('report')">🔧 Inserimento dati</button>
     </div>
     <div class="fr" style="align-items:flex-end;margin-top:.5rem">
       <div class="fg">
         <label class="lbl">Filiale</label>
-        <select id="classificaFiliale" onchange="caricaClassifica()" style="width:180px">
+        <select id="classificaFiliale" style="width:180px">
           <option value="seriate">SERIATE</option>
           <option value="pomezia">POMEZIA</option>
           <option value="orio">ORIO</option>
@@ -358,6 +358,22 @@ tr:hover td{background:#fafafa}
           <option value="elmas">ELMAS</option>
           <option value="modugno">MODUGNO</option>
         </select>
+      </div>
+      <div class="fg" style="flex:1;min-width:280px">
+        <label class="lbl">Periodo storico</label>
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap" id="classificaMesiChips"></div>
+        <div style="display:flex;gap:.3rem;margin-top:.4rem;flex-wrap:wrap;align-items:center">
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selClassificaMesi([0,1,2,3,4,5,6,7,8,9,10,11])">Tutti</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selClassificaMesi([0,1,2,3,4,5])">1° Sem.</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selClassificaMesi([6,7,8,9,10,11])">2° Sem.</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selClassificaMesi([0,1,2])">Q1</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selClassificaMesi([3,4,5])">Q2</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selClassificaMesi([6,7,8])">Q3</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selClassificaMesi([9,10,11])">Q4</button>
+          <select id="classificaAnnoSel" style="font-size:.75rem;padding:.22rem .5rem">
+            <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
+          </select>
+        </div>
       </div>
       <button class="btn bp" onclick="caricaClassifica()">▶ Carica</button>
     </div>
@@ -487,6 +503,7 @@ let ultimoAggregatoStorico=[], ultimoDocsFiltratiStorico=[]; // dati aggregati s
 let mesiSel=new Set([new Date().getMonth()]);
 let fasiSel=new Set(Object.keys(FASI));
 let storicoMesiSel=new Set([0,1,2,3,4,5,6,7,8,9,10,11]); // default: tutto l'anno
+let classificaMesiSel=new Set([0,1,2,3,4,5,6,7,8,9,10,11]); // default: tutto l'anno (Classifica Team, stato indipendente dallo Storico)
 let rawUsati=[], rawNuovi=[], rawProd=[];
 
 // ── HELPERS ──────────────────────────────────────────
@@ -871,20 +888,106 @@ async function salvaClassificaInMemoria(filiale, periodoLabel, tecniciGrid, cont
 function tec_perFaseSafe(t){ return t.perFase||{}; }
 
 // Carica la Classifica Team dal cloud (Firestore) per la filiale selezionata
+// Aggrega più mesi dello storico (kpiStorico) in un'unica struttura compatibile con
+// renderClassificaTeam: efficienza/performance come media dei mesi presenti, ore/lavorazioni
+// sommate, mansione/linea prese dal mese più recente disponibile nel periodo.
+function aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati){
+  const labP=(mesi.length===12?"Anno "+anno:[...mesi].sort((a,b)=>a-b).map(m=>MESI_B[m]).join(", ")+" "+anno);
+  const perTecnico={};
+
+  [...docsTrovati].sort((a,b)=>a.mese-b.mese).forEach(d=>{
+    (d.tecnici||[]).forEach(t=>{
+      if(!perTecnico[t.nome]) perTecnico[t.nome]={effs:[],perfs:[],lavorazioni:0,lavorazioniZero:0,totStd:0,totEff:0,oreEff:0,oreDisp:0,mansione:null,lineaAssegnata:null,dipMatch:null};
+      const p=perTecnico[t.nome];
+      if(t.efficienza!=null) p.effs.push(t.efficienza);
+      if(t.performance!=null) p.perfs.push(t.performance);
+      p.lavorazioni+=t.lavorazioni||0;
+      p.lavorazioniZero+=t.lavorazioniZero||0;
+      p.totStd+=t.totStd||0;
+      p.totEff+=t.totEff||0;
+      p.oreEff+=t.oreEff||0;
+      p.oreDisp+=t.oreDisp||0;
+      if(t.mansione) p.mansione=t.mansione; // docs ordinati per mese: l'ultimo trovato vince
+      if(t.lineaAssegnata) p.lineaAssegnata=t.lineaAssegnata;
+      if(t.dipMatch) p.dipMatch=t.dipMatch;
+    });
+  });
+
+  const media=arr=>arr.length?arr.reduce((s,v)=>s+v,0)/arr.length:null;
+
+  const tecniciTutti=Object.entries(perTecnico).map(([nome,p])=>({
+    nome, dipMatch:p.dipMatch, mansione:p.mansione, lineaAssegnata:p.lineaAssegnata,
+    efficienza:media(p.effs), performance:media(p.perfs),
+    lavorazioni:p.lavorazioni, lavorazioniZero:p.lavorazioniZero,
+    totStd:p.totStd, totEff:p.totEff, oreEff:p.oreEff, oreDisp:p.oreDisp,
+    // Il dettaglio riga-per-riga delle lavorazioni esiste solo nel report appena generato,
+    // non nello storico aggregato: qui resta vuoto (il grafico "Andamento mensile" nel
+    // dettaglio funziona comunque, perché legge lo storico in autonomia).
+    lavorazioniDettaglio:[]
+  }));
+
+  // "Fantasmi": nessuna lavorazione valida in tutto il periodo, ma con lavorazioni a tempo
+  // zero registrate in almeno un mese — stesso criterio usato nel report a mese singolo.
+  const fantasmi=tecniciTutti.filter(t=>t.lavorazioni===0 && t.lavorazioniZero>0)
+    .map(t=>({nome:t.nome, lavorazioniZero:t.lavorazioniZero}));
+  const tecnici=tecniciTutti.filter(t=>!(t.lavorazioni===0 && t.lavorazioniZero>0));
+
+  // Linee: raggruppa chi ha una mansione "LINEA n" nota nel periodo (disponibile solo per i
+  // mesi salvati DOPO l'introduzione di questo campo nello storico)
+  const lineeTmp={};
+  tecnici.forEach(t=>{
+    if(!t.lineaAssegnata)return;
+    if(!lineeTmp[t.lineaAssegnata])lineeTmp[t.lineaAssegnata]={count:0,oreStd:0,oreEff:0,membriSet:new Set()};
+    lineeTmp[t.lineaAssegnata].count+=t.lavorazioni;
+    lineeTmp[t.lineaAssegnata].oreStd+=t.totStd;
+    lineeTmp[t.lineaAssegnata].oreEff+=t.totEff;
+    lineeTmp[t.lineaAssegnata].membriSet.add(t.nome);
+  });
+  const linee=Object.entries(lineeTmp).map(([linea,l])=>({
+    linea, count:l.count, oreStd:l.oreStd, oreEff:l.oreEff,
+    performance:l.oreEff>0&&l.oreStd>0?(l.oreStd/l.oreEff)*100:null,
+    membri:[...l.membriSet].map(nomeMembro=>tecnici.find(x=>x.nome===nomeMembro)).filter(Boolean)
+  }));
+  const tecniciSenzaLinea=tecnici.filter(t=>!t.lineaAssegnata);
+
+  return {
+    filiale, periodoLabel:labP, anno, mesi,
+    dataGenerazione:new Date().toISOString(),
+    tecnici:tecniciSenzaLinea,
+    fantasmi,
+    linee
+  };
+}
+
 window.caricaClassifica=async function(){
   const filiale=document.getElementById("classificaFiliale").value;
+  const anno=parseInt(document.getElementById("classificaAnnoSel").value)||new Date().getFullYear();
+  const mesi=[...classificaMesiSel];
   const metaEl=document.getElementById("classificaMeta");
   const contentEl=document.getElementById("classificaContent");
   metaEl.innerHTML="";
+  if(!mesi.length){ alert("Seleziona almeno un mese nel periodo."); return; }
   contentEl.innerHTML='<div class="card" style="text-align:center;padding:2rem"><span class="spin"></span> Caricamento...</div>';
-  let dati=null;
+
+  // Legge dallo storico mensile (kpiStorico) i mesi selezionati per questa filiale e li aggrega
+  const docsTrovati=[];
   try{
-    const snap=await getDoc(doc(db,"kpiClassifica",filiale));
-    if(snap.exists()) dati=snap.data();
+    for(const m of mesi){
+      const docId=`${filiale}_${anno}_${String(m+1).padStart(2,"0")}`;
+      const snap=await getDoc(doc(db,"kpiStorico",docId));
+      if(snap.exists()) docsTrovati.push(snap.data());
+    }
   }catch(e){
     contentEl.innerHTML=`<div class="card"><div class="al a-danger" style="margin-bottom:0">Errore nel caricamento: ${e.message}</div></div>`;
     return;
   }
+
+  if(!docsTrovati.length){
+    contentEl.innerHTML=`<div class="card"><div class="al a-info" style="margin-bottom:0">Nessun dato salvato nello storico per <b>${filiale.toUpperCase()}</b> nel periodo selezionato. Vai su "📥 Inserimento dati", genera il report per quei mesi e clicca "💾 Salva mese nello storico" — poi torna qui e ricarica.</div></div>`;
+    return;
+  }
+
+  const dati=aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati);
   ultimoDatiClassificaCloud=dati;
   renderClassificaTeam(dati);
 };
@@ -901,7 +1004,7 @@ function renderClassificaTeam(dati){
 
 
   const dataFmt=new Date(dati.dataGenerazione).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
-  metaEl.innerHTML=`Ultimo caricamento: <b>${dati.filiale.toUpperCase()}</b> · ${dati.periodoLabel} — generato il ${dataFmt}. <button class="btn bg no-print" style="font-size:.65rem;padding:.2rem .5rem;margin-left:.4rem" onclick="switchTab('report')">Aggiorna con un nuovo caricamento</button>`;
+  metaEl.innerHTML=`Periodo visualizzato: <b>${dati.filiale.toUpperCase()}</b> · ${dati.periodoLabel} <small style="color:var(--text2)">(aggiornato al ${dataFmt})</small>. <button class="btn bg no-print" style="font-size:.65rem;padding:.2rem .5rem;margin-left:.4rem" onclick="switchTab('report')">Vai a Inserimento dati</button>`;
 
   // "Fantasmi": tecnici con SOLO lavorazioni a tempo=0 (nessuna lavorazione reale) — non
   // compaiono nel report/tabella principale, ma li mostriamo qui in una card d'allarme dedicata.
@@ -1534,6 +1637,18 @@ window.toggleStoricoMese=function(i){
 };
 window.selStoricoMesi=function(arr){storicoMesiSel=new Set(arr);buildStoricoMesiChips();};
 
+function buildClassificaMesiChips(){
+  const el=document.getElementById("classificaMesiChips");
+  if(!el)return;
+  el.innerHTML=MESI_B.map((m,i)=>
+    `<div class="mese-chip ${classificaMesiSel.has(i)?"sel":""}" id="cmc${i}" onclick="toggleClassificaMese(${i})">${m}</div>`).join("");
+}
+window.toggleClassificaMese=function(i){
+  classificaMesiSel.has(i)?classificaMesiSel.delete(i):classificaMesiSel.add(i);
+  document.getElementById("cmc"+i)?.classList.toggle("sel",classificaMesiSel.has(i));
+};
+window.selClassificaMesi=function(arr){classificaMesiSel=new Set(arr);buildClassificaMesiChips();};
+
 function buildFasiChips(){
   document.getElementById("fasiChips").innerHTML=Object.entries(FASI).map(([k,v])=>
     `<div class="mese-chip sel" id="fc${k}" onclick="toggleFase('${k}')" style="font-family:monospace">F${k}</div>`).join("");
@@ -1608,9 +1723,11 @@ window.eseguiReport=async function(){
       dataSalvataggio:new Date().toISOString(),
       tecnici:datiPeriodo.tecnici.map(t=>({
         nome:t.nome, dipMatch:t.dipMatch||null,
+        mansione:t.mansione||null, lineaAssegnata:t.lineaAssegnata||null,
         efficienza:t.efficienza, performance:t.perfGlobale,
         totStd:t.totStd, totEff:t.totEff, oreEff:t.oreEff, oreDisp:t.oreDisp,
-        lavorazioni:t.lavorazioni.length
+        lavorazioni:t.lavorazioni.length,
+        lavorazioniZero:(ultimoConteggioTempoZero&&ultimoConteggioTempoZero[t.nome])||0
       }))
     };
   }
@@ -2628,7 +2745,7 @@ window.apriDettaglioKpiStorico=function(tipo){
 };
 
 window.addEventListener("DOMContentLoaded",async()=>{
-  buildMesiChips();buildFasiChips();buildStoricoMesiChips();
+  buildMesiChips();buildFasiChips();buildStoricoMesiChips();buildClassificaMesiChips();
   ripristinaTempiDaMemoria(); // ricarica i Tempi Tecnici salvati in precedenza (se presenti), senza richiedere un nuovo upload
   await caricaEsclusiManuali(); // ricarica dal cloud l'elenco di chi è stato escluso manualmente dall'analisi
   // Apertura diretta della tab KPI Produzione se la pagina viene raggiunta con #storico (es. da index.html)
