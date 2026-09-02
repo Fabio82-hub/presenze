@@ -1,0 +1,1459 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consiglio d'Ordine Ricambi — SITALIA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --graphite:#22262b;
+    --graphite-2:#2c3138;
+    --steel:#3d6b8c;
+    --steel-dark:#2c4f68;
+    --amber:#c8862c;
+    --amber-dark:#a06c22;
+    --green:#4f7a52;
+    --red:#b4483f;
+    --paper:#f5f4f0;
+    --paper-2:#eceae3;
+    --ink:#22262b;
+    --ink-soft:#565b62;
+    --line:#d9d6cd;
+    --card:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans',system-ui,sans-serif;
+    line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  code, .mono, .code-cell{font-family:'IBM Plex Mono',monospace;}
+
+  header.top{
+    background:var(--graphite);
+    color:#f2f1ec;
+    padding:28px clamp(16px,4vw,48px);
+    border-bottom:3px solid var(--steel);
+  }
+  header.top .eyebrow{
+    color:#9db6c6;
+    font-size:12.5px;
+    letter-spacing:.02em;
+    margin:0 0 6px 0;
+  }
+  header.top h1{
+    margin:0 0 6px 0;
+    font-size:clamp(22px,3vw,30px);
+    font-weight:600;
+    letter-spacing:-.01em;
+  }
+  header.top p{
+    margin:0;
+    color:#c7c4bb;
+    font-size:14.5px;
+    max-width:62ch;
+  }
+
+  main{
+    max-width:1240px;
+    margin:0 auto;
+    padding:28px clamp(16px,4vw,48px) 80px;
+  }
+
+  .panel{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:22px clamp(16px,3vw,28px);
+    margin-bottom:22px;
+  }
+  .panel h2{
+    margin:0 0 4px 0;
+    font-size:16px;
+    font-weight:600;
+  }
+  .panel .sub{
+    margin:0 0 18px 0;
+    color:var(--ink-soft);
+    font-size:13.5px;
+  }
+
+  .upload-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+  }
+  @media(max-width:760px){ .upload-grid{grid-template-columns:1fr;} }
+
+  .dropzone{
+    border:1.5px dashed var(--line);
+    border-radius:6px;
+    padding:20px;
+    background:var(--paper);
+    position:relative;
+  }
+  .dropzone.filled{ border-color:var(--green); background:#f4f8f4; }
+  .dropzone .dz-label{
+    display:block;
+    font-weight:600;
+    font-size:14px;
+    margin-bottom:4px;
+  }
+  .dropzone .dz-hint{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-bottom:12px;
+  }
+  .dropzone input[type=file]{
+    font-size:13px;
+    width:100%;
+  }
+  .dropzone .dz-status{
+    margin-top:10px;
+    font-size:12.5px;
+    color:var(--green);
+    font-weight:500;
+    display:none;
+  }
+  .dropzone.filled .dz-status{ display:block; }
+  .dropzone .dz-actions{
+    display:none;
+    gap:8px;
+    margin-top:10px;
+  }
+  .dropzone.filled .dz-actions{ display:flex; }
+  .dropzone .dz-actions button{
+    font-size:12px;
+    padding:5px 10px;
+    border-radius:5px;
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--ink-soft);
+    cursor:pointer;
+  }
+  .dropzone .dz-actions button:hover{ border-color:var(--steel); color:var(--steel-dark); }
+
+  .cov-badge{
+    display:inline-block;
+    padding:2px 9px;
+    border-radius:20px;
+    font-size:12px;
+    font-weight:600;
+  }
+  .cov-badge.ok{ background:#e7f0e7; color:var(--green); }
+  .cov-badge.bad{ background:#f6e6e4; color:var(--red); }
+  .cov-badge.na{ background:#eceae3; color:var(--ink-soft); }
+
+  .filters{
+    display:grid;
+    grid-template-columns:1.1fr 1fr 1fr 1.2fr;
+    gap:16px;
+    align-items:start;
+  }
+  @media(max-width:900px){ .filters{grid-template-columns:1fr 1fr;} }
+  @media(max-width:520px){ .filters{grid-template-columns:1fr;} }
+
+  .field label{
+    display:block;
+    font-size:12px;
+    font-weight:600;
+    text-transform:none;
+    color:var(--ink-soft);
+    margin-bottom:6px;
+  }
+  .checklist{
+    max-height:150px;
+    overflow-y:auto;
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:8px 10px;
+    background:var(--paper);
+  }
+  .checklist label{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    font-size:13px;
+    font-weight:400;
+    color:var(--ink);
+    padding:3px 0;
+    cursor:pointer;
+  }
+  .checklist input{ margin:0; }
+  select, .datefield{
+    width:100%;
+    padding:7px 9px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    font-family:inherit;
+    font-size:13.5px;
+    background:#fff;
+    color:var(--ink);
+  }
+  .date-row{ display:flex; gap:8px; }
+
+  .btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:var(--steel);
+    color:#fff;
+    border:none;
+    border-radius:4px;
+    padding:11px 20px;
+    font-size:14px;
+    font-weight:600;
+    font-family:inherit;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .btn:hover{ background:var(--steel-dark); }
+  .btn:disabled{ background:#a8a49b; cursor:not-allowed; }
+  .btn.secondary{
+    background:transparent;
+    color:var(--steel-dark);
+    border:1.5px solid var(--steel);
+  }
+  .btn.secondary:hover{ background:#eaf1f5; }
+
+  .actions-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:20px;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  .status-msg{ font-size:13px; color:var(--ink-soft); }
+  .status-msg.err{ color:var(--red); font-weight:500; }
+
+  /* summary strip */
+  .summary-strip{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:1px;
+    background:var(--line);
+    border:1px solid var(--line);
+    border-radius:6px;
+    overflow:hidden;
+    margin-bottom:24px;
+  }
+  @media(max-width:700px){ .summary-strip{grid-template-columns:1fr 1fr;} }
+  .summary-cell{
+    background:var(--card);
+    padding:18px 20px;
+  }
+  .summary-cell .num{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:26px;
+    font-weight:600;
+    color:var(--graphite);
+    display:block;
+  }
+  .summary-cell.warn .num{ color:var(--amber-dark); }
+  .summary-cell .lbl{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
+
+  h2.section-title{
+    font-size:17px;
+    font-weight:600;
+    margin:34px 0 4px 0;
+    padding-bottom:10px;
+    border-bottom:2px solid var(--graphite);
+  }
+  p.section-sub{
+    color:var(--ink-soft);
+    font-size:13.5px;
+    margin:6px 0 18px 0;
+  }
+
+  .model-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-left:4px solid var(--steel);
+    border-radius:4px;
+    margin-bottom:14px;
+    overflow:hidden;
+  }
+  .model-card.no-match{ border-left-color:var(--red); }
+  .model-card.fuzzy{ border-left-color:var(--amber); }
+
+  .model-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:14px;
+    padding:14px 18px;
+    cursor:pointer;
+    flex-wrap:wrap;
+  }
+  .model-head:hover{ background:#fafaf8; }
+  .model-title{ display:flex; flex-direction:column; gap:2px; }
+  .model-title .name{ font-weight:600; font-size:14.5px; }
+  .model-title .code{ font-size:12px; color:var(--ink-soft); }
+  .model-meta{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .pill{
+    font-size:11.5px;
+    font-weight:600;
+    padding:3px 9px;
+    border-radius:20px;
+    white-space:nowrap;
+  }
+  .pill.units{ background:#e7edf1; color:var(--steel-dark); }
+  .pill.match-exact{ background:#e6efe6; color:var(--green); }
+  .pill.match-fuzzy{ background:#f6ecdb; color:var(--amber-dark); }
+  .pill.match-none{ background:#f5e5e3; color:var(--red); }
+  .caret{ font-size:12px; color:var(--ink-soft); transition:transform .15s ease; }
+  .model-card.open .caret{ transform:rotate(90deg); }
+
+  .model-body{ display:none; padding:0 18px 16px 18px; }
+  .model-card.open .model-body{ display:block; }
+  .model-body .no-match-msg{
+    font-size:13px; color:var(--ink-soft); padding:10px 0 4px;
+  }
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  thead th{
+    text-align:left;
+    font-size:11.5px;
+    font-weight:600;
+    color:var(--ink-soft);
+    padding:8px 10px;
+    border-bottom:1.5px solid var(--line);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  thead th.sortable:hover{ color:var(--ink); }
+  tbody td{
+    padding:8px 10px;
+    border-bottom:1px solid #eeece5;
+    vertical-align:top;
+  }
+  tbody tr:hover{ background:#fafaf8; }
+  td.num, th.num{ text-align:right; font-family:'IBM Plex Mono',monospace; }
+
+  .consolidated-controls{
+    display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap;
+  }
+  .search-box{
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    font-family:inherit;
+    font-size:13.5px;
+    flex:1;
+    min-width:220px;
+  }
+  .cov-filter-select, .cov-filter-threshold{
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:4px;
+    font-family:inherit;
+    font-size:13.5px;
+    background:#fff;
+    color:var(--ink);
+  }
+  .cov-filter-threshold{ width:78px; }
+  .table-scroll{ overflow-x:auto; }
+
+  footer{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:12px;
+    padding:30px 16px 10px;
+  }
+
+  .pill.match-map{ background:#e2ecf5; color:var(--steel-dark); }
+
+  .history-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 4px; border-bottom:1px solid #eeece5; gap:12px; flex-wrap:wrap;
+  }
+  .history-item:last-child{ border-bottom:none; }
+  .history-item .hi-main{ font-size:13.5px; }
+  .history-item .hi-meta{ font-size:12px; color:var(--ink-soft); }
+  .btn.small{ padding:6px 12px; font-size:12.5px; }
+
+  .hidden{ display:none !important; }
+
+  .spinner{
+    display:inline-block; width:14px; height:14px;
+    border:2px solid rgba(255,255,255,.4);
+    border-top-color:#fff;
+    border-radius:50%;
+    animation:spin .7s linear infinite;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <p class="eyebrow">SITALIA — Produzione &amp; Ricambi</p>
+  <h1>Consiglio d'Ordine Ricambi</h1>
+  <p>Incrocia il piano di produzione con lo storico consumo ricambi per stimare cosa preparare in anticipo, per filiale e per modello.</p>
+</header>
+
+<main>
+
+  <section class="panel">
+    <h2>1 — Carica i file</h2>
+    <p class="sub">Nessun dato lascia il browser: l'elaborazione avviene interamente sul tuo computer. I due file principali restano in memoria (in questo browser) anche chiudendo e riaprendo la pagina — basta sostituirli quando servono dati aggiornati.</p>
+    <div class="upload-grid">
+      <div class="dropzone" id="dz-piano">
+        <span class="dz-label">Distributori in produzione</span>
+        <span class="dz-hint">File pianificazione con i fogli NUOVO / USATO (es. pianificazione_ivs.xlsx)</span>
+        <input type="file" id="file-piano" accept=".xlsx,.xls">
+        <div class="dz-status" id="status-piano"></div>
+        <div class="dz-actions">
+          <button type="button" id="btn-replace-piano">Sostituisci file</button>
+          <button type="button" id="btn-remove-piano">Rimuovi</button>
+        </div>
+      </div>
+      <div class="dropzone" id="dz-ricambi">
+        <span class="dz-label">Storico consumo ricambi</span>
+        <span class="dz-hint">Export consumo ricambi per commessa (es. esempio_file_ricambi.xlsx)</span>
+        <input type="file" id="file-ricambi" accept=".xlsx,.xls">
+        <div class="dz-status" id="status-ricambi"></div>
+        <div class="dz-actions">
+          <button type="button" id="btn-replace-ricambi">Sostituisci file</button>
+          <button type="button" id="btn-remove-ricambi">Rimuovi</button>
+        </div>
+      </div>
+    </div>
+    <div class="dropzone" id="dz-mapping" style="margin-top:18px;">
+      <span class="dz-label">Tabella di corrispondenza codici modello (opzionale, consigliata)</span>
+      <span class="dz-hint">Due colonne: codice modello pianificazione &rarr; codice modello ricambi. Se caricata, ha priorità sul match per somiglianza descrizione. Viene salvata su Firebase e riproposta automaticamente alle prossime aperture.</span>
+      <input type="file" id="file-mapping" accept=".xlsx,.xls,.csv">
+      <div class="dz-status" id="status-mapping"></div>
+    </div>
+    <div class="dropzone" id="dz-giacenza" style="margin-top:18px;">
+      <span class="dz-label">Giacenza attuale ricambi (opzionale)</span>
+      <span class="dz-hint">Due colonne: codice ricambio &rarr; quantità attualmente a magazzino. Serve a confrontare il fabbisogno stimato con quanto già disponibile. Viene salvata su Firebase e riproposta automaticamente alle prossime aperture.</span>
+      <input type="file" id="file-giacenza" accept=".xlsx,.xls,.csv">
+      <div class="dz-status" id="status-giacenza"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-filters" style="display:none;">
+    <h2>2 — Filtra la produzione da analizzare</h2>
+    <p class="sub">Il report stima i ricambi solo per le commesse che rientrano nei filtri.</p>
+    <div class="filters">
+      <div class="field">
+        <label>Foglio</label>
+        <div class="checklist" id="f-sheet"></div>
+      </div>
+      <div class="field">
+        <label>Filiale</label>
+        <div class="checklist" id="f-filiale"></div>
+      </div>
+      <div class="field">
+        <label>Stato / Azione</label>
+        <div class="checklist" id="f-stato"></div>
+      </div>
+      <div class="field">
+        <label>Data di produzione</label>
+        <div class="date-row">
+          <input type="date" class="datefield" id="f-date-from">
+          <input type="date" class="datefield" id="f-date-to">
+        </div>
+        <label style="margin-top:12px;">Soglia corrispondenza descrizione</label>
+        <select id="f-threshold">
+          <option value="0.55">Solo alta affidabilità</option>
+          <option value="0.35" selected>Standard (consigliata)</option>
+          <option value="0.2">Ampia (più modelli, meno precisa)</option>
+        </select>
+      </div>
+    </div>
+    <div class="actions-row">
+      <button class="btn" id="btn-generate">Genera report ricambi</button>
+      <span class="status-msg" id="gen-status"></span>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-history" style="display:none;">
+    <h2>Report salvati</h2>
+    <p class="sub">Report generati da qualsiasi postazione, salvati su Firebase.</p>
+    <div id="history-list"></div>
+  </section>
+
+  <div id="results"></div>
+
+  <div id="err-box"></div>
+  <div id="fb-status" class="status-msg" style="text-align:center;margin-top:10px;"></div>
+
+</main>
+
+<footer>Strumento interno SITALIA — stima basata sul consumo storico medio per unità prodotta; verificare sempre i modelli senza corrispondenza storica.</footer>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc, addDoc, collection,
+  query, orderBy, limit, getDocs, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+(function(){
+
+// ---------- Firebase config ----------
+// Stesso progetto usato dagli altri strumenti (report-ida.html, evasione-commesse.html)
+const firebaseConfig = {
+  apiKey: "AIzaSyDw6gFXrMA3hgShlk4S9XzYwBt2WGN6HKE",
+  authDomain: "presenze2026.firebaseapp.com",
+  projectId: "presenze2026",
+  storageBucket: "presenze2026.firebasestorage.app",
+  messagingSenderId: "1073603463859",
+  appId: "1:1073603463859:web:23a1a363bbaabdc5077ec6"
+};
+
+let db = null;
+let firebaseReady = false;
+try{
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+  firebaseReady = true;
+}catch(e){
+  console.error('Firebase init error', e);
+}
+
+function setFbStatus(msg, isErr){
+  const el = document.getElementById('fb-status');
+  el.textContent = msg;
+  el.classList.toggle('err', !!isErr);
+}
+if(!firebaseReady){
+  setFbStatus('Salvataggio condiviso su Firebase non configurato: aggiungi firebaseConfig nel file per attivarlo. Il tool funziona comunque solo in locale.');
+}
+
+// ---------- state ----------
+let pianoRows = [];      // normalized planning rows
+let ricambiIndex = null; // Map(codeUpper -> {descr, orders:Set, parts:Map})
+let ricambiCatalog = [];  // [{code, descr, tokens:Set}] for fuzzy search
+let mappingIndex = new Map(); // codModelloUpper -> ricambiCodeUpper (manual correspondence table)
+let giacenzaIndex = new Map(); // ricambiCodeUpper -> quantità attualmente a magazzino
+let lastReport = null;   // for export
+
+// Chiavi localStorage: i due file principali restano "in memoria" su questo browser finché
+// non vengono sostituiti o rimossi manualmente — non serve ricaricarli ad ogni apertura.
+const LS_KEY_PIANO = 'ricambi_piano_v1';
+const LS_KEY_RICAMBI = 'ricambi_storico_v1';
+
+// ---------- helpers ----------
+function normalize(str){
+  if(str === null || str === undefined) return '';
+  return String(str)
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9\s]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function tokenSet(str){
+  return new Set(normalize(str).split(' ').filter(t => t.length >= 2));
+}
+function jaccard(a,b){
+  if(a.size===0 || b.size===0) return 0;
+  let inter = 0;
+  for(const t of a) if(b.has(t)) inter++;
+  const union = a.size + b.size - inter;
+  return union === 0 ? 0 : inter/union;
+}
+function toDate(v){
+  if(!v) return null;
+  if(v instanceof Date) return isNaN(v) ? null : v;
+  return null;
+}
+function fmtDate(d){
+  if(!d) return '';
+  return d.toLocaleDateString('it-IT');
+}
+function excelSheetToRows(ws){
+  return XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:null});
+}
+function showError(msg){
+  document.getElementById('err-box').innerHTML =
+    '<div class="panel" style="border-color:var(--red);"><p class="status-msg err">'+msg+'</p></div>';
+}
+function clearError(){ document.getElementById('err-box').innerHTML=''; }
+
+// ---------- persistenza locale: piano produzione + storico ricambi ----------
+// I due file principali restano "in memoria" in questo browser (localStorage) finché non
+// vengono sostituiti o rimossi: non serve ricaricarli ogni volta che si riapre la pagina.
+function savePianoToLocal(fileName){
+  try{
+    const serializable = pianoRows.map(r=>({
+      ...r,
+      dataPrevConsegna: r.dataPrevConsegna ? r.dataPrevConsegna.toISOString() : null,
+      dataProduzione: r.dataProduzione ? r.dataProduzione.toISOString() : null
+    }));
+    localStorage.setItem(LS_KEY_PIANO, JSON.stringify({rows:serializable, fileName, savedAt:new Date().toISOString()}));
+  }catch(e){ console.warn('Impossibile salvare il file pianificazione in memoria locale:', e); }
+}
+function loadPianoFromLocal(){
+  try{
+    const raw = localStorage.getItem(LS_KEY_PIANO);
+    if(!raw) return false;
+    const data = JSON.parse(raw);
+    if(!data || !Array.isArray(data.rows) || !data.rows.length) return false;
+    pianoRows = data.rows.map(r=>({
+      ...r,
+      dataPrevConsegna: r.dataPrevConsegna ? new Date(r.dataPrevConsegna) : null,
+      dataProduzione: r.dataProduzione ? new Date(r.dataProduzione) : null
+    }));
+    document.getElementById('dz-piano').classList.add('filled');
+    const when = data.savedAt ? new Date(data.savedAt).toLocaleString('it-IT') : '';
+    document.getElementById('status-piano').textContent = pianoRows.length + ' commesse in memoria' + (data.fileName ? (' — "'+data.fileName+'"') : '') + (when ? (' (caricato il '+when+')') : '') + '.';
+    return true;
+  }catch(e){ console.warn('Impossibile ripristinare il file pianificazione salvato:', e); return false; }
+}
+function clearPianoLocal(){
+  pianoRows = [];
+  try{ localStorage.removeItem(LS_KEY_PIANO); }catch(e){}
+  document.getElementById('dz-piano').classList.remove('filled');
+  document.getElementById('status-piano').textContent = '';
+  document.getElementById('file-piano').value = '';
+  hideFiltersIfIncomplete();
+}
+
+function serializeRicambiIndex(index){
+  const arr = [];
+  index.forEach((val, key)=>{
+    arr.push({
+      key, code: val.code, descr: val.descr,
+      orders: [...val.orders],
+      parts: [...val.parts.entries()].map(([pk,p])=>({
+        key:pk, code:p.code, descr:p.descr, qty:p.qty, costSum:p.costSum, costWeight:p.costWeight, orders:[...p.orders]
+      }))
+    });
+  });
+  return arr;
+}
+function deserializeRicambiIndex(arr){
+  const index = new Map();
+  arr.forEach(entry=>{
+    const parts = new Map();
+    (entry.parts||[]).forEach(p=>{
+      parts.set(p.key, {code:p.code, descr:p.descr, qty:p.qty, costSum:p.costSum, costWeight:p.costWeight, orders:new Set(p.orders)});
+    });
+    index.set(entry.key, {code:entry.code, descr:entry.descr, orders:new Set(entry.orders), parts});
+  });
+  return index;
+}
+function saveRicambiToLocal(fileName){
+  try{
+    const arr = serializeRicambiIndex(ricambiIndex);
+    localStorage.setItem(LS_KEY_RICAMBI, JSON.stringify({entries:arr, fileName, savedAt:new Date().toISOString()}));
+  }catch(e){ console.warn('Impossibile salvare lo storico ricambi in memoria locale:', e); }
+}
+function loadRicambiFromLocal(){
+  try{
+    const raw = localStorage.getItem(LS_KEY_RICAMBI);
+    if(!raw) return false;
+    const data = JSON.parse(raw);
+    if(!data || !Array.isArray(data.entries) || !data.entries.length) return false;
+    ricambiIndex = deserializeRicambiIndex(data.entries);
+    ricambiCatalog = [];
+    ricambiIndex.forEach((val,key)=>{ ricambiCatalog.push({code:key, descr:val.descr, tokens:tokenSet(val.descr)}); });
+    document.getElementById('dz-ricambi').classList.add('filled');
+    const when = data.savedAt ? new Date(data.savedAt).toLocaleString('it-IT') : '';
+    document.getElementById('status-ricambi').textContent = ricambiIndex.size + ' modelli in archivio storico in memoria' + (data.fileName ? (' — "'+data.fileName+'"') : '') + (when ? (' (caricato il '+when+')') : '') + '.';
+    return true;
+  }catch(e){ console.warn('Impossibile ripristinare lo storico ricambi salvato:', e); return false; }
+}
+function clearRicambiLocal(){
+  ricambiIndex = null;
+  ricambiCatalog = [];
+  try{ localStorage.removeItem(LS_KEY_RICAMBI); }catch(e){}
+  document.getElementById('dz-ricambi').classList.remove('filled');
+  document.getElementById('status-ricambi').textContent = '';
+  document.getElementById('file-ricambi').value = '';
+  hideFiltersIfIncomplete();
+}
+function hideFiltersIfIncomplete(){
+  if(pianoRows.length === 0 || !ricambiIndex){
+    document.getElementById('panel-filters').style.display = 'none';
+  }
+}
+
+// ---------- giacenza attuale ricambi (Firebase — dataset compatto, come la tabella di mapping) ----------
+function applyGiacenza(pairs){
+  giacenzaIndex = new Map();
+  pairs.forEach(([code,qty])=>{ giacenzaIndex.set(String(code).trim().toUpperCase(), qty); });
+}
+function saveGiacenzaToFirebase(pairs){
+  if(!firebaseReady) return;
+  setDoc(doc(db, 'ricambi_giacenza', 'main'), {
+    pairs: pairs,
+    updatedAt: serverTimestamp()
+  }).then(()=>{
+    setFbStatus('Giacenza ricambi salvata su Firebase — sarà disponibile automaticamente alle prossime aperture.');
+  }).catch(err=>{
+    setFbStatus('Errore nel salvataggio della giacenza su Firebase: ' + err.message, true);
+  });
+}
+function loadGiacenzaFromFirebase(){
+  if(!firebaseReady) return;
+  getDoc(doc(db, 'ricambi_giacenza', 'main')).then(docSnap=>{
+    if(docSnap.exists()){
+      const data = docSnap.data();
+      const pairs = data.pairs || [];
+      applyGiacenza(pairs);
+      document.getElementById('dz-giacenza').classList.add('filled');
+      document.getElementById('status-giacenza').textContent = pairs.length + ' codici con giacenza caricati da Firebase (salvati in precedenza). Carica un file per sostituirli.';
+    }
+  }).catch(err=>{
+    console.error('Errore caricamento giacenza', err);
+  });
+}
+
+// ---------- file: pianificazione ----------
+document.getElementById('file-piano').addEventListener('change', function(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  clearError();
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array', cellDates:true});
+      pianoRows = [];
+      wb.SheetNames.forEach(sheetName=>{
+        const upper = sheetName.trim().toUpperCase();
+        if(upper !== 'NUOVO' && upper !== 'USATO') return;
+        const rows = excelSheetToRows(wb.Sheets[sheetName]);
+        for(let i=1;i<rows.length;i++){
+          const r = rows[i];
+          if(!r || !r[3]) continue; // needs Cod. modello
+          pianoRows.push({
+            sheet: upper,
+            commessa: r[0],
+            bdp: r[1],
+            codCliente: r[2],
+            codModello: String(r[3]).trim(),
+            descrModello: r[4] ? String(r[4]).trim() : '',
+            ragioneSociale: r[5],
+            filiale: r[6] ? String(r[6]).trim() : '(non indicata)',
+            dataPrevConsegna: toDate(r[7]),
+            dataProduzione: toDate(r[8]),
+            fase: r[9],
+            tecnico: r[10],
+            tassativo: r[11],
+            giacenza: r[12],
+            azione: r[13] ? String(r[13]).trim() : '(non indicata)',
+            stato: r[14] ? String(r[14]).trim() : '(non indicato)',
+            note: r[15]
+          });
+        }
+      });
+      if(pianoRows.length === 0){
+        showError('Nel file di pianificazione non ho trovato righe valide nei fogli NUOVO/USATO. Controlla i nomi dei fogli.');
+        return;
+      }
+      document.getElementById('dz-piano').classList.add('filled');
+      document.getElementById('status-piano').textContent = pianoRows.length + ' commesse lette da ' + wb.SheetNames.filter(s=>['NUOVO','USATO'].includes(s.toUpperCase())).join(' + ');
+      savePianoToLocal(f.name);
+      maybeShowFilters();
+    }catch(err){
+      showError('Errore nella lettura del file di pianificazione: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(f);
+});
+
+// ---------- file: ricambi ----------
+document.getElementById('file-ricambi').addEventListener('change', function(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  clearError();
+  document.getElementById('status-ricambi').textContent = 'Lettura in corso, può richiedere qualche secondo su file grandi...';
+  document.getElementById('dz-ricambi').classList.add('filled');
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array', cellDates:true});
+      const sheetName = wb.SheetNames[0];
+      const rows = excelSheetToRows(wb.Sheets[sheetName]);
+      const index = new Map(); // codeUpper -> {descr, orders:Set, parts:Map(partCodeUpper->{descr,qty,costSum,costWeight,orders:Set})}
+
+      for(let i=1;i<rows.length;i++){
+        const r = rows[i];
+        if(!r || !r[4]) continue; // needs model code
+        const modelCode = String(r[4]).trim();
+        const modelCodeKey = modelCode.toUpperCase();
+        const modelDescr = r[5] ? String(r[5]).trim() : '';
+        const protocollo = r[1] !== null && r[1] !== undefined ? String(r[1]).trim() : ('riga'+i);
+        const partCode = r[6] ? String(r[6]).trim() : null;
+        const partDescr = r[7] ? String(r[7]).trim() : '(senza descrizione)';
+        const qtyCons = (typeof r[9] === 'number') ? r[9] : (typeof r[8]==='number' ? r[8] : 0);
+        const unitCost = (typeof r[11] === 'number') ? Math.abs(r[11]) : 0;
+
+        if(!index.has(modelCodeKey)){
+          index.set(modelCodeKey, {code: modelCode, descr: modelDescr, orders: new Set(), parts: new Map()});
+        }
+        const modelEntry = index.get(modelCodeKey);
+        if(!modelEntry.descr && modelDescr) modelEntry.descr = modelDescr;
+        modelEntry.orders.add(protocollo);
+
+        if(!partCode || qtyCons <= 0) continue;
+        const partKey = partCode.toUpperCase();
+        if(!modelEntry.parts.has(partKey)){
+          modelEntry.parts.set(partKey, {code: partCode, descr: partDescr, qty:0, costSum:0, costWeight:0, orders:new Set()});
+        }
+        const p = modelEntry.parts.get(partKey);
+        p.qty += qtyCons;
+        if(unitCost > 0){ p.costSum += unitCost*qtyCons; p.costWeight += qtyCons; }
+        if(partDescr && partDescr !== '(senza descrizione)') p.descr = partDescr;
+        p.orders.add(protocollo);
+      }
+
+      ricambiIndex = index;
+      ricambiCatalog = [];
+      index.forEach((val, key)=>{
+        ricambiCatalog.push({code:key, descr: val.descr, tokens: tokenSet(val.descr)});
+      });
+
+      document.getElementById('status-ricambi').textContent =
+        (rows.length-1) + ' righe consumo lette — ' + index.size + ' modelli distinti in archivio storico.';
+      saveRicambiToLocal(f.name);
+      maybeShowFilters();
+    }catch(err){
+      showError('Errore nella lettura del file ricambi: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(f);
+});
+
+// ---------- file: tabella di corrispondenza codici ----------
+document.getElementById('file-mapping').addEventListener('change', function(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  clearError();
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array'});
+      const rows = excelSheetToRows(wb.Sheets[wb.SheetNames[0]]);
+      const pairs = [];
+      for(let i=0;i<rows.length;i++){
+        const r = rows[i];
+        if(!r || !r[0] || !r[1]) continue;
+        const a = String(r[0]).trim();
+        const b = String(r[1]).trim();
+        if(a.toUpperCase()==='COD MODELLO' || a.toUpperCase()==='COD. MODELLO') continue; // skip header if present
+        pairs.push([a, b]);
+      }
+      applyMapping(pairs);
+      document.getElementById('dz-mapping').classList.add('filled');
+      document.getElementById('status-mapping').textContent = pairs.length + ' corrispondenze caricate dal file.';
+      if(firebaseReady) saveMappingToFirebase(pairs);
+    }catch(err){
+      showError('Errore nella lettura della tabella di corrispondenza: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(f);
+});
+
+function applyMapping(pairs){
+  mappingIndex = new Map();
+  pairs.forEach(([a,b])=>{
+    mappingIndex.set(a.toUpperCase(), b.toUpperCase());
+  });
+}
+
+// ---------- file: giacenza attuale ricambi ----------
+document.getElementById('file-giacenza').addEventListener('change', function(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  clearError();
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array'});
+      const rows = excelSheetToRows(wb.Sheets[wb.SheetNames[0]]);
+      const pairs = [];
+      for(let i=0;i<rows.length;i++){
+        const r = rows[i];
+        if(!r || !r[0]) continue;
+        const code = String(r[0]).trim();
+        if(!code) continue;
+        if(code.toUpperCase()==='CODICE RICAMBIO' || code.toUpperCase()==='COD RICAMBIO' || code.toUpperCase()==='COD. RICAMBIO') continue; // skip header se presente
+        const qtyRaw = r[1];
+        if(qtyRaw === null || qtyRaw === undefined || qtyRaw === '') continue;
+        const qty = typeof qtyRaw === 'number' ? qtyRaw : parseFloat(String(qtyRaw).replace(',','.'));
+        if(isNaN(qty)) continue;
+        pairs.push([code, qty]);
+      }
+      if(pairs.length === 0){
+        showError('Nel file giacenza non ho trovato righe valide. Servono due colonne: codice ricambio e quantità a magazzino.');
+        return;
+      }
+      applyGiacenza(pairs);
+      document.getElementById('dz-giacenza').classList.add('filled');
+      document.getElementById('status-giacenza').textContent = pairs.length + ' codici con giacenza caricati dal file.';
+      saveGiacenzaToFirebase(pairs);
+      if(lastReport) generateReport(); // se un report è già a schermo, lo ricalcola per mostrare subito la giacenza aggiornata
+    }catch(err){
+      showError('Errore nella lettura del file giacenza: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(f);
+});
+
+function saveMappingToFirebase(pairs){
+  setDoc(doc(db, 'ricambi_mapping', 'main'), {
+    pairs: pairs,
+    updatedAt: serverTimestamp()
+  }).then(()=>{
+    setFbStatus('Tabella di corrispondenza salvata su Firebase — sarà disponibile automaticamente alle prossime aperture.');
+  }).catch(err=>{
+    setFbStatus('Errore nel salvataggio della tabella di corrispondenza su Firebase: ' + err.message, true);
+  });
+}
+
+function loadMappingFromFirebase(){
+  if(!firebaseReady) return;
+  getDoc(doc(db, 'ricambi_mapping', 'main')).then(docSnap=>{
+    if(docSnap.exists()){
+      const data = docSnap.data();
+      const pairs = data.pairs || [];
+      applyMapping(pairs);
+      document.getElementById('dz-mapping').classList.add('filled');
+      document.getElementById('status-mapping').textContent = pairs.length + ' corrispondenze caricate da Firebase (salvate in precedenza). Carica un file per sostituirle.';
+    }
+  }).catch(err=>{
+    console.error('Errore caricamento tabella corrispondenza', err);
+  });
+}
+
+function maybeShowFilters(){
+  if(pianoRows.length === 0 || !ricambiIndex) return;
+  buildFilters();
+  document.getElementById('panel-filters').style.display = '';
+  // Genera subito il report con tutti i filtri di default (tutto selezionato) — l'utente può
+  // comunque affinare i filtri e cliccare di nuovo "Genera report ricambi" per ricalcolare.
+  // Lo scroll ai risultati avviene dentro renderResults(), non serve scrollare qui ai filtri.
+  generateReport();
+}
+
+// ---------- filters UI ----------
+function buildFilters(){
+  const sheets = [...new Set(pianoRows.map(r=>r.sheet))].sort();
+  const filiali = [...new Set(pianoRows.map(r=>r.filiale))].sort((a,b)=>a.localeCompare(b,'it'));
+  const stati = [...new Set(pianoRows.map(r=>r.stato + ' — ' + r.azione))].sort((a,b)=>a.localeCompare(b,'it'));
+
+  document.getElementById('f-sheet').innerHTML = sheets.map(s=>
+    '<label><input type="checkbox" class="chk-sheet" value="'+s+'" checked> '+s+'</label>'
+  ).join('');
+
+  document.getElementById('f-filiale').innerHTML = filiali.map(f=>
+    '<label><input type="checkbox" class="chk-filiale" value="'+escAttr(f)+'" checked> '+escHtml(f)+'</label>'
+  ).join('');
+
+  document.getElementById('f-stato').innerHTML = stati.map(s=>
+    '<label><input type="checkbox" class="chk-stato" value="'+escAttr(s)+'" checked> '+escHtml(s)+'</label>'
+  ).join('');
+}
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s){ return String(s).replace(/"/g,'&quot;'); }
+
+// ---------- matching ----------
+function findMatch(codModello, descrModello, threshold){
+  const codeKey = codModello.toUpperCase();
+
+  if(mappingIndex.has(codeKey)){
+    const mapped = mappingIndex.get(codeKey);
+    if(ricambiIndex.has(mapped)){
+      return {type:'mapping', code:mapped, score:1};
+    }
+    // mapped code present in table but not found in the parts history file
+    return {type:'mapping-missing', code:mapped, score:0};
+  }
+
+  if(ricambiIndex.has(codeKey)){
+    return {type:'exact', code:codeKey, score:1};
+  }
+  const targetTokens = tokenSet(descrModello);
+  if(targetTokens.size === 0) return {type:'none'};
+  let best = null, bestScore = 0;
+  for(const cand of ricambiCatalog){
+    const score = jaccard(targetTokens, cand.tokens);
+    if(score > bestScore){ bestScore = score; best = cand; }
+  }
+  if(best && bestScore >= threshold){
+    return {type:'fuzzy', code:best.code, score:bestScore};
+  }
+  return {type:'none'};
+}
+
+// ---------- report generation ----------
+document.getElementById('btn-generate').addEventListener('click', generateReport);
+
+function generateReport(){
+  clearError();
+  const btn = document.getElementById('btn-generate');
+  const statusEl = document.getElementById('gen-status');
+  btn.disabled = true;
+  statusEl.textContent = 'Elaborazione...';
+
+  setTimeout(()=>{
+    try{
+      const sheetsOn = new Set([...document.querySelectorAll('.chk-sheet:checked')].map(c=>c.value));
+      const filialiOn = new Set([...document.querySelectorAll('.chk-filiale:checked')].map(c=>c.value));
+      const statiOn = new Set([...document.querySelectorAll('.chk-stato:checked')].map(c=>c.value));
+      const dateFrom = document.getElementById('f-date-from').value ? new Date(document.getElementById('f-date-from').value) : null;
+      const dateTo = document.getElementById('f-date-to').value ? new Date(document.getElementById('f-date-to').value) : null;
+      const threshold = parseFloat(document.getElementById('f-threshold').value);
+
+      const filtered = pianoRows.filter(r=>{
+        if(!sheetsOn.has(r.sheet)) return false;
+        if(!filialiOn.has(r.filiale)) return false;
+        if(!statiOn.has(r.stato + ' — ' + r.azione)) return false;
+        if(dateFrom && (!r.dataProduzione || r.dataProduzione < dateFrom)) return false;
+        if(dateTo && (!r.dataProduzione || r.dataProduzione > dateTo)) return false;
+        return true;
+      });
+
+      if(filtered.length === 0){
+        statusEl.textContent = '';
+        statusEl.classList.add('err');
+        statusEl.textContent = 'Nessuna commessa corrisponde ai filtri selezionati.';
+        btn.disabled = false;
+        return;
+      }
+      statusEl.classList.remove('err');
+
+      // group by model
+      const groups = new Map(); // codModello -> {descr, count, commesse:Set, filiali:Set}
+      filtered.forEach(r=>{
+        const key = r.codModello;
+        if(!groups.has(key)) groups.set(key, {codModello:key, descr:r.descrModello, count:0, commesse:new Set(), filiali:new Set()});
+        const g = groups.get(key);
+        g.count++;
+        g.commesse.add(r.commessa);
+        g.filiali.add(r.filiale);
+      });
+
+      const modelReports = [];
+      const consolidated = new Map(); // partKey -> {code, descr, estQty, estCost, models:Set}
+
+      groups.forEach(g=>{
+        const match = findMatch(g.codModello, g.descr, threshold);
+        const modelReport = {codModello:g.codModello, descr:g.descr, count:g.count, filiali:[...g.filiali], match, parts:[]};
+
+        if(match.type === 'exact' || match.type === 'fuzzy' || match.type === 'mapping'){
+          const modelData = ricambiIndex.get(match.code);
+          const ordersCount = modelData.orders.size || 1;
+          modelData.parts.forEach(p=>{
+            const avgPerUnit = p.qty / ordersCount;
+            const estQty = avgPerUnit * g.count;
+            if(estQty <= 0) return;
+            const avgCost = p.costWeight > 0 ? (p.costSum / p.costWeight) : 0;
+            modelReport.parts.push({
+              code:p.code, descr:p.descr, avgPerUnit, estQty, avgCost, estCost: avgCost*estQty,
+              histQty:p.qty, histOrders:p.orders.size
+            });
+
+            const ck = p.code.toUpperCase();
+            if(!consolidated.has(ck)) consolidated.set(ck, {code:p.code, descr:p.descr, estQty:0, estCost:0, models:new Set()});
+            const c = consolidated.get(ck);
+            c.estQty += estQty;
+            c.estCost += avgCost*estQty;
+            c.models.add(g.codModello);
+          });
+          modelReport.parts.sort((a,b)=>b.estQty - a.estQty);
+        }
+        modelReports.push(modelReport);
+      });
+
+      modelReports.sort((a,b)=> b.count - a.count);
+
+      // Confronta il fabbisogno stimato con la giacenza attuale (se caricata)
+      consolidated.forEach(c=>{
+        const ck = c.code.toUpperCase();
+        c.giacenza = giacenzaIndex.has(ck) ? giacenzaIndex.get(ck) : null;
+        c.copertura = c.giacenza === null ? null : (c.giacenza - c.estQty);
+      });
+
+      const filterSummary = 'Foglio: '+[...sheetsOn].join('+')+' · Filiali: '+(filialiOn.size===[...new Set(pianoRows.map(r=>r.filiale))].length ? 'tutte' : filialiOn.size)+' · Stato: '+(statiOn.size===[...new Set(pianoRows.map(r=>r.stato+' — '+r.azione))].length ? 'tutti' : statiOn.size)+(dateFrom||dateTo ? ' · Periodo: '+(dateFrom?fmtDate(dateFrom):'...')+' → '+(dateTo?fmtDate(dateTo):'...') : '');
+
+      lastReport = {modelReports, consolidated, filteredCount: filtered.length, threshold, filterSummary};
+      renderResults(lastReport);
+      statusEl.textContent = 'Report generato — ' + filtered.length + ' commesse su ' + modelReports.length + ' modelli.';
+    }catch(err){
+      showError('Errore durante la generazione del report: ' + err.message);
+    }finally{
+      btn.disabled = false;
+    }
+  }, 30);
+}
+
+// ---------- rendering ----------
+function renderResults(report){
+  const mappingCount = report.modelReports.filter(m=>m.match.type==='mapping').length;
+  const exactCount = report.modelReports.filter(m=>m.match.type==='exact').length;
+  const fuzzyCount = report.modelReports.filter(m=>m.match.type==='fuzzy').length;
+  const noneCount = report.modelReports.filter(m=>m.match.type==='none' || m.match.type==='mapping-missing').length;
+
+  let html = '';
+
+  html += '<div class="summary-strip">';
+  html += summaryCell(report.filteredCount, 'commesse analizzate');
+  html += summaryCell(report.modelReports.length, 'modelli distinti');
+  html += summaryCell(mappingCount+exactCount+fuzzyCount, 'modelli con storico ('+mappingCount+' da tabella, '+exactCount+' esatto, '+fuzzyCount+' per somiglianza)');
+  html += summaryCell(noneCount, 'modelli senza storico', noneCount>0);
+  if(giacenzaIndex.size > 0){
+    const shortageCount = [...report.consolidated.values()].filter(c=>c.copertura !== null && c.copertura < 0).length;
+    html += summaryCell(shortageCount, 'ricambi in carenza (giacenza insufficiente)', shortageCount>0);
+  }
+  html += '</div>';
+
+  html += '<div class="actions-row" style="margin-top:14px;">'+
+    '<button class="btn" id="btn-export-top">Esporta report in Excel</button>'+
+    '</div>';
+
+  html += '<h2 class="section-title">Lista consolidata ricambi</h2>';
+  html += '<p class="section-sub">Totale stimato per ciascun ricambio, sommato su tutti i modelli in produzione filtrati — utile per acquisti/magazzino.</p>';
+  html += renderConsolidated(report.consolidated);
+
+  document.getElementById('results').innerHTML = html;
+
+  // wire up interactivity
+  wireConsolidatedTable();
+  document.getElementById('btn-export').addEventListener('click', exportExcel);
+  const btnExportTop = document.getElementById('btn-export-top');
+  if(btnExportTop) btnExportTop.addEventListener('click', exportExcel);
+  const btnSaveFb = document.getElementById('btn-save-fb');
+  if(btnSaveFb) btnSaveFb.addEventListener('click', saveReportToFirebase);
+
+  document.getElementById('results').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function summaryCell(num, label, warn){
+  return '<div class="summary-cell'+(warn?' warn':'')+'"><span class="num">'+num+'</span><span class="lbl">'+label+'</span></div>';
+}
+
+function matchPill(match){
+  if(match.type === 'mapping') return '<span class="pill match-map">Storico — da tabella di corrispondenza</span>';
+  if(match.type === 'mapping-missing') return '<span class="pill match-none">Codice mappato assente dallo storico</span>';
+  if(match.type === 'exact') return '<span class="pill match-exact">Storico — corrispondenza esatta</span>';
+  if(match.type === 'fuzzy') return '<span class="pill match-fuzzy">Storico — per somiglianza ('+Math.round(match.score*100)+'%)</span>';
+  return '<span class="pill match-none">Nessuno storico trovato</span>';
+}
+
+function renderModelCard(m, idx){
+  const noMatch = m.match.type === 'none' || m.match.type === 'mapping-missing';
+  const cardClass = noMatch ? 'no-match' : (m.match.type === 'fuzzy' ? 'fuzzy' : '');
+  let body = '';
+  if(m.match.type === 'mapping-missing'){
+    body = '<p class="no-match-msg">La tabella di corrispondenza indica il codice <span class="code-cell">'+escHtml(m.match.code)+'</span> ma non è presente nello storico ricambi caricato: controlla il codice o aggiorna la tabella.</p>';
+  }else if(m.match.type === 'none'){
+    body = '<p class="no-match-msg">Nessun modello con consumo storico simile è stato trovato. Verifica manualmente i ricambi necessari per questo modello, oppure abbassa la soglia di corrispondenza nei filtri.</p>';
+  }else{
+    if(m.parts.length === 0){
+      body = '<p class="no-match-msg">Trovato uno storico per questo modello ma senza righe di consumo ricambi valide.</p>';
+    }else{
+      body += '<div class="table-scroll"><table><thead><tr>'+
+        '<th>Codice</th><th>Descrizione ricambio</th>'+
+        '<th class="num">Consumo storico</th><th class="num">Ordini storici</th>'+
+        '<th class="num">Media / unità</th><th class="num">Stima necessaria</th><th class="num">Costo stimato</th>'+
+        '</tr></thead><tbody>';
+      m.parts.slice(0,25).forEach(p=>{
+        body += '<tr><td class="code-cell">'+escHtml(p.code)+'</td><td>'+escHtml(p.descr)+'</td>'+
+          '<td class="num">'+fmtNum(p.histQty)+'</td>'+
+          '<td class="num">'+p.histOrders+'</td>'+
+          '<td class="num">'+p.avgPerUnit.toFixed(2)+'</td>'+
+          '<td class="num">'+Math.ceil(p.estQty)+'</td>'+
+          '<td class="num">'+(p.avgCost>0 ? '&euro; '+p.estCost.toFixed(0) : '—')+'</td></tr>';
+      });
+      body += '</tbody></table></div>';
+      if(m.parts.length > 25){
+        body += '<p class="no-match-msg">Mostrati i primi 25 ricambi per stima decrescente su '+m.parts.length+' totali. Lista completa nell\'export Excel.</p>';
+      }
+    }
+  }
+
+  return '<div class="model-card '+cardClass+'">'+
+    '<div class="model-head">'+
+      '<div class="model-title"><span class="name">'+escHtml(m.descr || '(senza descrizione)')+'</span>'+
+      '<span class="code">'+escHtml(m.codModello)+' &middot; '+m.filiali.length+' filiale/i</span></div>'+
+      '<div class="model-meta">'+
+        '<span class="pill units">'+m.count+' unità in produzione</span>'+
+        matchPill(m.match)+
+        '<span class="caret">&#9656;</span>'+
+      '</div>'+
+    '</div>'+
+    '<div class="model-body">'+body+'</div>'+
+  '</div>';
+}
+
+function fmtNum(n){
+  return (Math.round(n*100)/100).toLocaleString('it-IT');
+}
+
+function renderConsolidated(consolidatedMap){
+  const rows = [...consolidatedMap.values()].sort((a,b)=>b.estQty - a.estQty);
+  const hasGiacenza = rows.some(r=>r.giacenza !== null && r.giacenza !== undefined);
+  let html = '<div class="panel">';
+  html += '<div class="consolidated-controls">';
+  html += '<input type="text" class="search-box" id="consolidated-search" placeholder="Cerca per codice o descrizione ricambio...">';
+  if(hasGiacenza){
+    html += '<select class="cov-filter-select" id="consolidated-coverage-filter">'+
+      '<option value="all">Copertura: tutti</option>'+
+      '<option value="shortage">Solo in carenza (copertura negativa)</option>'+
+      '<option value="low">Copertura sotto una soglia</option>'+
+      '<option value="nodata">Senza giacenza caricata</option>'+
+      '</select>';
+    html += '<input type="number" class="cov-filter-threshold" id="consolidated-coverage-threshold" value="5" style="display:none;" title="Mostra i codici con copertura sotto questo valore">';
+  }
+  html += '<button class="btn secondary" id="btn-export">Esporta report in Excel</button>';
+  if(firebaseReady){
+    html += '<button class="btn" id="btn-save-fb">Salva report su Firebase</button>';
+  }
+  html += '</div>';
+  html += '<div class="table-scroll"><table id="consolidated-table"><thead><tr>'+
+    '<th class="sortable" data-key="code">Codice</th>'+
+    '<th class="sortable" data-key="descr">Descrizione</th>'+
+    '<th class="num sortable" data-key="estQty">Quantità stimata</th>'+
+    '<th class="num sortable" data-key="giacenza">Giacenza attuale</th>'+
+    '<th class="num sortable" data-key="copertura">Copertura</th>'+
+    '<th class="num sortable" data-key="estCost">Costo stimato</th>'+
+    '<th class="num sortable" data-key="models">Modelli coinvolti</th>'+
+    '</tr></thead><tbody>';
+  rows.forEach(r=>{
+    const giacenzaTxt = (r.giacenza===null||r.giacenza===undefined)
+      ? '<span class="cov-badge na">n/d</span>'
+      : Math.round(r.giacenza);
+    let coperturaTxt;
+    if(r.copertura===null||r.copertura===undefined){
+      coperturaTxt = '<span class="cov-badge na">n/d</span>';
+    }else{
+      const val = Math.round(r.copertura);
+      coperturaTxt = val>=0
+        ? '<span class="cov-badge ok">+'+val+'</span>'
+        : '<span class="cov-badge bad">'+val+'</span>';
+    }
+    const coperturaAttr = (r.copertura===null||r.copertura===undefined) ? 'na' : r.copertura;
+    html += '<tr data-search="'+escAttr((r.code+' '+r.descr).toLowerCase())+'" data-copertura="'+coperturaAttr+'">'+
+      '<td class="code-cell">'+escHtml(r.code)+'</td>'+
+      '<td>'+escHtml(r.descr)+'</td>'+
+      '<td class="num">'+Math.ceil(r.estQty)+'</td>'+
+      '<td class="num">'+giacenzaTxt+'</td>'+
+      '<td class="num">'+coperturaTxt+'</td>'+
+      '<td class="num">'+(r.estCost>0 ? '&euro; '+r.estCost.toFixed(0) : '—')+'</td>'+
+      '<td class="num">'+r.models.size+'</td>'+
+    '</tr>';
+  });
+  html += '</tbody></table></div></div>';
+  return html;
+}
+
+function wireConsolidatedTable(){
+  const search = document.getElementById('consolidated-search');
+  const covFilter = document.getElementById('consolidated-coverage-filter');
+  const covThreshold = document.getElementById('consolidated-coverage-threshold');
+
+  // Applica insieme il filtro testuale (ricerca) e quello di copertura — una riga resta
+  // visibile solo se soddisfa ENTRAMBI, non uno dei due.
+  function applyFilters(){
+    const q = search ? search.value.toLowerCase().trim() : '';
+    const mode = covFilter ? covFilter.value : 'all';
+    const soglia = covThreshold ? (parseFloat(covThreshold.value) || 0) : 0;
+    document.querySelectorAll('#consolidated-table tbody tr').forEach(tr=>{
+      const matchTesto = !q || tr.dataset.search.includes(q);
+      let matchCopertura = true;
+      if(mode !== 'all'){
+        const raw = tr.dataset.copertura;
+        if(mode === 'nodata'){
+          matchCopertura = (raw === 'na');
+        }else if(raw === 'na'){
+          matchCopertura = false; // "in carenza" e "sotto soglia" richiedono comunque un dato di giacenza
+        }else{
+          const val = parseFloat(raw);
+          if(mode === 'shortage') matchCopertura = val < 0;
+          else if(mode === 'low') matchCopertura = val < soglia;
+        }
+      }
+      tr.style.display = (matchTesto && matchCopertura) ? '' : 'none';
+    });
+  }
+
+  if(search) search.addEventListener('input', applyFilters);
+  if(covFilter){
+    covFilter.addEventListener('change', ()=>{
+      if(covThreshold) covThreshold.style.display = (covFilter.value === 'low') ? '' : 'none';
+      applyFilters();
+    });
+  }
+  if(covThreshold) covThreshold.addEventListener('input', applyFilters);
+
+  document.querySelectorAll('#consolidated-table th.sortable').forEach(th=>{
+    let asc = false;
+    th.addEventListener('click', ()=>{
+      asc = !asc;
+      const key = th.dataset.key;
+      const tbody = document.querySelector('#consolidated-table tbody');
+      const rows = [...tbody.querySelectorAll('tr')];
+      const idx = [...th.parentElement.children].indexOf(th);
+      rows.sort((a,b)=>{
+        const av = a.children[idx].textContent.replace(/[^\d.,-]/g,'').replace(',','.');
+        const bv = b.children[idx].textContent.replace(/[^\d.,-]/g,'').replace(',','.');
+        const an = parseFloat(av), bn = parseFloat(bv);
+        let cmp;
+        if(!isNaN(an) && !isNaN(bn)) cmp = an - bn;
+        else cmp = a.children[idx].textContent.localeCompare(b.children[idx].textContent, 'it');
+        return asc ? cmp : -cmp;
+      });
+      rows.forEach(r=>tbody.appendChild(r));
+    });
+  });
+}
+
+// ---------- export ----------
+function exportExcel(){
+  if(!lastReport) return;
+  const wb = XLSX.utils.book_new();
+
+  const consolidatedRows = [['Codice ricambio','Descrizione','Quantità stimata','Giacenza attuale','Copertura','Costo stimato (EUR)','Modelli coinvolti']];
+  [...lastReport.consolidated.values()].sort((a,b)=>b.estQty-a.estQty).forEach(r=>{
+    consolidatedRows.push([
+      r.code, r.descr, Math.ceil(r.estQty),
+      (r.giacenza===null||r.giacenza===undefined) ? '' : Math.round(r.giacenza),
+      (r.copertura===null||r.copertura===undefined) ? '' : Math.round(r.copertura),
+      Math.round(r.estCost), [...r.models].join(', ')
+    ]);
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(consolidatedRows);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Lista consolidata');
+
+  const detailRows = [['Cod. modello','Descr. modello','Unità in produzione','Tipo corrispondenza','Codice ricambio','Descrizione ricambio','Consumo storico','Ordini storici','Media per unità','Quantità stimata','Costo stimato (EUR)']];
+  lastReport.modelReports.forEach(m=>{
+    if(m.parts.length === 0){
+      detailRows.push([m.codModello, m.descr, m.count, m.match.type, '', '', '', '', '', '', '']);
+    }else{
+      m.parts.forEach(p=>{
+        detailRows.push([m.codModello, m.descr, m.count, m.match.type, p.code, p.descr, p.histQty, p.histOrders, Math.round(p.avgPerUnit*100)/100, Math.ceil(p.estQty), Math.round(p.estCost)]);
+      });
+    }
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(detailRows);
+  XLSX.utils.book_append_sheet(wb, ws2, 'Dettaglio per modello');
+
+  const dateStr = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, 'controllo-ricambi-produzione_'+dateStr+'.xlsx');
+}
+
+// ---------- Firebase: salvataggio e cronologia report ----------
+function saveReportToFirebase(){
+  if(!firebaseReady || !lastReport) return;
+  const btn = document.getElementById('btn-save-fb');
+  btn.disabled = true;
+  btn.textContent = 'Salvataggio...';
+
+  const consolidatedArr = [...lastReport.consolidated.values()]
+    .sort((a,b)=>b.estQty-a.estQty)
+    .map(r=>({code:r.code, descr:r.descr, estQty:Math.ceil(r.estQty), estCost:Math.round(r.estCost), models:[...r.models],
+      giacenza: (r.giacenza===null||r.giacenza===undefined) ? null : Math.round(r.giacenza),
+      copertura: (r.copertura===null||r.copertura===undefined) ? null : Math.round(r.copertura)}));
+
+  const modelReportsArr = lastReport.modelReports.map(m=>({
+    codModello:m.codModello, descr:m.descr, count:m.count, filiali:m.filiali, match:m.match,
+    parts: m.parts.slice(0,30).map(p=>({code:p.code, descr:p.descr, avgPerUnit:Math.round(p.avgPerUnit*100)/100, estQty:Math.ceil(p.estQty), estCost:Math.round(p.estCost), histQty:p.histQty, histOrders:p.histOrders}))
+  }));
+
+  addDoc(collection(db, 'controllo_ricambi_reports'), {
+    createdAt: serverTimestamp(),
+    filterSummary: lastReport.filterSummary,
+    filteredCount: lastReport.filteredCount,
+    threshold: lastReport.threshold,
+    modelReports: modelReportsArr,
+    consolidated: consolidatedArr
+  }).then(()=>{
+    btn.textContent = 'Salvato ✓';
+    setFbStatus('Report salvato su Firebase — visibile a chiunque apra questo strumento.');
+    loadHistory();
+    setTimeout(()=>{ btn.textContent='Salva report su Firebase'; btn.disabled=false; }, 1800);
+  }).catch(err=>{
+    btn.textContent = 'Salva report su Firebase';
+    btn.disabled = false;
+    setFbStatus('Errore nel salvataggio del report su Firebase: ' + err.message, true);
+  });
+}
+
+function loadHistory(){
+  if(!firebaseReady) return;
+  const q = query(collection(db, 'controllo_ricambi_reports'), orderBy('createdAt','desc'), limit(15));
+  getDocs(q).then(snap=>{
+    if(snap.empty){
+      document.getElementById('panel-history').style.display = 'none';
+      return;
+    }
+    let html = '';
+    snap.forEach(docSnap=>{
+      const d = docSnap.data();
+      const when = d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toLocaleString('it-IT') : '';
+      html += '<div class="history-item">'+
+        '<div><div class="hi-main">'+escHtml(d.filterSummary||'Report')+'</div>'+
+        '<div class="hi-meta">'+when+' · '+d.filteredCount+' commesse · '+(d.modelReports?d.modelReports.length:0)+' modelli</div></div>'+
+        '<button class="btn secondary small" data-doc="'+docSnap.id+'">Visualizza</button>'+
+      '</div>';
+    });
+    document.getElementById('history-list').innerHTML = html;
+    document.getElementById('panel-history').style.display = '';
+    document.querySelectorAll('#history-list [data-doc]').forEach(btn=>{
+      btn.addEventListener('click', ()=> loadSavedReport(btn.dataset.doc));
+    });
+  }).catch(err=>{
+    console.error('Errore caricamento cronologia', err);
+  });
+}
+
+function loadSavedReport(docId){
+  getDoc(doc(db, 'controllo_ricambi_reports', docId)).then(docSnap=>{
+    if(!docSnap.exists()) return;
+    const d = docSnap.data();
+    const consolidatedMap = new Map();
+    (d.consolidated||[]).forEach(r=>{
+      consolidatedMap.set(r.code.toUpperCase(), {code:r.code, descr:r.descr, estQty:r.estQty, estCost:r.estCost, models:new Set(r.models),
+        giacenza: (r.giacenza===null||r.giacenza===undefined) ? null : r.giacenza,
+        copertura: (r.copertura===null||r.copertura===undefined) ? null : r.copertura});
+    });
+    const modelReports = (d.modelReports||[]).map(m=>({...m}));
+    lastReport = {modelReports, consolidated: consolidatedMap, filteredCount: d.filteredCount, threshold: d.threshold, filterSummary: d.filterSummary};
+    renderResults(lastReport);
+  }).catch(err=>{
+    showError('Errore nel caricamento del report salvato: ' + err.message);
+  });
+}
+
+// ---------- init ----------
+document.getElementById('btn-replace-piano').addEventListener('click', ()=> document.getElementById('file-piano').click());
+document.getElementById('btn-remove-piano').addEventListener('click', clearPianoLocal);
+document.getElementById('btn-replace-ricambi').addEventListener('click', ()=> document.getElementById('file-ricambi').click());
+document.getElementById('btn-remove-ricambi').addEventListener('click', clearRicambiLocal);
+
+loadMappingFromFirebase();
+loadGiacenzaFromFirebase();
+loadHistory();
+// Ripristina piano+ricambi salvati in questo browser (se presenti) e, se completi, mostra
+// subito i filtri — senza richiedere un nuovo upload.
+loadPianoFromLocal();
+loadRicambiFromLocal();
+maybeShowFilters();
+
+})();
+</script>
+</body>
+</html>
