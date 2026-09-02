@@ -950,9 +950,15 @@ function aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati){
   }));
   const tecniciSenzaLinea=tecnici.filter(t=>!t.lineaAssegnata);
 
+  // Se NESSUNO in questo periodo ha una mansione registrata (nemmeno chi non è in una linea),
+  // molto probabilmente questi mesi sono stati salvati PRIMA che mansione/linea venissero
+  // aggiunte allo storico — segnaliamolo, invece di far sparire la sezione Linee in silenzio.
+  const nessunaMansioneRegistrata = tecniciTutti.length>0 && !tecniciTutti.some(t=>t.mansione);
+
   return {
     filiale, periodoLabel:labP, anno, mesi,
     dataGenerazione:new Date().toISOString(),
+    nessunaMansioneRegistrata,
     tecnici:tecniciSenzaLinea,
     fantasmi,
     linee
@@ -1096,6 +1102,7 @@ function renderClassificaTeam(dati){
   }).join("");
 
   contentEl.innerHTML=`
+    ${(!linee.length && dati.nessunaMansioneRegistrata)?`<div class="al a-warn" style="margin-bottom:1rem">ℹ️ Per questo periodo non risultano dati di mansione/linea nello storico — probabilmente questi mesi sono stati salvati prima di questo aggiornamento. Rigenera il report e clicca di nuovo "💾 Salva mese nello storico" per i mesi che ti interessano: da quel momento le card Linea torneranno a comparire anche qui.</div>`:""}
     ${linee.length?`<div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">🏭 Linee di produzione</div><div class="classifica-grid" style="margin-bottom:1.5rem">${cardsLinee}</div><div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">👥 Collaudatori</div>`:""}
     ${fantasmiVisibili.length?`<div class="al a-danger" style="margin-bottom:1rem">🚨 <b>${fantasmiVisibili.length} tecnico/i</b> con TUTTE le lavorazioni a tempo zero — non compaiono nel report perché non hanno nessun dato analizzabile, ma sono segnalati qui sotto in evidenza.</div>`:""}
     <div class="classifica-grid">${cardsFantasmi}${cardsNormali}</div>
