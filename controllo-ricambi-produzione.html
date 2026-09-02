@@ -41,6 +41,25 @@
     color:#f2f1ec;
     padding:28px clamp(16px,4vw,48px);
     border-bottom:3px solid var(--steel);
+    position:relative;
+  }
+  header.top .home-link{
+    position:absolute;
+    top:24px;
+    right:clamp(16px,4vw,48px);
+    font-size:12.5px;
+    font-weight:600;
+    color:#c7c4bb;
+    text-decoration:none;
+    border:1px solid #565a52;
+    border-radius:6px;
+    padding:6px 12px;
+    transition:all .15s;
+  }
+  header.top .home-link:hover{
+    color:#f2f1ec;
+    border-color:#9db6c6;
+    background:rgba(157,182,198,.1);
   }
   header.top .eyebrow{
     color:#9db6c6;
@@ -403,6 +422,7 @@
 <body>
 
 <header class="top">
+  <a href="index.html" class="home-link">🏠 Home</a>
   <p class="eyebrow">SITALIA — Produzione &amp; Ricambi</p>
   <h1>Consiglio d'Ordine Ricambi</h1>
   <p>Incrocia il piano di produzione con lo storico consumo ricambi per stimare cosa preparare in anticipo, per filiale e per modello.</p>
