@@ -977,17 +977,19 @@ window.renderFabbisognoPersonale=function(){
   const oreTotaliMontaggio = righeDaVerificare.filter(r=>rigaUsato(r)&&r.trovato).reduce((s,r)=>s+(r.tMontaggio||0),0);
   const oreTotaliCollaudo = righeDaVerificare.filter(r=>r.trovato).reduce((s,r)=>s+(r.tCollaudo||0),0);
 
-  // Orizzonte su cui sommare la capacità: il periodo Da→A se impostato, altrimenti da oggi fino
-  // a "oggi + N giorni lavorativi" (l'obiettivo di evasione).
+  // Orizzonte su cui sommare la capacità: DEVE coincidere con l'arco di tempo entro cui le
+  // commesse considerate devono davvero essere pronte — altrimenti si confronta il fabbisogno
+  // di TUTTE le commesse con la capacità di una finestra troppo corta (o troppo lunga), dando
+  // un margine fuorviante. Usiamo quindi: se c'è un filtro Da→A esplicito, quello; altrimenti
+  // da oggi fino alla scadenza (Data Produzione + N giorni lavorativi) PIÙ LONTANA tra tutte le
+  // commesse verificate.
   let orizzonteInizio, orizzonteFine;
   if(filtroDa||filtroA){
     orizzonteInizio=filtroDa||oggiStr;
     orizzonteFine=filtroA||filtroDa;
   }else{
     orizzonteInizio=oggiStr;
-    let d=oggiStr, rimasti=N-1;
-    while(rimasti>0){ d=prossimoGiornoDS(d); if(isLav(d)) rimasti--; }
-    orizzonteFine=d;
+    orizzonteFine=valutazioni.reduce((max,v)=>v.target>max?v.target:max, oggiStr);
   }
   const giorniOrizzonte=Math.max(1, contaGiorniLavorativi(orizzonteInizio, orizzonteFine));
 
@@ -1055,7 +1057,8 @@ window.renderFabbisognoPersonale=function(){
     <div id="stimaPersoneRisultato" style="margin-top:.6rem"></div>
     `:""}
     <div class="al a-info" style="margin-top:.65rem;margin-bottom:0;font-size:.7rem">
-      "Monte ore effettivo" = somma, giorno per giorno, della capacità reale nel calendario presenze (dipendenti assegnati meno le assenze pianificate) nell'orizzonte indicato sopra — non una stima teorica. "Persone necessarie" copre lo scarto tra ore richieste ed effettive. Il dettaglio sotto usa invece la simulazione reale a coda condivisa (la stessa di "Calcola Evasione"), che tiene conto di tutte le commesse caricate insieme, non solo di quelle nel periodo che stai verificando.
+      "Monte ore effettivo" = somma, giorno per giorno, della capacità reale nel calendario presenze (dipendenti assegnati meno le assenze pianificate) nell'orizzonte indicato sopra — non una stima teorica. "Persone necessarie" copre lo scarto tra ore richieste ed effettive.<br><br>
+      <b>Attenzione</b>: qui sopra vedi il bilancio in ORE su tutto l'orizzonte — può risultare "sufficiente" anche quando alcune commesse specifiche sono comunque in ritardo. Questo succede perché la capacità giornaliera è comunque un tetto fisso (persone × 8h quel giorno): se molte commesse hanno scadenze ravvicinate a inizio periodo, la coda si accumula lì anche se più avanti nel periodo ci sarebbe "ore libere" più che sufficienti a compensare. Il dettaglio sotto usa la simulazione reale giorno-per-giorno (la stessa di "Calcola Evasione", con le priorità impostate) e ti dice esattamente quali commesse ne risentono.
     </div>
   `;
 };
