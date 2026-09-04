@@ -968,14 +968,77 @@ window.renderFabbisognoPersonale=function(){
   const nInTempo=nTotali-inRitardo.length;
   const ritardoMax=inRitardo.reduce((m,v)=>Math.max(m,v.ritardoGiorni),0);
 
+  // ── RIEPILOGO PER REPARTO: monte ore richiesto vs monte ore effettivo dal calendario ──
+  // Il "monte ore effettivo" non è una stima teorica (persone × 8h): è la somma, giorno per
+  // giorno, della capacità REALE del calendario presenze nell'orizzonte di riferimento — quindi
+  // tiene già conto di ferie/permessi/malattie pianificati in quei giorni.
+  const rigaUsato=r=>r.tipo!=="nuovo";
+  const oreTotaliPrima = righeDaVerificare.filter(rigaUsato).length * oreFisePrimaFase;
+  const oreTotaliMontaggio = righeDaVerificare.filter(r=>rigaUsato(r)&&r.trovato).reduce((s,r)=>s+(r.tMontaggio||0),0);
+  const oreTotaliCollaudo = righeDaVerificare.filter(r=>r.trovato).reduce((s,r)=>s+(r.tCollaudo||0),0);
+
+  // Orizzonte su cui sommare la capacità: il periodo Da→A se impostato, altrimenti da oggi fino
+  // a "oggi + N giorni lavorativi" (l'obiettivo di evasione).
+  let orizzonteInizio, orizzonteFine;
+  if(filtroDa||filtroA){
+    orizzonteInizio=filtroDa||oggiStr;
+    orizzonteFine=filtroA||filtroDa;
+  }else{
+    orizzonteInizio=oggiStr;
+    let d=oggiStr, rimasti=N-1;
+    while(rimasti>0){ d=prossimoGiornoDS(d); if(isLav(d)) rimasti--; }
+    orizzonteFine=d;
+  }
+  const giorniOrizzonte=Math.max(1, contaGiorniLavorativi(orizzonteInizio, orizzonteFine));
+
+  function monteOreEffettivo(repartoKey){
+    let tot=0, d=orizzonteInizio; const cacheLocale={};
+    while(d<=orizzonteFine){ tot+=capacitaRepartoGiorno(dipendenti, entries, repartoKey, d, cacheLocale); d=prossimoGiornoDS(d); }
+    return tot;
+  }
+
+  function calcolaRigaReparto(nome, repartoKey, oreRichieste){
+    const oreEffettive=monteOreEffettivo(repartoKey);
+    const attuali=dipendenti.filter(d=>d.reparto===repartoKey).length;
+    const differenza=oreEffettive-oreRichieste;
+    const personeMancanti=differenza<0 ? Math.ceil(Math.abs(differenza)/(giorniOrizzonte*8)) : 0;
+    return {nome, repartoKey, oreRichieste, oreEffettive, attuali, necessarie:attuali+personeMancanti, differenza};
+  }
+  const righeReparto=[
+    calcolaRigaReparto("Prima Fase", repPrima, oreTotaliPrima),
+    calcolaRigaReparto("Montaggio", repMontaggio, oreTotaliMontaggio),
+    calcolaRigaReparto("Collaudo", repCollaudo, oreTotaliCollaudo)
+  ];
+  const tabellaReparto=`
+    <div class="al a-info" style="font-size:.7rem">📅 Ore effettive calcolate su calendario dal <b>${orizzonteInizio}</b> al <b>${orizzonteFine}</b> (${giorniOrizzonte} giorni lavorativi).</div>
+    <div style="overflow-x:auto;margin-top:.5rem"><table><thead><tr>
+      <th>Reparto</th><th style="text-align:right">Monte ore richiesto</th><th style="text-align:right">Monte ore effettivo (calendario)</th>
+      <th style="text-align:right">Persone attuali</th><th style="text-align:right">Persone necessarie</th><th style="text-align:right">Copertura</th>
+    </tr></thead><tbody>
+      ${righeReparto.map(r=>{
+        const covColor = r.differenza>=0 ? '#059669' : '#dc2626';
+        const covTxt = r.differenza>=0 ? `OK, +${Math.round(r.differenza)}h di margine` : `mancano ${Math.round(Math.abs(r.differenza))}h`;
+        return `<tr>
+          <td>${r.nome} <small style="color:var(--text2)">(${r.repartoKey})</small></td>
+          <td style="text-align:right;font-family:monospace">${Math.round(r.oreRichieste)}h</td>
+          <td style="text-align:right;font-family:monospace">${Math.round(r.oreEffettive)}h</td>
+          <td style="text-align:right">${r.attuali}</td>
+          <td style="text-align:right;font-weight:700">${r.necessarie}</td>
+          <td style="text-align:right;color:${covColor};font-weight:700">${covTxt}</td>
+        </tr>`;
+      }).join("")}
+    </tbody></table></div>`;
+
   const esitoGenerale = inRitardo.length===0
-    ? `<div class="al a-ok" style="margin-bottom:.7rem">✅ <b>Il personale attuale è sufficiente</b>: tutte le ${nTotali} commesse verificate rispetterebbero la scadenza di ${N} giorni lavorativi dalla loro Data Produzione.</div>`
-    : `<div class="al a-danger" style="margin-bottom:.7rem">⚠️ <b>Il personale attuale NON è sufficiente</b>: ${inRitardo.length} commessa/e su ${nTotali} risultano in ritardo rispetto alla scadenza di ${N} giorni lavorativi (fino a un massimo di ${ritardoMax} giorni lavorativi di ritardo).</div>`;
+    ? `<div class="al a-ok" style="margin:.7rem 0">✅ <b>Il personale attuale è sufficiente</b>: tutte le ${nTotali} commesse verificate rispetterebbero la scadenza di ${N} giorni lavorativi dalla loro Data Produzione.</div>`
+    : `<div class="al a-danger" style="margin:.7rem 0">⚠️ <b>Il personale attuale NON è sufficiente</b>: ${inRitardo.length} commessa/e su ${nTotali} risultano in ritardo rispetto alla scadenza di ${N} giorni lavorativi (fino a un massimo di ${ritardoMax} giorni lavorativi di ritardo).</div>`;
 
   el.innerHTML=`
     <div class="al a-info" style="font-size:.7rem">📅 Verificato su: <b>${nTotali}</b> commesse — ${etichettaPeriodo}${nonTrovate?` (${nonTrovate} escluse: modello non trovato nei Tempi Tecnici)`:""}.</div>
+    ${tabellaReparto}
     ${esitoGenerale}
     ${inRitardo.length?`
+    <div style="font-size:.78rem;font-weight:700;margin-bottom:.4rem">Dettaglio commesse in ritardo</div>
     <div style="overflow-x:auto"><table><thead><tr>
       <th>Commessa</th><th>Modello</th><th>Data Prod.</th><th>Scadenza (${N}gg lav.)</th><th>Pronta il (reale)</th><th style="text-align:right">Ritardo</th>
     </tr></thead><tbody>
@@ -992,7 +1055,7 @@ window.renderFabbisognoPersonale=function(){
     <div id="stimaPersoneRisultato" style="margin-top:.6rem"></div>
     `:""}
     <div class="al a-info" style="margin-top:.65rem;margin-bottom:0;font-size:.7rem">
-      Basato sulla simulazione reale (la stessa di "Calcola Evasione"): la capacità del personale è condivisa giorno per giorno da TUTTE le commesse caricate, non solo da quelle nel periodo che stai verificando — per questo un ritardo può dipendere anche da lavorazioni con Data Produzione precedente o successiva a quelle mostrate qui.
+      "Monte ore effettivo" = somma, giorno per giorno, della capacità reale nel calendario presenze (dipendenti assegnati meno le assenze pianificate) nell'orizzonte indicato sopra — non una stima teorica. "Persone necessarie" copre lo scarto tra ore richieste ed effettive. Il dettaglio sotto usa invece la simulazione reale a coda condivisa (la stessa di "Calcola Evasione"), che tiene conto di tutte le commesse caricate insieme, non solo di quelle nel periodo che stai verificando.
     </div>
   `;
 };
