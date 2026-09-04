@@ -199,6 +199,21 @@ td{padding:.5rem .6rem;border-bottom:1px solid #f1f5f9}
 <div id="commesseListaCard" style="display:none"></div>
 <div id="commesseRisultati"></div>
 
+<div class="card">
+  <div class="ct">📐 Calcolo Fabbisogno Personale per Reparto</div>
+  <div class="al a-info" style="font-size:.7rem;margin-bottom:.6rem">
+    Se l'obiettivo è che ogni distributore sia pronto entro N giorni lavorativi dalla sua Data Produzione, questa sezione stima quante persone per reparto servirebbero — in media, sul totale delle commesse caricate — per starci. Richiede di aver già generato un calcolo di evasione qui sopra.
+  </div>
+  <div class="fr" style="align-items:flex-end">
+    <div class="fg">
+      <label class="lbl">Giorni lavorativi per l'evasione (N)</label>
+      <input type="number" id="fabbisognoGiorni" value="14" min="1" step="1" style="width:110px">
+    </div>
+    <button class="btn bp" onclick="renderFabbisognoPersonale()">▶ Calcola fabbisogno</button>
+  </div>
+  <div id="fabbisognoRisultato" style="margin-top:.7rem"></div>
+</div>
+
 </div>
 
 <script type="module">
@@ -440,6 +455,7 @@ async function ripristinaTempiDaMemoria(){
 
 // ── EVASIONE COMMESSE ────────────────────────────────────────────────
 let rawCommesse=[], commesseCaricate=[]; // righe grezze / righe mappate {commessa,offerta,protocollo,modello,dataProd,priorita}
+let ultimoContestoCommesse=null; // {righeConTempi, oreFisePrimaFase, dipendenti, repPrima, repMontaggio, repCollaudo, filiale} — riusato dal calcolo fabbisogno personale, senza dover ripetere fetch e ricerca tempi
 let ultimoRisultatoCommesse=null; // {righe,compPrima,compMontaggio,compCollaudo,filiale} — per la ricerca senza dover ricalcolare
 
 // Le commesse e il risultato calcolato sono salvati su Firestore PER FILIALE (un documento per
@@ -763,9 +779,11 @@ window.calcolaEvasioneCommesse=async function(){
 
   ultimoRisultatoCommesse={righe:righeConTempi, compPrima, compMontaggio, compCollaudo, filiale, modelliMancanti:[...modelliMancanti]};
   await salvaRisultatoCommesseInMemoria();
+  ultimoContestoCommesse={righeConTempi, oreFisePrimaFase, dipendenti, repPrima, repMontaggio, repCollaudo, filiale};
   renderRisultatiCommesse(righeConTempi, compPrima, compMontaggio, compCollaudo, filiale, modelliMancanti);
   // Antepone il pannello diagnostico ai risultati (calcolato più sopra, prima della simulazione)
   document.getElementById("commesseRisultati").innerHTML = diagnosticaHtml + document.getElementById("commesseRisultati").innerHTML;
+  renderFabbisognoPersonale(); // mostra/aggiorna la sezione di dimensionamento team, se già aperta
 };
 
 window.cercaEvasioneCommessa=function(){
@@ -802,6 +820,69 @@ window.cercaEvasioneCommessa=function(){
       </div>
     </div>`;
   }).join("");
+};
+
+// ── FABBISOGNO PERSONALE PER REPARTO ─────────────────────────────────
+// Calcolo "a ritroso": dato un obiettivo di N giorni lavorativi dalla Data Produzione, quante
+// persone per reparto servirebbero (in media, sul totale delle commesse caricate) per starci.
+window.renderFabbisognoPersonale=function(){
+  const el=document.getElementById("fabbisognoRisultato");
+  if(!ultimoContestoCommesse){
+    el.innerHTML=`<div class="al a-info" style="margin-bottom:0">Genera prima un calcolo di evasione (bottone "▶ Calcola Evasione" più sopra) — serve per conoscere le ore di lavoro necessarie per ciascuna commessa.</div>`;
+    return;
+  }
+  const N=parseInt(document.getElementById("fabbisognoGiorni").value)||0;
+  if(N<=0){
+    el.innerHTML=`<div class="al a-danger" style="margin-bottom:0">Inserisci un numero di giorni lavorativi maggiore di zero.</div>`;
+    return;
+  }
+
+  const {righeConTempi, oreFisePrimaFase, dipendenti, repPrima, repMontaggio, repCollaudo}=ultimoContestoCommesse;
+  const rigaUsato=r=>r.tipo!=="nuovo";
+
+  // Prima Fase e Montaggio riguardano solo le commesse USATO; Collaudo riguarda tutte (USATO +
+  // NUOVO). Le righe senza tempi trovati nel file Tempi Tecnici sono escluse dal Montaggio/
+  // Collaudo (non essendoci un dato affidabile), ma la Prima Fase è comunque fissa e non ne
+  // dipende, quindi conta tutte le righe USATO indipendentemente da questo.
+  const oreTotaliPrima = righeConTempi.filter(rigaUsato).length * oreFisePrimaFase;
+  const oreTotaliMontaggio = righeConTempi.filter(r=>rigaUsato(r)&&r.trovato).reduce((s,r)=>s+(r.tMontaggio||0),0);
+  const oreTotaliCollaudo = righeConTempi.filter(r=>r.trovato).reduce((s,r)=>s+(r.tCollaudo||0),0);
+
+  function calcolaStadio(nomeStadio, repartoKey, oreTotali){
+    const oreGiorno = oreTotali / N;
+    const persone = oreGiorno>0 ? Math.ceil(oreGiorno/8) : 0;
+    const attuali = dipendenti.filter(d=>d.reparto===repartoKey).length;
+    return {nomeStadio, repartoKey, oreTotali, oreGiorno, persone, attuali, diff:attuali-persone};
+  }
+
+  const righeCalc=[
+    calcolaStadio("Prima Fase", repPrima, oreTotaliPrima),
+    calcolaStadio("Montaggio", repMontaggio, oreTotaliMontaggio),
+    calcolaStadio("Collaudo", repCollaudo, oreTotaliCollaudo)
+  ];
+
+  el.innerHTML=`
+    <div style="overflow-x:auto"><table><thead><tr>
+      <th>Reparto</th><th style="text-align:right">Ore totali necessarie</th><th style="text-align:right">Ore/giorno richieste</th>
+      <th style="text-align:right">Persone necessarie</th><th style="text-align:right">Persone attuali</th><th style="text-align:right">Copertura</th>
+    </tr></thead><tbody>
+      ${righeCalc.map(r=>{
+        const covColor = r.diff>=0 ? '#059669' : '#dc2626';
+        const covTxt = r.diff>=0 ? ('OK, +'+r.diff+' di margine') : ('mancano '+Math.abs(r.diff));
+        return `<tr>
+          <td>${r.nomeStadio} <small style="color:var(--text2)">(${r.repartoKey})</small></td>
+          <td style="text-align:right;font-family:monospace">${Math.round(r.oreTotali)}h</td>
+          <td style="text-align:right;font-family:monospace">${r.oreGiorno.toFixed(1)}h</td>
+          <td style="text-align:right;font-weight:700">${r.persone}</td>
+          <td style="text-align:right">${r.attuali}</td>
+          <td style="text-align:right;color:${covColor};font-weight:700">${covTxt}</td>
+        </tr>`;
+      }).join("")}
+    </tbody></table></div>
+    <div class="al a-info" style="margin-top:.65rem;margin-bottom:0;font-size:.7rem">
+      Calcolo: ore totali necessarie nel reparto (su tutte le ${righeConTempi.length} commesse caricate) &divide; ${N} giorni lavorativi &divide; 8 ore/persona/giorno, arrotondato per eccesso. È una <b>media sull'intero carico attuale</b> — non tiene conto di eventuali picchi concentrati in pochi giorni se le date produzione sono molto vicine tra loro.
+    </div>
+  `;
 };
 
 function renderRisultatiCommesse(righe, compPrima, compMontaggio, compCollaudo, filiale, modelliMancanti){
