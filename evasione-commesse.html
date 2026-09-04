@@ -222,6 +222,7 @@ td{padding:.5rem .6rem;border-bottom:1px solid #f1f5f9}
     <div class="fg">
       <label class="lbl">Giorni lavorativi per l'evasione (N)</label>
       <input type="number" id="fabbisognoGiorni" value="14" min="1" step="1" style="width:110px">
+      <small style="color:#9ca3af;font-size:.62rem;display:block;margin-top:.15rem">Le scorciatoie sopra (Un giorno, Questa settimana, ecc.) impostano automaticamente anche questo campo in modo coerente — puoi comunque modificarlo a mano.</small>
     </div>
     <button class="btn bp" onclick="renderFabbisognoPersonale()">▶ Calcola fabbisogno</button>
   </div>
@@ -883,19 +884,25 @@ window.cercaEvasioneCommessa=function(){
 window.impostaPeriodoFabbisogno=function(tipo){
   const oggi=new Date();
   const daEl=document.getElementById("fabbisognoDa"), aEl=document.getElementById("fabbisognoA");
-  if(tipo==="tutto"){ daEl.value=""; aEl.value=""; return; }
-  if(tipo==="giorno"){ const ds=localDS(oggi); daEl.value=ds; aEl.value=ds; return; }
+  const nEl=document.getElementById("fabbisognoGiorni");
+  // Il campo N ("giorni lavorativi per l'evasione") viene allineato automaticamente alla
+  // finestra di date scelta, così il calcolo resta coerente: se guardi "un giorno", il
+  // fabbisogno viene calcolato per essere evaso in quel solo giorno, non in un N slegato.
+  if(tipo==="tutto"){ daEl.value=""; aEl.value=""; return; } // N resta quello che l'utente ha scelto manualmente
+  if(tipo==="giorno"){ const ds=localDS(oggi); daEl.value=ds; aEl.value=ds; nEl.value=1; return; }
   if(tipo==="settimana"){
     const giornoSett=(oggi.getDay()+6)%7; // 0=lunedì
     const lunedi=new Date(oggi); lunedi.setDate(oggi.getDate()-giornoSett);
     const domenica=new Date(lunedi); domenica.setDate(lunedi.getDate()+6);
     daEl.value=localDS(lunedi); aEl.value=localDS(domenica);
+    nEl.value=Math.max(1, contaGiorniLavorativi(localDS(lunedi), localDS(domenica)));
     return;
   }
   if(tipo==="mese"){
     const primo=new Date(oggi.getFullYear(),oggi.getMonth(),1);
     const ultimo=new Date(oggi.getFullYear(),oggi.getMonth()+1,0);
     daEl.value=localDS(primo); aEl.value=localDS(ultimo);
+    nEl.value=Math.max(1, contaGiorniLavorativi(localDS(primo), localDS(ultimo)));
     return;
   }
 };
@@ -978,8 +985,8 @@ window.renderFabbisognoPersonale=function(){
   `;
 };
 
-// ── ANALISI SINGOLA COMMESSA ──────────────────────────────────────────
-let commessaSelezionataAnalisi=null;
+// ── ANALISI SINGOLA COMMESSA (una commessa può comprendere più protocolli/distributori) ──
+let righeSelezionateAnalisi=[];
 
 window.cercaCommessaSingola=function(){
   const query=(document.getElementById("analisiCommessaInput").value||"").trim().toLowerCase();
@@ -993,30 +1000,30 @@ window.cercaCommessaSingola=function(){
     (r.protocollo||"").toLowerCase().includes(query)
   );
   if(!trovate.length){ selEl.innerHTML=`<div class="al a-info" style="margin-bottom:0">Nessuna commessa trovata per "<b>${query}</b>".</div>`; return; }
-  if(trovate.length===1){ selezionaCommessaAnalisi(trovate[0].id); return; }
-  window._trovateAnalisiCommessa=trovate;
-  selEl.innerHTML=`<div class="al a-info" style="font-size:.72rem;margin-bottom:.5rem">Trovate ${trovate.length} commesse — scegli quella giusta:</div>
-    <div style="display:flex;flex-direction:column;gap:.4rem">
-      ${trovate.map(r=>`<button type="button" style="text-align:left;font-size:.78rem;padding:.5rem .7rem;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer" onclick="selezionaCommessaAnalisi('${r.id}')">
-        <b>${r.commessa}</b> — ${r.modello} <span class="badge ${r.tipo==='nuovo'?'b-warn':'b-ok'}" style="font-size:.6rem">${r.tipo.toUpperCase()}</span> · Data Prod. ${r.dataProd||"—"}
-      </button>`).join("")}
-    </div>`;
+  selezionaGruppoCommesse(trovate);
 };
 
-window.selezionaCommessaAnalisi=function(id){
-  const riga=ultimoContestoCommesse.righeConTempi.find(r=>r.id===id);
-  if(!riga)return;
-  commessaSelezionataAnalisi=riga;
+// Mostra TUTTI i protocolli trovati (una commessa spesso ne comprende più di uno) insieme,
+// senza obbligare a sceglierne uno solo — il calcolo viene fatto per ciascuno.
+function selezionaGruppoCommesse(righe){
+  righeSelezionateAnalisi=righe;
   const selEl=document.getElementById("analisiCommessaSelezione");
   selEl.innerHTML=`<div class="al a-ok" style="margin-bottom:.6rem">
-      Selezionata: <b>Commessa ${riga.commessa}</b> — Modello <b>${riga.modello}</b> <span class="badge ${riga.tipo==='nuovo'?'b-warn':'b-ok'}" style="font-size:.6rem">${riga.tipo.toUpperCase()}</span> · Data Produzione: <b>${riga.dataProd||"—"}</b>
+      Trovati <b>${righe.length}</b> protocollo/i: ${righe.map(r=>`${r.protocollo||r.commessa} (${r.modello})`).join(", ")}
     </div>
     <div class="fr" style="align-items:flex-end">
+      <div class="fg">
+        <label class="lbl">Modalità di calcolo</label>
+        <select id="analisiModalitaCalcolo">
+          <option value="prioritaria">🚀 Prioritaria (corsia preferenziale, ignora la coda)</option>
+          <option value="coda">📋 Nella coda reale (con tutte le altre commesse caricate)</option>
+        </select>
+      </div>
       <div class="fg">
         <label class="lbl">Scadenza da rispettare</label>
         <select id="analisiModalitaScadenza" onchange="document.getElementById('analisiNGiorniWrap').style.display=this.value==='ngiorni'?'':'none';document.getElementById('analisiDataConsegnaWrap').style.display=this.value==='dataconsegna'?'':'none';">
           <option value="ngiorni">N giorni lavorativi dalla Data Produzione</option>
-          <option value="dataconsegna">Una data di consegna specifica</option>
+          <option value="dataconsegna">Una data di consegna specifica (unica per tutti i protocolli)</option>
         </select>
       </div>
       <div class="fg" id="analisiNGiorniWrap">
@@ -1030,11 +1037,10 @@ window.selezionaCommessaAnalisi=function(id){
       <button class="btn bp" onclick="calcolaAnalisiCommessa()">▶ Calcola</button>
     </div>`;
   document.getElementById("analisiCommessaRisultato").innerHTML="";
-};
+}
 
-// Simula la pipeline (Prima Fase → Montaggio → Collaudo) per UNA SOLA commessa, usando la
-// capacità REALE attuale del personale — non condivisa con le altre commesse in coda: mostra
-// quanto impiegherebbe questa specifica commessa se lavorata "in corsia preferenziale".
+// Simula la pipeline (Prima Fase → Montaggio → Collaudo) per UNA SOLA riga, usando la capacità
+// REALE attuale del personale — NON condivisa con le altre commesse in coda (modalità "prioritaria").
 function simulaPipelineSingola(riga, contesto, readyIniziale){
   const {oreFisePrimaFase, dipendenti, entries, repPrima, repMontaggio, repCollaudo}=contesto;
   const cache={};
@@ -1060,69 +1066,93 @@ function simulaPipelineSingola(riga, contesto, readyIniziale){
 }
 
 window.calcolaAnalisiCommessa=function(){
-  const riga=commessaSelezionataAnalisi;
   const el=document.getElementById("analisiCommessaRisultato");
-  if(!riga)return;
-  if(!riga.trovato){
-    el.innerHTML=`<div class="al a-danger" style="margin-bottom:0">Il modello "${riga.modello}" non è stato trovato nel file Tempi Tecnici: impossibile stimare i tempi di Montaggio/Collaudo per questa commessa.</div>`;
+  if(!righeSelezionateAnalisi.length)return;
+
+  const modalitaCalcolo=document.getElementById("analisiModalitaCalcolo").value;
+  const usaCoda = modalitaCalcolo==="coda";
+  if(usaCoda && !ultimoRisultatoCommesse){
+    el.innerHTML=`<div class="al a-danger" style="margin-bottom:0">Per la modalità "Nella coda reale" serve prima un calcolo di evasione completo (bottone "▶ Calcola Evasione" più sopra).</div>`;
     return;
   }
 
   const oggiStr=localDS(new Date());
-  const readyIniziale=(riga.dataProd && riga.dataProd>oggiStr) ? riga.dataProd : oggiStr;
-  const {compPrima, compMontaggio, compCollaudo}=simulaPipelineSingola(riga, ultimoContestoCommesse, readyIniziale);
-
-  if(!compCollaudo){
-    el.innerHTML=`<div class="al a-danger" style="margin-bottom:0">Non riesco a calcolare una data di completamento per questa commessa (probabile reparto senza personale assegnato — controlla la diagnostica del calcolo di evasione più sopra).</div>`;
-    return;
+  const modalitaScadenza=document.getElementById("analisiModalitaScadenza").value;
+  let targetUnico=null; // usato solo in modalità "data di consegna" (stessa scadenza per tutti)
+  if(modalitaScadenza==="dataconsegna"){
+    targetUnico=document.getElementById("analisiDataConsegna").value;
+    if(!targetUnico){ el.innerHTML=`<div class="al a-danger" style="margin-bottom:0">Inserisci una data di consegna.</div>`; return; }
   }
-
-  const giorniNecessari=contaGiorniLavorativi(readyIniziale, compCollaudo);
-
-  // Scadenza target, in uno dei due modi possibili
-  const modalita=document.getElementById("analisiModalitaScadenza").value;
-  let target=null, etichettaTarget="";
-  if(modalita==="ngiorni"){
-    const N=parseInt(document.getElementById("analisiNGiorni").value)||0;
+  let N=null;
+  if(modalitaScadenza==="ngiorni"){
+    N=parseInt(document.getElementById("analisiNGiorni").value)||0;
     if(N<=0){ el.innerHTML=`<div class="al a-danger" style="margin-bottom:0">Inserisci un numero di giorni lavorativi maggiore di zero.</div>`; return; }
-    // Aggiunge N-1 giorni lavorativi alla Data Produzione (il giorno di inizio conta come uno dei N)
-    let d=riga.dataProd||oggiStr, rimasti=N-1;
-    while(rimasti>0){ d=prossimoGiornoDS(d); if(isLav(d)) rimasti--; }
-    target=d;
-    etichettaTarget=`${N} giorni lavorativi dalla Data Produzione (${target})`;
-  }else{
-    const dataConsegna=document.getElementById("analisiDataConsegna").value;
-    if(!dataConsegna){ el.innerHTML=`<div class="al a-danger" style="margin-bottom:0">Inserisci una data di consegna.</div>`; return; }
-    target=dataConsegna;
-    etichettaTarget=`data di consegna richiesta (${target})`;
   }
 
-  const inTempo = compCollaudo<=target;
-  let bodyExtra="";
-  if(!inTempo){
-    const ultimoUtile=ultimoGiornoLavorativoEntro(target);
-    const dataLimiteInizio = giorniNecessari>1 ? indietroDiGiorniLavorativi(ultimoUtile, giorniNecessari-1) : ultimoUtile;
-    bodyExtra=`<div class="al a-danger" style="margin-top:.65rem;margin-bottom:0">
-      ⚠️ Con il personale attuale <b>non arriveresti in tempo</b>: sarebbe pronta solo il <b>${compCollaudo}</b>, oltre la ${etichettaTarget}.<br>
-      Per rispettarla, con questa capacità avrebbe dovuto essere avviata (o va avviata, se la data è futura) entro il <b>${dataLimiteInizio}</b>.
-    </div>`;
-  }else{
-    bodyExtra=`<div class="al a-ok" style="margin-top:.65rem;margin-bottom:0">✅ Con il personale attuale sarebbe pronta il <b>${compCollaudo}</b>, in tempo rispetto alla ${etichettaTarget}.</div>`;
-  }
+  const righeCalcolate=righeSelezionateAnalisi.map(riga=>{
+    if(!riga.trovato){
+      return {riga, errore:`Modello "${riga.modello}" non trovato nel file Tempi Tecnici.`};
+    }
+    const readyIniziale=(riga.dataProd && riga.dataProd>oggiStr) ? riga.dataProd : oggiStr;
+    let compPrima, compMontaggio, compCollaudo;
+    if(usaCoda){
+      // Legge direttamente il risultato già calcolato nella coda reale (con tutte le altre
+      // commesse caricate e le priorità impostate), invece di ricalcolare in isolamento.
+      compPrima=ultimoRisultatoCommesse.compPrima[riga.id]||null;
+      compMontaggio=ultimoRisultatoCommesse.compMontaggio[riga.id]||null;
+      compCollaudo=ultimoRisultatoCommesse.compCollaudo[riga.id]||null;
+    }else{
+      const r=simulaPipelineSingola(riga, ultimoContestoCommesse, readyIniziale);
+      compPrima=r.compPrima; compMontaggio=r.compMontaggio; compCollaudo=r.compCollaudo;
+    }
+    if(!compCollaudo){
+      return {riga, errore:"Non riesco a calcolare una data di completamento (probabile reparto senza personale assegnato, oppure non ancora presente nell'ultimo calcolo di evasione — rigeneralo se hai modificato le commesse)."};
+    }
+    const giorniNecessari=contaGiorniLavorativi(readyIniziale, compCollaudo);
+    let target, etichettaTarget;
+    if(modalitaScadenza==="ngiorni"){
+      let d=riga.dataProd||oggiStr, rimasti=N-1;
+      while(rimasti>0){ d=prossimoGiornoDS(d); if(isLav(d)) rimasti--; }
+      target=d;
+      etichettaTarget=`${N} giorni lav. dalla Data Produzione (${target})`;
+    }else{
+      target=targetUnico;
+      etichettaTarget=`consegna richiesta (${target})`;
+    }
+    const inTempo=compCollaudo<=target;
+    let dataLimiteInizio=null;
+    if(!inTempo){
+      const ultimoUtile=ultimoGiornoLavorativoEntro(target);
+      dataLimiteInizio = giorniNecessari>1 ? indietroDiGiorniLavorativi(ultimoUtile, giorniNecessari-1) : ultimoUtile;
+    }
+    return {riga, readyIniziale, compPrima, compMontaggio, compCollaudo, giorniNecessari, target, etichettaTarget, inTempo, dataLimiteInizio};
+  });
 
-  const rigaUsato=riga.tipo!=="nuovo";
   el.innerHTML=`
-    <div class="kpi-grid">
-      <div class="kpi"><div class="kpi-val" style="font-size:1rem">${readyIniziale}</div><div class="kpi-label">Pronta per iniziare</div></div>
-      <div class="kpi"><div class="kpi-val" style="font-size:1rem;color:${rigaUsato?'inherit':'#9ca3af'}">${rigaUsato?(compPrima||"n/d"):"— saltata"}</div><div class="kpi-label">Prima Fase</div></div>
-      <div class="kpi"><div class="kpi-val" style="font-size:1rem;color:${rigaUsato?'inherit':'#9ca3af'}">${rigaUsato?(compMontaggio||"n/d"):"— saltato"}</div><div class="kpi-label">Montaggio</div></div>
-      <div class="kpi ok"><div class="kpi-val" style="font-size:1.1rem;font-weight:800">${compCollaudo}</div><div class="kpi-label">📅 Pronta il (Collaudo)</div></div>
-      <div class="kpi"><div class="kpi-val" style="font-size:1rem">${giorniNecessari}</div><div class="kpi-label">Giorni lavorativi totali impiegati</div></div>
-    </div>
-    ${bodyExtra}
-    <div class="al a-info" style="margin-top:.6rem;margin-bottom:0;font-size:.7rem">
-      Calcolato in "corsia preferenziale": usa la capacità reale attuale dei reparti (dipendenti assegnati, meno le assenze pianificate), come se questa commessa avesse priorità assoluta e non condividesse la coda con le altre. Se in pratica ci sono altre commesse davanti, i tempi reali saranno più lunghi di quelli qui indicati.
-    </div>
+    <div class="al a-info" style="font-size:.7rem">${usaCoda?'📋 Calcolo basato sulla coda reale già simulata (con tutte le altre commesse e le priorità impostate).':'🚀 Calcolo "in corsia preferenziale": ignora eventuali altre commesse davanti nella stessa coda.'}</div>
+    <div style="overflow-x:auto;margin-top:.5rem"><table><thead><tr>
+      <th>Protocollo</th><th>Modello</th><th>Data Prod.</th><th>Prima Fase</th><th>Montaggio</th><th>Pronta il (Collaudo)</th><th>Esito</th>
+    </tr></thead><tbody>
+      ${righeCalcolate.map(rc=>{
+        if(rc.errore){
+          return `<tr><td style="font-family:monospace">${rc.riga.protocollo||rc.riga.commessa}</td><td style="font-family:monospace">${rc.riga.modello}</td><td style="font-family:monospace">${rc.riga.dataProd||"—"}</td><td colspan="4" style="color:#dc2626">${rc.errore}</td></tr>`;
+        }
+        const rigaUsato=rc.riga.tipo!=="nuovo";
+        const esitoTxt = rc.inTempo
+          ? `<span style="color:#059669;font-weight:700">✅ in tempo</span>`
+          : `<span style="color:#dc2626;font-weight:700">⚠️ avviare entro ${rc.dataLimiteInizio}</span>`;
+        return `<tr>
+          <td style="font-family:monospace">${rc.riga.protocollo||rc.riga.commessa}</td>
+          <td style="font-family:monospace;font-weight:700">${rc.riga.modello}</td>
+          <td style="font-family:monospace">${rc.riga.dataProd||"—"}</td>
+          <td style="font-family:monospace;color:${rigaUsato?'inherit':'#9ca3af'}">${rigaUsato?(rc.compPrima||"n/d"):"— saltata"}</td>
+          <td style="font-family:monospace;color:${rigaUsato?'inherit':'#9ca3af'}">${rigaUsato?(rc.compMontaggio||"n/d"):"— saltato"}</td>
+          <td style="font-family:monospace;font-weight:700">${rc.compCollaudo}</td>
+          <td>${esitoTxt}</td>
+        </tr>`;
+      }).join("")}
+    </tbody></table></div>
+    ${usaCoda?`<div class="al a-info" style="margin-top:.65rem;margin-bottom:0;font-size:.7rem">Per anticipare i protocolli in ritardo, torna all'elenco commesse più sopra, segnali come "🔺 Urgente" e rigenera il calcolo di evasione.</div>`:`<div class="al a-info" style="margin-top:.65rem;margin-bottom:0;font-size:.7rem">Calcolato usando la capacità reale attuale dei reparti, come se questi protocolli avessero priorità assoluta. Se in pratica altre commesse sono già in coda davanti a loro, passa alla modalità "Nella coda reale" per un dato più realistico.</div>`}
   `;
 };
 
