@@ -921,8 +921,8 @@ window.impostaPeriodoFabbisogno=function(tipo){
 
 window.renderFabbisognoPersonale=function(){
   const el=document.getElementById("fabbisognoRisultato");
-  if(!ultimoContestoCommesse || !ultimoRisultatoCommesse){
-    el.innerHTML=`<div class="al a-info" style="margin-bottom:0">Genera prima un calcolo di evasione completo (bottone "▶ Calcola Evasione" più sopra). La verifica di capacità si basa su quella simulazione — che tiene conto di TUTTE le commesse insieme, sapendo che ogni giorno arrivano altre lavorazioni sullo stesso personale — non su una media isolata.</div>`;
+  if(!ultimoContestoCommesse){
+    el.innerHTML=`<div class="al a-info" style="margin-bottom:0">Genera prima un calcolo di evasione (bottone "▶ Calcola Evasione" più sopra) — serve per conoscere le ore di lavoro necessarie per ciascuna commessa.</div>`;
     return;
   }
   const N=parseInt(document.getElementById("fabbisognoGiorni").value)||0;
@@ -932,12 +932,10 @@ window.renderFabbisognoPersonale=function(){
   }
 
   const {righeConTempi:tutteLeRighe, oreFisePrimaFase, dipendenti, entries, repPrima, repMontaggio, repCollaudo}=ultimoContestoCommesse;
-  const {compPrima, compMontaggio, compCollaudo}=ultimoRisultatoCommesse; // simulazione REALE, con tutte le commesse in coda insieme
   const oggiStr=localDS(new Date());
 
-  // Filtro periodo (facoltativo): quali commesse VERIFICARE contro la scadenza — la simulazione
-  // di capacità resta comunque quella fatta su TUTTE le commesse caricate insieme (il giorno
-  // dopo, nello stesso reparto, ci sono altre lavorazioni che occupano lo stesso personale).
+  // Filtro periodo (facoltativo): se impostato, considera solo le commesse con Data Produzione
+  // nell'intervallo scelto; se lasciato vuoto, considera tutte le commesse caricate.
   const filtroDa=document.getElementById("fabbisognoDa").value;
   const filtroA=document.getElementById("fabbisognoA").value;
   const righeDaVerificare=(filtroDa||filtroA)
@@ -950,48 +948,29 @@ window.renderFabbisognoPersonale=function(){
     return;
   }
 
-  // Calcola, per ogni commessa da verificare, la scadenza (Data Produzione + N giorni
-  // lavorativi) e la confronta con quando sarà DAVVERO pronta secondo la simulazione reale.
-  const valutazioni=righeDaVerificare.filter(r=>r.trovato).map(r=>{
-    let d=r.dataProd||oggiStr, rimasti=N-1;
-    while(rimasti>0){ d=prossimoGiornoDS(d); if(isLav(d)) rimasti--; }
-    const target=d;
-    const evasioneReale=compCollaudo[r.id]||null;
-    const inTempo = !!evasioneReale && evasioneReale<=target;
-    const ritardoGiorni = (evasioneReale && !inTempo) ? contaGiorniLavorativi(prossimoGiornoDS(target), evasioneReale) : 0;
-    return {riga:r, target, evasioneReale, inTempo, ritardoGiorni};
-  });
-  const nonTrovate=righeDaVerificare.filter(r=>!r.trovato).length;
-
-  const inRitardo=valutazioni.filter(v=>!v.inTempo);
-  const nTotali=valutazioni.length;
-  const nInTempo=nTotali-inRitardo.length;
-  const ritardoMax=inRitardo.reduce((m,v)=>Math.max(m,v.ritardoGiorni),0);
-
-  // ── RIEPILOGO PER REPARTO: monte ore richiesto vs monte ore effettivo dal calendario ──
-  // Il "monte ore effettivo" non è una stima teorica (persone × 8h): è la somma, giorno per
-  // giorno, della capacità REALE del calendario presenze nell'orizzonte di riferimento — quindi
-  // tiene già conto di ferie/permessi/malattie pianificati in quei giorni.
   const rigaUsato=r=>r.tipo!=="nuovo";
+  const nonTrovate=righeDaVerificare.filter(r=>!r.trovato).length;
   const oreTotaliPrima = righeDaVerificare.filter(rigaUsato).length * oreFisePrimaFase;
   const oreTotaliMontaggio = righeDaVerificare.filter(r=>rigaUsato(r)&&r.trovato).reduce((s,r)=>s+(r.tMontaggio||0),0);
   const oreTotaliCollaudo = righeDaVerificare.filter(r=>r.trovato).reduce((s,r)=>s+(r.tCollaudo||0),0);
 
-  // Orizzonte su cui sommare la capacità: DEVE coincidere con l'arco di tempo entro cui le
-  // commesse considerate devono davvero essere pronte — altrimenti si confronta il fabbisogno
-  // di TUTTE le commesse con la capacità di una finestra troppo corta (o troppo lunga), dando
-  // un margine fuorviante. Usiamo quindi: se c'è un filtro Da→A esplicito, quello; altrimenti
-  // da oggi fino alla scadenza (Data Produzione + N giorni lavorativi) PIÙ LONTANA tra tutte le
-  // commesse verificate.
+  // Orizzonte su cui sommare la capacità: il periodo Da→A se impostato, altrimenti da oggi fino
+  // alla scadenza (Data Produzione + N giorni lavorativi) più lontana tra le commesse considerate
+  // — così fabbisogno e capacità sono sempre misurati sulla stessa identica finestra di tempo.
   let orizzonteInizio, orizzonteFine;
   if(filtroDa||filtroA){
     orizzonteInizio=filtroDa||oggiStr;
     orizzonteFine=filtroA||filtroDa;
   }else{
     orizzonteInizio=oggiStr;
-    orizzonteFine=valutazioni.reduce((max,v)=>v.target>max?v.target:max, oggiStr);
+    orizzonteFine=righeDaVerificare.filter(r=>r.trovato).reduce((max,r)=>{
+      let d=r.dataProd||oggiStr, rimasti=N-1;
+      while(rimasti>0){ d=prossimoGiornoDS(d); if(isLav(d)) rimasti--; }
+      return d>max?d:max;
+    }, oggiStr);
   }
   const giorniOrizzonte=Math.max(1, contaGiorniLavorativi(orizzonteInizio, orizzonteFine));
+  const capacitaPerPersona=giorniOrizzonte*8;
 
   function monteOreEffettivo(repartoKey){
     let tot=0, d=orizzonteInizio; const cacheLocale={};
@@ -999,126 +978,53 @@ window.renderFabbisognoPersonale=function(){
     return tot;
   }
 
+  // "Persone necessarie" = il minimo di persone che servirebbero per coprire le ore richieste
+  // in questo orizzonte. Se sono MENO delle attuali, il resto è "in esubero" (margine); se sono
+  // DI PIÙ, mancano altrettante persone.
   function calcolaRigaReparto(nome, repartoKey, oreRichieste){
     const oreEffettive=monteOreEffettivo(repartoKey);
     const attuali=dipendenti.filter(d=>d.reparto===repartoKey).length;
-    const differenza=oreEffettive-oreRichieste;
-    const personeMancanti=differenza<0 ? Math.ceil(Math.abs(differenza)/(giorniOrizzonte*8)) : 0;
-    return {nome, repartoKey, oreRichieste, oreEffettive, attuali, necessarie:attuali+personeMancanti, differenza};
+    const necessarie = oreRichieste>0 ? Math.ceil(oreRichieste/capacitaPerPersona) : 0;
+    const differenzaPersone = attuali-necessarie; // positivo = esubero, negativo = mancano
+    return {nome, repartoKey, oreRichieste, oreEffettive, attuali, necessarie, differenzaPersone};
   }
   const righeReparto=[
     calcolaRigaReparto("Prima Fase", repPrima, oreTotaliPrima),
     calcolaRigaReparto("Montaggio", repMontaggio, oreTotaliMontaggio),
     calcolaRigaReparto("Collaudo", repCollaudo, oreTotaliCollaudo)
   ];
-  const tabellaReparto=`
-    <div class="al a-info" style="font-size:.7rem">📅 Ore effettive calcolate su calendario dal <b>${orizzonteInizio}</b> al <b>${orizzonteFine}</b> (${giorniOrizzonte} giorni lavorativi).</div>
+
+  const inDeficit=righeReparto.filter(r=>r.differenzaPersone<0);
+  const esitoGenerale = inDeficit.length===0
+    ? `<div class="al a-ok" style="margin:.7rem 0">✅ <b>Il personale attuale è sufficiente</b> in tutti i reparti per coprire il fabbisogno nell'orizzonte considerato.</div>`
+    : `<div class="al a-danger" style="margin:.7rem 0">⚠️ <b>Personale insufficiente in: ${inDeficit.map(r=>r.nome).join(", ")}</b>.</div>`;
+
+  el.innerHTML=`
+    <div class="al a-info" style="font-size:.7rem">📅 Calcolato su: <b>${righeDaVerificare.length}</b> commesse — ${etichettaPeriodo}${nonTrovate?` (${nonTrovate} escluse: modello non trovato nei Tempi Tecnici)`:""}. Ore effettive sul calendario dal <b>${orizzonteInizio}</b> al <b>${orizzonteFine}</b> (${giorniOrizzonte} giorni lavorativi).</div>
     <div style="overflow-x:auto;margin-top:.5rem"><table><thead><tr>
       <th>Reparto</th><th style="text-align:right">Monte ore richiesto</th><th style="text-align:right">Monte ore effettivo (calendario)</th>
-      <th style="text-align:right">Persone attuali</th><th style="text-align:right">Persone necessarie</th><th style="text-align:right">Copertura</th>
+      <th style="text-align:right">Persone attuali</th><th style="text-align:right">Persone necessarie</th><th style="text-align:right">Esito</th>
     </tr></thead><tbody>
       ${righeReparto.map(r=>{
-        const covColor = r.differenza>=0 ? '#059669' : '#dc2626';
-        const covTxt = r.differenza>=0 ? `OK, +${Math.round(r.differenza)}h di margine` : `mancano ${Math.round(Math.abs(r.differenza))}h`;
+        let esitoTxt, esitoColor;
+        if(r.differenzaPersone>0){ esitoTxt=`${r.differenzaPersone} in esubero`; esitoColor='#059669'; }
+        else if(r.differenzaPersone<0){ esitoTxt=`mancano ${Math.abs(r.differenzaPersone)}`; esitoColor='#dc2626'; }
+        else { esitoTxt='esattamente coperto'; esitoColor='#059669'; }
         return `<tr>
           <td>${r.nome} <small style="color:var(--text2)">(${r.repartoKey})</small></td>
           <td style="text-align:right;font-family:monospace">${Math.round(r.oreRichieste)}h</td>
           <td style="text-align:right;font-family:monospace">${Math.round(r.oreEffettive)}h</td>
           <td style="text-align:right">${r.attuali}</td>
           <td style="text-align:right;font-weight:700">${r.necessarie}</td>
-          <td style="text-align:right;color:${covColor};font-weight:700">${covTxt}</td>
+          <td style="text-align:right;color:${esitoColor};font-weight:700">${esitoTxt}</td>
         </tr>`;
       }).join("")}
-    </tbody></table></div>`;
-
-  const esitoGenerale = inRitardo.length===0
-    ? `<div class="al a-ok" style="margin:.7rem 0">✅ <b>Il personale attuale è sufficiente</b>: tutte le ${nTotali} commesse verificate rispetterebbero la scadenza di ${N} giorni lavorativi dalla loro Data Produzione.</div>`
-    : `<div class="al a-danger" style="margin:.7rem 0">⚠️ <b>Il personale attuale NON è sufficiente</b>: ${inRitardo.length} commessa/e su ${nTotali} risultano in ritardo rispetto alla scadenza di ${N} giorni lavorativi (fino a un massimo di ${ritardoMax} giorni lavorativi di ritardo).</div>`;
-
-  el.innerHTML=`
-    <div class="al a-info" style="font-size:.7rem">📅 Verificato su: <b>${nTotali}</b> commesse — ${etichettaPeriodo}${nonTrovate?` (${nonTrovate} escluse: modello non trovato nei Tempi Tecnici)`:""}.</div>
-    ${tabellaReparto}
-    ${esitoGenerale}
-    ${inRitardo.length?`
-    <div style="font-size:.78rem;font-weight:700;margin-bottom:.4rem">Dettaglio commesse in ritardo</div>
-    <div style="overflow-x:auto"><table><thead><tr>
-      <th>Commessa</th><th>Modello</th><th>Data Prod.</th><th>Scadenza (${N}gg lav.)</th><th>Pronta il (reale)</th><th style="text-align:right">Ritardo</th>
-    </tr></thead><tbody>
-      ${inRitardo.sort((a,b)=>b.ritardoGiorni-a.ritardoGiorni).map(v=>`<tr>
-        <td style="font-family:monospace">${v.riga.commessa}</td>
-        <td style="font-family:monospace;font-weight:700">${v.riga.modello}</td>
-        <td style="font-family:monospace">${v.riga.dataProd||"—"}</td>
-        <td style="font-family:monospace">${v.target}</td>
-        <td style="font-family:monospace;color:#dc2626">${v.evasioneReale||"n/d"}</td>
-        <td style="text-align:right;font-weight:700;color:#dc2626">${v.evasioneReale?v.ritardoGiorni+"g":"—"}</td>
-      </tr>`).join("")}
     </tbody></table></div>
-    <button class="btn bg" style="font-size:.7rem;margin-top:.7rem" onclick="stimaPersoneAggiuntive()">▶ Stima quante persone in più servirebbero</button>
-    <div id="stimaPersoneRisultato" style="margin-top:.6rem"></div>
-    `:""}
+    ${esitoGenerale}
     <div class="al a-info" style="margin-top:.65rem;margin-bottom:0;font-size:.7rem">
-      "Monte ore effettivo" = somma, giorno per giorno, della capacità reale nel calendario presenze (dipendenti assegnati meno le assenze pianificate) nell'orizzonte indicato sopra — non una stima teorica. "Persone necessarie" copre lo scarto tra ore richieste ed effettive.<br><br>
-      <b>Attenzione</b>: qui sopra vedi il bilancio in ORE su tutto l'orizzonte — può risultare "sufficiente" anche quando alcune commesse specifiche sono comunque in ritardo. Questo succede perché la capacità giornaliera è comunque un tetto fisso (persone × 8h quel giorno): se molte commesse hanno scadenze ravvicinate a inizio periodo, la coda si accumula lì anche se più avanti nel periodo ci sarebbe "ore libere" più che sufficienti a compensare. Il dettaglio sotto usa la simulazione reale giorno-per-giorno (la stessa di "Calcola Evasione", con le priorità impostate) e ti dice esattamente quali commesse ne risentono.
+      "Persone necessarie" = il minimo di persone che coprirebbe da solo il monte ore richiesto in questo orizzonte (ore richieste &divide; ${giorniOrizzonte} giorni lavorativi &divide; 8h, arrotondato per eccesso). Se hai più persone attuali di quelle necessarie, il resto è segnato "in esubero" (margine disponibile); se ne hai meno, "mancano" indica quante servirebbero in più.
     </div>
   `;
-};
-
-// Cerca, per tentativi, quante persone IN PIÙ servirebbero in ciascun reparto per azzerare i
-// ritardi rilevati sopra — riesegue l'intera simulazione con personale ipotetico aggiuntivo,
-// un reparto alla volta (aggiungere personale a un reparto a monte cambia anche i tempi di
-// disponibilità per quelli a valle, quindi la simulazione va sempre rifatta per intero).
-window.stimaPersoneAggiuntive=function(){
-  const el=document.getElementById("stimaPersoneRisultato");
-  el.innerHTML='<span style="font-size:.76rem;color:var(--ink-soft)"><span class="spin"></span> Calcolo in corso (può richiedere qualche secondo)...</span>';
-
-  setTimeout(()=>{
-    const {righeConTempi:tutteLeRighe, oreFisePrimaFase, dipendenti, entries, repPrima, repMontaggio, repCollaudo}=ultimoContestoCommesse;
-    const N=parseInt(document.getElementById("fabbisognoGiorni").value)||14;
-    const filtroDa=document.getElementById("fabbisognoDa").value;
-    const filtroA=document.getElementById("fabbisognoA").value;
-    const righeDaVerificare=(filtroDa||filtroA)
-      ? tutteLeRighe.filter(r=>r.dataProd && (!filtroDa||r.dataProd>=filtroDa) && (!filtroA||r.dataProd<=filtroA))
-      : tutteLeRighe;
-    const oggiStr=localDS(new Date());
-
-    function contaRitardi(compCollaudoSim){
-      let count=0;
-      righeDaVerificare.filter(r=>r.trovato).forEach(r=>{
-        let d=r.dataProd||oggiStr, rimasti=N-1;
-        while(rimasti>0){ d=prossimoGiornoDS(d); if(isLav(d)) rimasti--; }
-        const target=d;
-        const reale=compCollaudoSim[r.id];
-        if(!reale || reale>target) count++;
-      });
-      return count;
-    }
-
-    function cercaExtra(repartoKey){
-      for(let extra=0; extra<=15; extra++){
-        const dipendentiIpotetici=extra===0 ? dipendenti : dipendenti.concat(
-          Array.from({length:extra}, ()=>({reparto:repartoKey, cessato:false}))
-        );
-        const sim=eseguiSimulazioneCompleta(tutteLeRighe, oreFisePrimaFase, dipendentiIpotetici, entries, repPrima, repMontaggio, repCollaudo);
-        if(contaRitardi(sim.compCollaudo)===0) return extra;
-      }
-      return null; // nemmeno +15 persone bastano: probabile collo di bottiglia altrove o carico eccessivo
-    }
-
-    const risultati=[
-      {nome:"Prima Fase", reparto:repPrima, extra:cercaExtra(repPrima)},
-      {nome:"Montaggio", reparto:repMontaggio, extra:cercaExtra(repMontaggio)},
-      {nome:"Collaudo", reparto:repCollaudo, extra:cercaExtra(repCollaudo)}
-    ];
-
-    el.innerHTML=`<div class="al a-info" style="margin-bottom:0">
-      <b>Stima persone aggiuntive</b> (aumentando UN SOLO reparto alla volta, lasciando gli altri due invariati):<br>
-      ${risultati.map(r=>{
-        if(r.extra===null) return `${r.nome}: <b>oltre +15 persone</b> non bastano da sole — il collo di bottiglia coinvolge anche altri reparti.`;
-        if(r.extra===0) return `${r.nome}: già sufficiente così com'è.`;
-        return `${r.nome}: servirebbero <b>+${r.extra} persona/e</b> per azzerare tutti i ritardi rilevati.`;
-      }).join("<br>")}
-    </div>`;
-  }, 30);
 };
 
 // ── ANALISI SINGOLA COMMESSA (una commessa può comprendere più protocolli/distributori) ──
