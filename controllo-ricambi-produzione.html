@@ -467,6 +467,12 @@
       <input type="file" id="file-giacenza" accept=".xlsx,.xls,.csv">
       <div class="dz-status" id="status-giacenza"></div>
     </div>
+    <div class="dropzone" id="dz-ordini" style="margin-top:18px;">
+      <span class="dz-label">Ordini ricambi in corso (opzionale)</span>
+      <span class="dz-hint">Export ordini d'acquisto aperti (colonne: Nr. documento, Nr., Descrizione, Quantità, Quantità inevasa, Data carico prevista). Per ogni ricambio da ordinare, il report indicherà se è già in ordine, con che numero e quando è prevista la consegna. Viene salvato su Firebase e riproposto automaticamente alle prossime aperture.</span>
+      <input type="file" id="file-ordini" accept=".xlsx,.xls,.csv">
+      <div class="dz-status" id="status-ordini"></div>
+    </div>
   </section>
 
   <section class="panel" id="panel-filters" style="display:none;">
@@ -565,6 +571,7 @@ let ricambiIndex = null; // Map(codeUpper -> {descr, orders:Set, parts:Map})
 let ricambiCatalog = [];  // [{code, descr, tokens:Set}] for fuzzy search
 let mappingIndex = new Map(); // codModelloUpper -> ricambiCodeUpper (manual correspondence table)
 let giacenzaIndex = new Map(); // ricambiCodeUpper -> quantità attualmente a magazzino
+let ordiniIndex = new Map(); // ricambiCodeUpper -> [{numeroOrdine, quantitaOrdinata, quantitaInevasa, dataConsegna}, ...] — un codice può avere più ordini aperti insieme
 let lastReport = null;   // for export
 
 // Chiavi localStorage: i due file principali restano "in memoria" su questo browser finché
@@ -737,6 +744,116 @@ function loadGiacenzaFromFirebase(){
     }
   }).catch(err=>{
     console.error('Errore caricamento giacenza', err);
+  });
+}
+
+// ---------- file: ordini ricambi in corso ----------
+// Trova l'indice di una colonna cercando tra alcune varianti del nome (case-insensitive,
+// confronto per inclusione — così piccole differenze di formattazione dell'intestazione non
+// rompono il riconoscimento).
+function trovaColonnaOrdini(headers, varianti){
+  const norm=h=>String(h||'').toLowerCase().trim();
+  const normHeaders=headers.map(norm);
+  // Prova prima il match ESATTO (così "Nr." non si confonde con "Nr. documento", e "Quantità"
+  // non si confonde con "Quantità inevasa"); solo se nessuna variante trova un match esatto,
+  // ripiega sul confronto per inclusione.
+  for(const v of varianti){
+    const nv=norm(v);
+    const idx=normHeaders.findIndex(h=>h===nv);
+    if(idx>=0) return idx;
+  }
+  for(const v of varianti){
+    const nv=norm(v);
+    const idx=normHeaders.findIndex(h=>h.includes(nv) || nv.includes(h));
+    if(idx>=0) return idx;
+  }
+  return -1;
+}
+function applyOrdini(righe){
+  ordiniIndex=new Map();
+  righe.forEach(r=>{
+    const ck=r.codice.toUpperCase();
+    if(!ordiniIndex.has(ck)) ordiniIndex.set(ck, []);
+    ordiniIndex.get(ck).push({
+      numeroOrdine:r.numeroOrdine, quantitaOrdinata:r.quantitaOrdinata,
+      quantitaInevasa:r.quantitaInevasa, dataConsegna:r.dataConsegna
+    });
+  });
+}
+document.getElementById('file-ordini').addEventListener('change', function(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  clearError();
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const wb = XLSX.read(new Uint8Array(ev.target.result), {type:'array', cellDates:true});
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
+      if(!rows.length){ showError('Il file ordini sembra vuoto.'); return; }
+      const headers = Object.keys(rows[0]);
+      const iDoc = trovaColonnaOrdini(headers, ['nr. documento','n. documento','numero ordine','nr documento']);
+      const iCod = trovaColonnaOrdini(headers, ['nr.','codice','cod. articolo','codice ricambio']);
+      const iQta = trovaColonnaOrdini(headers, ['quantità','quantita']);
+      const iQtaInevasa = trovaColonnaOrdini(headers, ['quantità inevasa','quantita inevasa','qtà inevasa']);
+      const iData = trovaColonnaOrdini(headers, ['data carico prevista','data consegna prevista','data consegna']);
+      if(iCod<0){ showError('Non trovo la colonna del codice ricambio (\"Nr.\") nel file ordini.'); return; }
+
+      const righe=[];
+      rows.forEach(r=>{
+        const codice=String(r[headers[iCod]]||'').trim();
+        if(!codice) return;
+        const quantitaInevasa = iQtaInevasa>=0 ? (parseFloat(r[headers[iQtaInevasa]])||0) : (parseFloat(r[headers[iQta]])||0);
+        if(quantitaInevasa<=0) return; // ordine già completamente ricevuto: non interessa per "cosa è ancora in arrivo"
+        let dataConsegna=null;
+        if(iData>=0){
+          const raw=r[headers[iData]];
+          if(raw instanceof Date) dataConsegna=fmtDate(raw);
+          else if(raw) dataConsegna=String(raw);
+        }
+        righe.push({
+          codice,
+          numeroOrdine: iDoc>=0 ? String(r[headers[iDoc]]||'').trim() : '',
+          quantitaOrdinata: iQta>=0 ? (parseFloat(r[headers[iQta]])||0) : quantitaInevasa,
+          quantitaInevasa,
+          dataConsegna
+        });
+      });
+      if(!righe.length){ showError('Nessuna riga valida trovata (o tutti gli ordini risultano già completamente evasi).'); return; }
+
+      applyOrdini(righe);
+      document.getElementById('dz-ordini').classList.add('filled');
+      document.getElementById('status-ordini').textContent = righe.length + ' righe d\'ordine ancora aperte, su ' + ordiniIndex.size + ' codici ricambio distinti.';
+      saveOrdiniToFirebase(righe);
+      if(lastReport) generateReport(); // se un report è già a schermo, lo ricalcola per mostrare subito gli ordini
+    }catch(err){
+      showError('Errore nella lettura del file ordini: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(f);
+});
+function saveOrdiniToFirebase(righe){
+  if(!firebaseReady) return;
+  setDoc(doc(db, 'ricambi_ordini', 'main'), {
+    righe: righe,
+    updatedAt: serverTimestamp()
+  }).then(()=>{
+    setFbStatus('Ordini ricambi salvati su Firebase — saranno disponibili automaticamente alle prossime aperture.');
+  }).catch(err=>{
+    setFbStatus('Errore nel salvataggio degli ordini su Firebase: ' + err.message, true);
+  });
+}
+function loadOrdiniFromFirebase(){
+  if(!firebaseReady) return;
+  getDoc(doc(db, 'ricambi_ordini', 'main')).then(docSnap=>{
+    if(docSnap.exists()){
+      const data = docSnap.data();
+      const righe = data.righe || [];
+      applyOrdini(righe);
+      document.getElementById('dz-ordini').classList.add('filled');
+      document.getElementById('status-ordini').textContent = righe.length + ' righe d\'ordine caricate da Firebase (salvate in precedenza), su ' + ordiniIndex.size + ' codici ricambio distinti. Carica un file per sostituirle.';
+    }
+  }).catch(err=>{
+    console.error('Errore caricamento ordini', err);
   });
 }
 
@@ -1105,6 +1222,11 @@ function generateReport(){
         const ck = c.code.toUpperCase();
         c.giacenza = giacenzaIndex.has(ck) ? giacenzaIndex.get(ck) : null;
         c.copertura = c.giacenza === null ? null : (c.giacenza - c.estQty);
+        // Ordini d'acquisto già aperti per questo codice (se caricati) — solo informativo, non
+        // modifica il calcolo della copertura sopra.
+        const ordini = ordiniIndex.get(ck) || [];
+        c.ordiniInCorso = ordini.length ? ordini : null;
+        c.quantitaInOrdine = ordini.reduce((s,o)=>s+(o.quantitaInevasa||0), 0);
       });
 
       const filterSummary = 'Foglio: '+[...sheetsOn].join('+')+' · Filiali: '+(filialiOn.size===[...new Set(pianoRows.map(r=>r.filiale))].length ? 'tutte' : filialiOn.size)+' · Stato: '+(statiOn.size===[...new Set(pianoRows.map(r=>r.stato+' — '+r.azione))].length ? 'tutti' : statiOn.size)+(dateFrom||dateTo ? ' · Periodo: '+(dateFrom?fmtDate(dateFrom):'...')+' → '+(dateTo?fmtDate(dateTo):'...') : '');
@@ -1226,6 +1348,7 @@ function fmtNum(n){
 function renderConsolidated(consolidatedMap){
   const rows = [...consolidatedMap.values()].sort((a,b)=>b.estQty - a.estQty);
   const hasGiacenza = rows.some(r=>r.giacenza !== null && r.giacenza !== undefined);
+  const hasOrdini = rows.some(r=>r.ordiniInCorso);
   let html = '<div class="panel">';
   html += '<div class="consolidated-controls">';
   html += '<input type="text" class="search-box" id="consolidated-search" placeholder="Cerca per codice o descrizione ricambio...">';
@@ -1249,6 +1372,7 @@ function renderConsolidated(consolidatedMap){
     '<th class="num sortable" data-key="estQty">Quantità stimata</th>'+
     '<th class="num sortable" data-key="giacenza">Giacenza attuale</th>'+
     '<th class="num sortable" data-key="copertura">Copertura</th>'+
+    (hasOrdini ? '<th data-key="ordini">In ordine</th>' : '')+
     '<th class="num sortable" data-key="estCost">Costo stimato</th>'+
     '<th class="num sortable" data-key="models">Modelli coinvolti</th>'+
     '</tr></thead><tbody>';
@@ -1266,12 +1390,22 @@ function renderConsolidated(consolidatedMap){
         : '<span class="cov-badge bad">'+val+'</span>';
     }
     const coperturaAttr = (r.copertura===null||r.copertura===undefined) ? 'na' : r.copertura;
+    let ordiniTxt = '';
+    if(hasOrdini){
+      if(!r.ordiniInCorso){
+        ordiniTxt = '<td><span class="cov-badge na">No</span></td>';
+      }else{
+        const dettaglio = r.ordiniInCorso.map(o=>escHtml((o.numeroOrdine||'?')+' — '+Math.round(o.quantitaInevasa)+'pz'+(o.dataConsegna?', consegna '+o.dataConsegna:''))).join('<br>');
+        ordiniTxt = '<td><span class="cov-badge ok">Sì — '+Math.round(r.quantitaInOrdine)+'pz</span><br><small style="color:var(--ink-soft);font-size:.68rem;line-height:1.5">'+dettaglio+'</small></td>';
+      }
+    }
     html += '<tr data-search="'+escAttr((r.code+' '+r.descr).toLowerCase())+'" data-copertura="'+coperturaAttr+'">'+
       '<td class="code-cell">'+escHtml(r.code)+'</td>'+
       '<td>'+escHtml(r.descr)+'</td>'+
       '<td class="num">'+Math.ceil(r.estQty)+'</td>'+
       '<td class="num">'+giacenzaTxt+'</td>'+
       '<td class="num">'+coperturaTxt+'</td>'+
+      ordiniTxt+
       '<td class="num">'+(r.estCost>0 ? '&euro; '+r.estCost.toFixed(0) : '—')+'</td>'+
       '<td class="num">'+r.models.size+'</td>'+
     '</tr>';
@@ -1346,12 +1480,15 @@ function exportExcel(){
   if(!lastReport) return;
   const wb = XLSX.utils.book_new();
 
-  const consolidatedRows = [['Codice ricambio','Descrizione','Quantità stimata','Giacenza attuale','Copertura','Costo stimato (EUR)','Modelli coinvolti']];
+  const consolidatedRows = [['Codice ricambio','Descrizione','Quantità stimata','Giacenza attuale','Copertura','In ordine (pz)','Dettaglio ordini','Costo stimato (EUR)','Modelli coinvolti']];
   [...lastReport.consolidated.values()].sort((a,b)=>b.estQty-a.estQty).forEach(r=>{
+    const dettaglioOrdini = r.ordiniInCorso ? r.ordiniInCorso.map(o=>(o.numeroOrdine||'?')+' — '+Math.round(o.quantitaInevasa)+'pz'+(o.dataConsegna?', consegna '+o.dataConsegna:'')).join(' | ') : '';
     consolidatedRows.push([
       r.code, r.descr, Math.ceil(r.estQty),
       (r.giacenza===null||r.giacenza===undefined) ? '' : Math.round(r.giacenza),
       (r.copertura===null||r.copertura===undefined) ? '' : Math.round(r.copertura),
+      r.ordiniInCorso ? Math.round(r.quantitaInOrdine) : 0,
+      dettaglioOrdini,
       Math.round(r.estCost), [...r.models].join(', ')
     ]);
   });
@@ -1466,6 +1603,7 @@ document.getElementById('btn-remove-ricambi').addEventListener('click', clearRic
 
 loadMappingFromFirebase();
 loadGiacenzaFromFirebase();
+loadOrdiniFromFirebase();
 loadHistory();
 // Ripristina piano+ricambi salvati in questo browser (se presenti) e, se completi, mostra
 // subito i filtri — senza richiedere un nuovo upload.
