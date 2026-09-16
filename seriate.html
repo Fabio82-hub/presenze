@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gestione Presenze 2026 — ELMAS</title>
+<title>Gestione Presenze 2026 — SERIATE</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -261,7 +261,7 @@ tr:hover td{background:var(--accent-light)}
 <div class="hdr">
   <div class="hdr-logo">presenze<span>.</span>2026</div>
   <div class="hdr-right">
-    <span class="badge" style="background:#4f46e5;color:#fff;padding:.25rem .75rem;border-radius:20px;font-size:.72rem;font-weight:700;letter-spacing:.06em">🏢 ELMAS</span>
+    <span class="badge" style="background:#4f46e5;color:#fff;padding:.25rem .75rem;border-radius:20px;font-size:.72rem;font-weight:700;letter-spacing:.06em">🏢 SERIATE</span>
     <span class="hdr-date" id="hdrDate"></span><span id="dbStatus" style="font-size:.72rem;margin-left:.5rem">⏳ connessione...</span>
     <button class="btn bp sm" onclick="openM('mEntry')">+ Inserisci assenza</button>
     <a href="index.html" style="background:#e0e7ff;color:#4f46e5;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:600;text-decoration:none;white-space:nowrap">🏠 Cambia filiale</a>
@@ -997,7 +997,7 @@ const firebaseConfig = {
 };
 const fbApp = initializeApp(firebaseConfig);
 const db    = getFirestore(fbApp);
-const DOCREF = doc(db, 'stato', 'elmas');
+const DOCREF = doc(db, 'stato', 'seriate');
 
 // Carica dati da Firebase, poi avvia listener realtime
 (async ()=>{
@@ -4058,7 +4058,86 @@ setStatus('loading');
       setStatus('ok');
     } else {
       // Prima volta: carica lista dipendenti di default e salva su Firebase
-      const lista=[];
+      const lista=[
+        ['CORTINOVIS ROBERTO',             'AREA SERIATE S.ITALIA',                'DIP', null],
+        ['FRIGERIO NICOLAS',               'AREA SERIATE S.ITALIA',                'DIP', null],
+        ['MONTISCI MARCO',                 'AREA SERIATE S.ITALIA',                'DIP', null],
+        ['PASQUINELLI LUCA',               'AREA SERIATE S.ITALIA',                'DIP', null],
+        ['LUCA NAVA',                      'AREA SERIATE S.ITALIA',                'DIP', null],
+        ['PULECCHI MASSIMO',               'AREA SERIATE S.ITALIA',                'DIP', null],
+        ['AMBROSIONI DANIELE DAVIDE',      'AREA SERIATE S.ITALIA',                'DIP', null],
+        ['COSSU SILVIA',                   'AREA SERIATE S.ITALIA',                'DIP', null],
+        ['BRIGNOLI GIANPIETRO',            'SERIATE REPARTO MAGAZZINO',            'DIP', null],
+        ['ALABISO GUIDO',                  'SERIATE REPARTO MAGAZZINO',            'DIP', null],
+        ['FILIPPINI MICHELE',              'SERIATE REPARTO MAGAZZINO',            'DIP', null],
+        ['VALZANO LUCA',                   'SERIATE REPARTO MAGAZZINO',            'DIP', null],
+        ['PARATI ANDREA',                  'SERIATE REPARTO MAGAZZINO',            'DIP', null],
+        ['VEZZOLI PIER GIOVANNI',          'SERIATE REPARTO MAGAZZINO',            'DIP', null],
+        ["VIGANO' STEFANO",                'SERIATE REPARTO MAGAZZINO',            'DIP', null],
+        ['EL OTMANI ABDELMAJID',           'SERIATE REPARTO MAGAZZINO',            'DIP', null],
+        ['BERETTA LIONELLO',               'SERIATE REPARTO MONTAGGIO',            'DIP', null],
+        ['CORDONI PIETRO',                 'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['REZGUI NABIL',                   'SERIATE REPARTO FRIGORISTA',           'DIP', null],
+        ['LOZZA MICHELE',                  'SERIATE REPARTO FRIGORISTA',           'DIP', null],
+        ['CORTESI ALESSANDRO',             "SERIATE REPARTO CONTROLLO QUALITA'",   'DIP', null],
+        ['DI PASTENA VINCENZO',            'SERIATE REPARTO 1°FASE',               'DIP', null],
+        ['NAVA IVAN',                      "SERIATE REPARTO CONTROLLO QUALITA'",   'DIP', null],
+        ['ACCARDI SALVATORE',              'SERIATE REPARTO MONTAGGIO',            'DIP', null],
+        ['LICAJ ALICE',                    'SERIATE REPARTO MONTAGGIO',            'DIP', null],
+        ['CATTANEO VALENTINA',             'SERIATE REPARTO MONTAGGIO',            'DIP', null],
+        ['LICAJ ELIDIONA',                 'SERIATE REPARTO MONTAGGIO',            'DIP', null],
+        ['EPIS STEFANO',                   'SERIATE REPARTO MONTAGGIO',            'DIP', null],
+        ['TAVARES DE ANDRADE FABIANA',     'SERIATE REPARTO 1°FASE',               'DIP', null],
+        ['ISCANDRI ALBERTO',               'SERIATE REPARTO MONTAGGIO',            'DIP', null],
+        ['ZANARDI SIMONE',                 'SERIATE REPARTO MONTAGGIO',            'DIP', null],
+        ['MAINGI DENNIS',                  'SERIATE REPARTO MONTAGGIO',            'DIP', null],
+        ['MORETTI RAMON',                  'SERIATE REPARTO MONTAGGIO',            'DIP', null],
+        ['DELLE VEDOVE PIERINA',           'SERIATE REPARTO MONTAGGIO',            'DIP', null],
+        ['SALVO ROBERTA',                  'SERIATE REPARTO MONTAGGIO',            'DIP', null],
+        ["D'ASCOLA MONICA",                'SERIATE REPARTO 1°FASE',               'DIP', null],
+        ['NDOM EL HADJI IBRAHIMA',         'SERIATE REPARTO MONTAGGIO',            'SOMM',null],
+        ['ANGILERI KATIUSCIA',             'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['BARBARISI LUCA',                 'SERIATE REPARTO LABORATORIO',          'DIP', null],
+        ['BREMBATI SIMON',                 'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['CASTELLI FABIO',                 'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['CIRILLO ALAN',                   'SERIATE REPARTO MONTAGGIO',            'DIP', null],
+        ["D'ALO' ALBERTO",                 'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['DE OLIVEIRA MOURA MARCELO',      'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['FACCINI LUCA',                   'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['FABBRIS SIMONE',                 'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['GOTTI FAUSTO',                   'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['MACETTI MARCO',                  'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['MARCELLO ANTONIO',               'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['MARCHESI GLORIA',                'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['MARCHESI SIMONA',                'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['PIERSANTI CRISTIAN',             'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['RIZZI CRISTIAN',                 'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['PEZZONI NICOLA',                 'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['VITALI DANIELE',                 'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['FAZLIJA ZYRAFETE',               'SERIATE REPARTO COLLAUDI',             'DIP', null],
+        ['SINGH SHARANJEET',               'SERIATE REPARTO COLLAUDI',             'SOMM','2026-06-30'],
+        ['EGLIRON ZEKAJ',                  'SERIATE REPARTO COLLAUDI',             'SOMM','2026-06-30'],
+        ['DRIDI AYOUB',                    'SERIATE REPARTO COLLAUDI',             'SOMM','2026-06-30'],
+        ['MAFFIOLETTI MICHELE',            'SERIATE REPARTO LABORATORIO',          'DIP', null],
+        ['MARCHESI CRISTIAN',              'SERIATE REPARTO LABORATORIO',          'DIP', null],
+        ['TOGNI ANDREA',                   'SERIATE REPARTO LABORATORIO',          'DIP', null],
+        ['CANCELLO INES',                  'SERIATE REPARTO 1°FASE',               'DIP', null],
+        ['GATTI DONATELLA',                'SERIATE REPARTO 1°FASE',               'DIP', null],
+        ['TRUSCA ELENA DANIELA',           'SERIATE REPARTO 1°FASE',               'DIP', null],
+        ['UYI DESTINY',                    'SERIATE REPARTO 1°FASE',               'SOMM',null],
+        ['BONNA KATERYNA',                 'SERIATE REPARTO 1°FASE',               'DIP', null],
+        ['RODRIGUEZ ARRECHEA JHON ANDERSON','SERIATE REPARTO 1°FASE',              'DIP', null],
+        ['TILAHUN YARED',                  'SERIATE REPARTO 1°FASE',               'DIP', null],
+        ['LAMERA LARA',                    'SERIATE REPARTO 1°FASE',               'DIP', null],
+        ['THIOYE MAMADOU',                 'SERIATE REPARTO MONTAGGIO',            'DIP', null],
+        ['DOPUGOUCHO COULIBALY',           'SERIATE REPARTO 1°FASE',               'SOMM',null],
+        ['AGAZZI BARBARA',                 'SERIATE REPARTO 1°FASE',               'DIP', null],
+        ['FRATUS SARA',                    'SERIATE REPARTO 1°FASE',               'DIP', null],
+        ['LUPO DANIELA',                   'SERIATE REPARTO 1°FASE',               'DIP', null],
+        ['SADIQI MOHAMMAD JAWED',          'SERIATE REPARTO 1°FASE',               'DIP', null],
+        ['ROTA OLGA SILVIA',               'SERIATE REPARTO 1°FASE',               'DIP', null],
+        ['NDOJ ERIDA',                     'SERIATE REPARTO 1°FASE',               'DIP', null],
+      ];
       lista.forEach(([nome,rep,tipo,scad])=>{
         const id=uid();
         S.dipendenti.push({id,nome,reparto:rep,tipo,scadenza:scad,mansione:'',cessato:false,cessatoData:null});
