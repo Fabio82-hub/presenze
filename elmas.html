@@ -3497,7 +3497,7 @@ function handleDipFile(ev){
   if(!file) return;
   const statusEl=document.getElementById('dipStatus');
   if(typeof XLSX === 'undefined'){
-    statusEl.innerHTML='<div class="al a-danger">❌ La libreria di lettura Excel non si è caricata (probabile blocco di rete/firewall verso una risorsa esterna necessaria). Ricarica la pagina (F5) e riprova; se il problema persiste, prova da un\\'altra rete (es. hotspot del telefono) o contatta chi gestisce la rete aziendale.</div>';
+    statusEl.innerHTML='<div class="al a-danger">❌ La libreria di lettura Excel non si è caricata (probabile blocco di rete/firewall verso una risorsa esterna necessaria). Ricarica la pagina (F5) e riprova; se il problema persiste, prova da un\'altra rete (es. hotspot del telefono) o contatta chi gestisce la rete aziendale.</div>';
     return;
   }
   statusEl.innerHTML='<div class="al a-info">⏳ Lettura del file in corso...</div>';
