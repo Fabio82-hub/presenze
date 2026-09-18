@@ -1053,14 +1053,14 @@ function defS(){
     // tempistiche[reparto] = ore necessarie per lavorare 1 D.A. (es. 2.5h/D.A.)
     tempistiche: {},
     reparti: [
-      'AREA SERIATE S.ITALIA',
-      'SERIATE REPARTO MAGAZZINO',
-      'SERIATE REPARTO MONTAGGIO',
-      'SERIATE REPARTO COLLAUDI',
-      'SERIATE REPARTO 1°FASE',
-      'SERIATE REPARTO LABORATORIO',
-      'SERIATE REPARTO FRIGORISTA',
-      "SERIATE REPARTO CONTROLLO QUALITA'"
+      'AREA ELMAS S.ITALIA',
+      'ELMAS REPARTO MAGAZZINO',
+      'ELMAS REPARTO MONTAGGIO',
+      'ELMAS REPARTO COLLAUDI',
+      'ELMAS REPARTO 1°FASE',
+      'ELMAS REPARTO LABORATORIO',
+      'ELMAS REPARTO FRIGORISTA',
+      "ELMAS REPARTO CONTROLLO QUALITA'"
     ],
     mansioni: [
       'Lavaggio carrelli','Lavaggio cassone','Rev. macinini e caldaie',
@@ -1486,12 +1486,12 @@ const GGLONG=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì'
 
 // Reparti esclusi dai calcoli di Performance (sezione Performance Reparto + riga Efficienza in calendario)
 const REPARTI_ESCLUSI_PERF=[
-  'AREA SERIATE S.ITALIA',
-  "SERIATE REPARTO CONTROLLO QUALITA'",
-  'SERIATE REPARTO LABORATORIO',
-  'SERIATE REPARTO MAGAZZINO',
-  'SERIATE REPARTO FRIGORISTA',
-  'SERIATE REPARTO BRANDIZZAZIONE',
+  'AREA ELMAS S.ITALIA',
+  "ELMAS REPARTO CONTROLLO QUALITA'",
+  'ELMAS REPARTO LABORATORIO',
+  'ELMAS REPARTO MAGAZZINO',
+  'ELMAS REPARTO FRIGORISTA',
+  'ELMAS REPARTO BRANDIZZAZIONE',
   'BRANDIZZAZIONE'
 ];
 
@@ -1805,9 +1805,9 @@ function buildCalTabella(){
     const tempistiche=S.tempistiche||{};
 
     const repartiEff=[
-      {rep:'SERIATE REPARTO 1°FASE',    label:'Efficienza 1°Fase'},
-      {rep:'SERIATE REPARTO MONTAGGIO', label:'Efficienza Montaggio'},
-      {rep:'SERIATE REPARTO COLLAUDI',  label:'Efficienza Collaudi'},
+      {rep:'ELMAS REPARTO 1°FASE',    label:'Efficienza 1°Fase'},
+      {rep:'ELMAS REPARTO MONTAGGIO', label:'Efficienza Montaggio'},
+      {rep:'ELMAS REPARTO COLLAUDI',  label:'Efficienza Collaudi'},
     ];
 
     // Accumulo mensile per ogni reparto (serve per riga totale e peggiore)
@@ -2529,9 +2529,9 @@ function calcPrevProduzione(){
 
   // Reparti con dato di produzione e la voce di calendario corrispondente
   const repartiTarget=[
-    {rep:'SERIATE REPARTO 1°FASE',    voce:'D.A. Smontati + Carrelli + D.A. Verniciati (media ÷ 3)', campi:['smontati','carrelli','verniciati'], color:'#4f46e5'},
-    {rep:'SERIATE REPARTO MONTAGGIO', voce:'Linee',                                                    campi:['linee'],                           color:'#059669'},
-    {rep:'SERIATE REPARTO COLLAUDI',  voce:'D.A. Evase',                                               campi:['evase'],                           color:'#0284c7'},
+    {rep:'ELMAS REPARTO 1°FASE',    voce:'D.A. Smontati + Carrelli + D.A. Verniciati (media ÷ 3)', campi:['smontati','carrelli','verniciati'], color:'#4f46e5'},
+    {rep:'ELMAS REPARTO MONTAGGIO', voce:'Linee',                                                    campi:['linee'],                           color:'#059669'},
+    {rep:'ELMAS REPARTO COLLAUDI',  voce:'D.A. Evase',                                               campi:['evase'],                           color:'#0284c7'},
   ];
 
   let html='<div style="display:flex;flex-direction:column;gap:.75rem;margin-top:.75rem">';
@@ -2929,16 +2929,16 @@ function setRiepilogoSort(key){
 function getProduzioneRepartoGiorno(rep, ds){
   const p=(S.produzione||{})[ds];
   if(!p) return null;
-  if(rep==='SERIATE REPARTO 1°FASE'){
+  if(rep==='ELMAS REPARTO 1°FASE'){
     const smontati=parseInt(p.smontati)||0;
     const carrelli=parseInt(p.carrelli)||0;
     const verniciati=parseInt(p.verniciati)||0;
     return (smontati+carrelli+verniciati)/3;
   }
-  if(rep==='SERIATE REPARTO MONTAGGIO'){
+  if(rep==='ELMAS REPARTO MONTAGGIO'){
     return parseInt(p.linee)||0;
   }
-  if(rep==='SERIATE REPARTO COLLAUDI'){
+  if(rep==='ELMAS REPARTO COLLAUDI'){
     return parseInt(p.evase)||0;
   }
   return null;
@@ -3019,7 +3019,7 @@ function renderPerformanceTabellaSoloRicalcolo(){
       const v=getProduzioneRepartoGiorno(rep,ds);
       return s+(v||0);
     },0);
-    const haDatoReale = ['SERIATE REPARTO 1°FASE','SERIATE REPARTO MONTAGGIO','SERIATE REPARTO COLLAUDI'].includes(rep);
+    const haDatoReale = ['ELMAS REPARTO 1°FASE','ELMAS REPARTO MONTAGGIO','ELMAS REPARTO COLLAUDI'].includes(rep);
 
     righePerf.push({rep, numDip:dips.length, oreDisponibili, orePerse, oreEffettive, tempistica, daTeoriche, daReali, haDatoReale});
   });
@@ -3076,7 +3076,7 @@ let _perfChartInstance=null;
 function renderPerformanceChart(primoGiorno, ultimoGiorno, repFilt, attiviTotali){
   const dips = repFilt ? attiviTotali.filter(d=>d.reparto===repFilt) : attiviTotali;
   // Reparti su cui sommare la produzione reale (se "Tutti", li sommiamo tutti insieme)
-  const repartiProd = repFilt ? [repFilt] : ['SERIATE REPARTO 1°FASE','SERIATE REPARTO MONTAGGIO','SERIATE REPARTO COLLAUDI'];
+  const repartiProd = repFilt ? [repFilt] : ['ELMAS REPARTO 1°FASE','ELMAS REPARTO MONTAGGIO','ELMAS REPARTO COLLAUDI'];
 
   const labels=[], oreEffSerie=[], prodSerie=[];
 
@@ -3227,7 +3227,7 @@ function esportaPerformanceExcel(){
     const daTeoriche=tempistica>0?(oreEffettive/tempistica):0;
 
     const daReali = giorniPeriodo.reduce((s,ds)=>s+(getProduzioneRepartoGiorno(rep,ds)||0),0);
-    const haDatoReale = ['SERIATE REPARTO 1°FASE','SERIATE REPARTO MONTAGGIO','SERIATE REPARTO COLLAUDI'].includes(rep);
+    const haDatoReale = ['ELMAS REPARTO 1°FASE','ELMAS REPARTO MONTAGGIO','ELMAS REPARTO COLLAUDI'].includes(rep);
     const perf = (haDatoReale && daTeoriche>0) ? (daReali/daTeoriche*100) : null;
 
     aoa.push([
@@ -3788,7 +3788,7 @@ function isoD(y,m,d){return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padS
 // Estrae YYYY-MM-DD da un oggetto Date usando l'ora LOCALE (non UTC)
 // Evita la traslazione di -1 giorno in fusi orari positivi (es. UTC+2 in estate)
 function localDateStr(d){return isoD(d.getFullYear(),d.getMonth(),d.getDate());}
-function shortRep(r){return(r||'').replace('SERIATE REPARTO ','').replace('AREA SERIATE ','');}
+function shortRep(r){return(r||'').replace('ELMAS REPARTO ','').replace('AREA ELMAS ','');}
 function esc(s){return(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
 function fmtData(s){if(!s)return '';const d=new Date(s+'T00:00:00');return d.toLocaleDateString('it-IT',{day:'2-digit',month:'short',year:'2-digit'});}
 function scadBadge(s){if(!s)return 'b-gray';const d=new Date(s+'T00:00:00');const oggi=new Date();oggi.setHours(0,0,0,0);const diff=(d-oggi)/86400000;return diff<0?'b-danger':diff<30?'b-warn':'b-ok';}
