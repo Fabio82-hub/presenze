@@ -1484,16 +1484,19 @@ const MESI=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Ag
 const GG=['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
 const GGLONG=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
 
-// Reparti esclusi dai calcoli di Performance (sezione Performance Reparto + riga Efficienza in calendario)
-const REPARTI_ESCLUSI_PERF=[
-  'AREA POMEZIA S.ITALIA',
-  "POMEZIA REPARTO CONTROLLO QUALITA'",
-  'POMEZIA REPARTO LABORATORIO',
-  'POMEZIA REPARTO MAGAZZINO',
-  'POMEZIA REPARTO FRIGORISTA',
-  'POMEZIA REPARTO BRANDIZZAZIONE',
-  'BRANDIZZAZIONE'
-];
+// Reparti esclusi dai calcoli di Performance (sezione Performance Reparto + riga Efficienza in
+// calendario). Riconosciuti per PAROLA CHIAVE contenuta nel nome (non per nome esatto), così
+// funziona indipendentemente dal prefisso usato dalla filiale.
+const CHIAVI_ESCLUSE_PERF=['S.ITALIA',"CONTROLLO QUALITA",'LABORATORIO','MAGAZZINO','FRIGORISTA','BRANDIZZAZIONE'];
+function repartoEscluso(reparto){
+  const r=(reparto||'').toUpperCase();
+  return CHIAVI_ESCLUSE_PERF.some(k=>r.includes(k));
+}
+// Trova il nome REALE di un reparto configurato (in S.reparti) contenente una parola chiave —
+// così il resto del codice funziona indipendentemente dal prefisso usato dalla filiale.
+function trovaRepartoPerChiave(chiave){
+  return (S.reparti||[]).find(r=>(r||'').toUpperCase().includes(chiave.toUpperCase())) || null;
+}
 
 // ════════════════════════════════════════════════════
 //  FESTIVITÀ ITALIANE (fisse + Pasqua/Pasquetta calcolate)
@@ -1801,13 +1804,13 @@ function buildCalTabella(){
 
   // Righe Efficienza per Reparto + riga Totale + indicatore reparto meno efficiente
   {
-    const dipsPerf=S.dipendenti.filter(d=>!d.cessato && !REPARTI_ESCLUSI_PERF.includes(d.reparto));
+    const dipsPerf=S.dipendenti.filter(d=>!d.cessato && !repartoEscluso(d.reparto));
     const tempistiche=S.tempistiche||{};
 
     const repartiEff=[
-      {rep:'POMEZIA REPARTO 1°FASE',    label:'Efficienza 1°Fase'},
-      {rep:'POMEZIA REPARTO MONTAGGIO', label:'Efficienza Montaggio'},
-      {rep:'POMEZIA REPARTO COLLAUDI',  label:'Efficienza Collaudi'},
+      {rep:trovaRepartoPerChiave('1°FASE'),    label:'Efficienza 1°Fase'},
+      {rep:trovaRepartoPerChiave('MONTAGGIO'), label:'Efficienza Montaggio'},
+      {rep:trovaRepartoPerChiave('COLLAUDI'),  label:'Efficienza Collaudi'},
     ];
 
     // Accumulo mensile per ogni reparto (serve per riga totale e peggiore)
@@ -2525,13 +2528,13 @@ function calcPrevProduzione(){
   }
 
   const tempistiche=S.tempistiche||{};
-  const dipsPerf=S.dipendenti.filter(d=>!d.cessato && !REPARTI_ESCLUSI_PERF.includes(d.reparto));
+  const dipsPerf=S.dipendenti.filter(d=>!d.cessato && !repartoEscluso(d.reparto));
 
   // Reparti con dato di produzione e la voce di calendario corrispondente
   const repartiTarget=[
-    {rep:'POMEZIA REPARTO 1°FASE',    voce:'D.A. Smontati + Carrelli + D.A. Verniciati (media ÷ 3)', campi:['smontati','carrelli','verniciati'], color:'#4f46e5'},
-    {rep:'POMEZIA REPARTO MONTAGGIO', voce:'Linee',                                                    campi:['linee'],                           color:'#059669'},
-    {rep:'POMEZIA REPARTO COLLAUDI',  voce:'D.A. Evase',                                               campi:['evase'],                           color:'#0284c7'},
+    {rep:trovaRepartoPerChiave('1°FASE'),    voce:'D.A. Smontati + Carrelli + D.A. Verniciati (media ÷ 3)', campi:['smontati','carrelli','verniciati'], color:'#4f46e5'},
+    {rep:trovaRepartoPerChiave('MONTAGGIO'), voce:'Linee',                                                    campi:['linee'],                           color:'#059669'},
+    {rep:trovaRepartoPerChiave('COLLAUDI'),  voce:'D.A. Evase',                                               campi:['evase'],                           color:'#0284c7'},
   ];
 
   let html='<div style="display:flex;flex-direction:column;gap:.75rem;margin-top:.75rem">';
@@ -2929,16 +2932,17 @@ function setRiepilogoSort(key){
 function getProduzioneRepartoGiorno(rep, ds){
   const p=(S.produzione||{})[ds];
   if(!p) return null;
-  if(rep==='POMEZIA REPARTO 1°FASE'){
+  const R=(rep||'').toUpperCase();
+  if(R.includes('1°FASE')){
     const smontati=parseInt(p.smontati)||0;
     const carrelli=parseInt(p.carrelli)||0;
     const verniciati=parseInt(p.verniciati)||0;
     return (smontati+carrelli+verniciati)/3;
   }
-  if(rep==='POMEZIA REPARTO MONTAGGIO'){
+  if(R.includes('MONTAGGIO')){
     return parseInt(p.linee)||0;
   }
-  if(rep==='POMEZIA REPARTO COLLAUDI'){
+  if(R.includes('COLLAUDI')){
     return parseInt(p.evase)||0;
   }
   return null;
@@ -2948,7 +2952,7 @@ function renderPerformance(){
   const repFilt=document.getElementById('perfRep')?.value||'';
 
   // Reparti coinvolti, escluso Sitalia, Controllo Qualità, Laboratorio, Magazzino, Frigorista
-  const attivi=S.dipendenti.filter(d=>!d.cessato && !REPARTI_ESCLUSI_PERF.includes(d.reparto));
+  const attivi=S.dipendenti.filter(d=>!d.cessato && !repartoEscluso(d.reparto));
   const reps=[...new Set(attivi.map(d=>d.reparto).filter(Boolean))].sort();
 
   // Popola select reparto
@@ -2970,7 +2974,7 @@ function renderPerformanceTabellaSoloRicalcolo(){
 
   const {primoGiorno,ultimoGiorno}=getIntervalloPeriodo(anno,mesi);
 
-  const attivi=S.dipendenti.filter(d=>!d.cessato && !REPARTI_ESCLUSI_PERF.includes(d.reparto));
+  const attivi=S.dipendenti.filter(d=>!d.cessato && !repartoEscluso(d.reparto));
   const reps=[...new Set(attivi.map(d=>d.reparto).filter(Boolean))].sort();
   const tempistiche=S.tempistiche||{};
 
@@ -3019,7 +3023,7 @@ function renderPerformanceTabellaSoloRicalcolo(){
       const v=getProduzioneRepartoGiorno(rep,ds);
       return s+(v||0);
     },0);
-    const haDatoReale = ['POMEZIA REPARTO 1°FASE','POMEZIA REPARTO MONTAGGIO','POMEZIA REPARTO COLLAUDI'].includes(rep);
+    const haDatoReale = ['1°FASE','MONTAGGIO','COLLAUDI'].some(k=>(rep||'').toUpperCase().includes(k));
 
     righePerf.push({rep, numDip:dips.length, oreDisponibili, orePerse, oreEffettive, tempistica, daTeoriche, daReali, haDatoReale});
   });
@@ -3076,7 +3080,7 @@ let _perfChartInstance=null;
 function renderPerformanceChart(primoGiorno, ultimoGiorno, repFilt, attiviTotali){
   const dips = repFilt ? attiviTotali.filter(d=>d.reparto===repFilt) : attiviTotali;
   // Reparti su cui sommare la produzione reale (se "Tutti", li sommiamo tutti insieme)
-  const repartiProd = repFilt ? [repFilt] : ['POMEZIA REPARTO 1°FASE','POMEZIA REPARTO MONTAGGIO','POMEZIA REPARTO COLLAUDI'];
+  const repartiProd = repFilt ? [repFilt] : [trovaRepartoPerChiave('1°FASE'), trovaRepartoPerChiave('MONTAGGIO'), trovaRepartoPerChiave('COLLAUDI')].filter(Boolean);
 
   const labels=[], oreEffSerie=[], prodSerie=[];
 
@@ -3189,7 +3193,7 @@ function esportaPerformanceExcel(){
   const repFilt=document.getElementById('perfRep')?.value||'';
 
   const {primoGiorno,ultimoGiorno}=getIntervalloPeriodo(anno,mesi);
-  const attivi=S.dipendenti.filter(d=>!d.cessato && !REPARTI_ESCLUSI_PERF.includes(d.reparto));
+  const attivi=S.dipendenti.filter(d=>!d.cessato && !repartoEscluso(d.reparto));
   const reps=[...new Set(attivi.map(d=>d.reparto).filter(Boolean))].sort();
   const repartiDaMostrare=repFilt?[repFilt]:reps;
 
@@ -3227,7 +3231,7 @@ function esportaPerformanceExcel(){
     const daTeoriche=tempistica>0?(oreEffettive/tempistica):0;
 
     const daReali = giorniPeriodo.reduce((s,ds)=>s+(getProduzioneRepartoGiorno(rep,ds)||0),0);
-    const haDatoReale = ['POMEZIA REPARTO 1°FASE','POMEZIA REPARTO MONTAGGIO','POMEZIA REPARTO COLLAUDI'].includes(rep);
+    const haDatoReale = ['1°FASE','MONTAGGIO','COLLAUDI'].some(k=>(rep||'').toUpperCase().includes(k));
     const perf = (haDatoReale && daTeoriche>0) ? (daReali/daTeoriche*100) : null;
 
     aoa.push([
