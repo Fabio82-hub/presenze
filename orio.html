@@ -252,6 +252,8 @@ tr:hover td{background:var(--accent-light)}
 .xtab .td-cell.assenza_extra{background:#fef3c7;color:#b45309;border:2px solid #fcd34d}
 .xtab .td-cell.ferie_prev{background:#fce7f3;color:#be185d;border:2px dashed #f9a8d4}
 .xtab .td-cell.rol_prev{background:#e0f2fe;color:#0369a1;border:2px dashed #7dd3fc}
+.xtab .td-cell.cambio_reparto{background:#4338ca;color:#fff}
+.xtab .td-cell.cessato-cell{background:#e5e7eb;color:#9ca3af;cursor:not-allowed}
 .xtab .td-cell.multi{background:#7c3aed;color:#fff}
 .xtab .td-cell.empty{background:#fff}
 .extra-asterisk{font-size:.85rem;font-weight:900;color:#6b21a8;line-height:1;cursor:help}
@@ -835,7 +837,14 @@ tr:hover td{background:var(--accent-light)}
           <option value="assenza_extra">🟡 Assenza Extra</option>
           <option value="ferie_prev">🌸 Ferie Previsionali</option>
           <option value="rol_prev">🔵 ROL Previsionali</option>
+          <option value="cambio_reparto">🔄 Cambio Mansione Temporanea</option>
         </select>
+      </div>
+    </div>
+    <div class="fr" id="eRepartoTempRow" style="display:none">
+      <div class="fg">
+        <label>Reparto temporaneo (dove lavora quei giorni) *</label>
+        <select id="eRepartoTemp"></select>
       </div>
     </div>
 
@@ -1499,6 +1508,32 @@ function trovaRepartoPerChiave(chiave){
   return (S.reparti||[]).find(r=>(r||'').toUpperCase().includes(chiave.toUpperCase())) || null;
 }
 
+// Un dipendente è "attivo" in una certa DATA (non solo genericamente non-cessato) se non è mai
+// stato cessato, oppure se è cessato ma la data richiesta è antecedente/uguale alla data di
+// cessazione. Usata per il calendario e per i calcoli di Efficienza, che devono ragionare
+// giorno per giorno (un cessato a metà mese resta attivo nei giorni prima della cessazione).
+function attivoInData(dip, ds){
+  if(!dip.cessato) return true;
+  if(!dip.cessatoData) return false; // cessato ma senza data nota: prudenzialmente sempre inattivo
+  return ds<=dip.cessatoData;
+}
+// Un dipendente va mostrato nel calendario del mese (anno, mese 0-based) se è stato attivo per
+// ALMENO un giorno di quel mese — cioè non è cessato, oppure la sua cessazione è avvenuta questo
+// mese o dopo. Un mese completamente successivo alla cessazione non lo mostra più.
+function attivoNelMese(dip, anno, mese){
+  if(!dip.cessato) return true;
+  if(!dip.cessatoData) return false;
+  const primoGiornoMese=isoD(anno, mese, 1);
+  return dip.cessatoData>=primoGiornoMese;
+}
+// Il reparto EFFETTIVO di un dipendente in una data specifica: normalmente il suo reparto
+// abituale, ma se quel giorno ha una voce "cambio_reparto" (cambio mansione temporaneo), conta
+// per il reparto indicato lì — senza toccare il suo reparto abituale nell'anagrafica.
+function repartoEffettivoInData(dip, ds){
+  const cambio=S.entries.find(e=>e.dipId===dip.id && e.data===ds && e.tipo==='cambio_reparto');
+  return cambio ? cambio.repartoTemp : dip.reparto;
+}
+
 // ════════════════════════════════════════════════════
 //  FESTIVITÀ ITALIANE (fisse + Pasqua/Pasquetta calcolate)
 // ════════════════════════════════════════════════════
@@ -1638,8 +1673,9 @@ function buildCalTabella(){
   const nomeFilt = (document.getElementById('calNome')?.value||'').trim().toLowerCase();
   document.getElementById('calTabTit').textContent = MESI[calM]+' '+calY;
 
-  // Dipendenti attivi (filtro reparto/mansione/nome se attivo)
-  let dips = S.dipendenti.filter(d=>!d.cessato);
+  // Dipendenti attivi nel mese (filtro reparto/mansione/nome se attivo) — un cessato a metà
+  // mese resta visibile per il mese della cessazione, sparisce dai mesi successivi.
+  let dips = S.dipendenti.filter(d=>attivoNelMese(d, calY, calM));
   if(repFilt)  dips = dips.filter(d=>d.reparto===repFilt);
   if(mansFilt) dips = dips.filter(d=>d.mansione===mansFilt);
   if(nomeFilt) dips = dips.filter(d=>d.nome.toLowerCase().includes(nomeFilt));
@@ -1656,7 +1692,7 @@ function buildCalTabella(){
       if(e.data!==ds)return false;
       if(tipoFilt&&e.tipo!==tipoFilt)return false;
       const dp=S.dipendenti.find(x=>x.id===e.dipId);
-      if(!dp||dp.cessato)return false;
+      if(!dp||!attivoNelMese(dp, calY, calM))return false;
       if(repFilt&&dp.reparto!==repFilt)return false;
       if(mansFilt&&dp.mansione!==mansFilt)return false;
       return true;
@@ -1693,6 +1729,10 @@ function buildCalTabella(){
         const es=dayMap[day][d.id]||[];
         const ds=isoD(calY,calM,day);
         const isFest=isFestivo(ds);
+        if(!attivoInData(d, ds)){
+          cells+=`<td class="td-cell cessato-cell" title="Cessato il ${fmtData(d.cessatoData)} — non più modificabile"></td>`;
+          continue;
+        }
         if(isWe&&!es.length){
           cells+=`<td class="td-cell we"></td>`;
         } else if(!es.length){
@@ -1702,10 +1742,12 @@ function buildCalTabella(){
           const isGiornata=(e.tipo==='mancata'||e.tipo==='malattia');
           const isExtra=(e.tipo==='lavorazione_extra');
           const isPrev=(e.tipo==='ferie_prev'||e.tipo==='rol_prev');
+          const isCambio=(e.tipo==='cambio_reparto');
           let label, tooltip, clickFn;
           if(isGiornata){ label='1'; tooltip=`${tCfg(e.tipo).label} — ${fmt(e.ore)}h`; clickFn=`openGiorno('${ds}')`; }
           else if(isExtra){ label='<span class="extra-asterisk">✱</span>'; tooltip=`Lav. Extra — ${fmt(e.ore)}h${e.note?' · '+e.note:''}`; clickFn=`openGiorno('${ds}')`; }
           else if(isPrev){ label=fmt(e.ore); tooltip=`${tCfg(e.tipo).label} — ${fmt(e.ore)}h · Clicca per confermare`; clickFn=`confermaPrev('${e.id}','${e.tipo}')`; }
+          else if(isCambio){ label='🔄'; tooltip=`Cambio Mansione — oggi lavora per: ${shortRep(e.repartoTemp)}${e.note?' · '+e.note:''}`; clickFn=`openGiorno('${ds}')`; }
           else { label=fmt(e.ore); tooltip=`${tCfg(e.tipo).label} — ${fmt(e.ore)}h`; clickFn=`openGiorno('${ds}')`; }
           cells+=`<td class="td-cell ${e.tipo}" onclick="${clickFn}" title="${tooltip}">${label}</td>`;
         } else {
@@ -1805,7 +1847,12 @@ function buildCalTabella(){
 
   // Righe Efficienza per Reparto + riga Totale + indicatore reparto meno efficiente
   {
-    const dipsPerf=S.dipendenti.filter(d=>!d.cessato && !repartoEscluso(d.reparto));
+    // Nessun pre-filtro su cessato/reparto qui: il controllo "attivo in questa data" e "reparto
+    // effettivo oggi" (repartoEffettivoInData, sotto) fanno già tutto il lavoro giorno per
+    // giorno — un pre-filtro su !d.cessato escluderebbe per sempre anche i giorni prima della
+    // cessazione, e un pre-filtro sul reparto BASE impedirebbe di contare chi, con un cambio
+    // mansione temporaneo, lavora oggi in uno di questi 3 reparti pur avendone uno escluso.
+    const dipsPerf=S.dipendenti;
     const tempistiche=S.tempistiche||{};
 
     const repartiEff=[
@@ -1824,7 +1871,6 @@ function buildCalTabella(){
     const totGiorno={}; // {ds: {daRealiTot, daTeoricheTot}}
 
     repartiEff.forEach(({rep, label})=>{
-      const dipsRep=dipsPerf.filter(d=>d.reparto===rep);
       const tempistica=parseFloat(tempistiche[rep])||0;
       let cellsEff='';
 
@@ -1834,6 +1880,11 @@ function buildCalTabella(){
         const isLav = wd!==0 && wd!==6 && !isFestivo(ds);
 
         if(!isLav){ cellsEff+=`<td class="tr-eff"></td>`; continue; }
+
+        // Chi conta per QUESTO reparto OGGI: attivo in questa data (un cessato a metà mese
+        // esce dal conteggio dal giorno dopo la cessazione) e il cui reparto EFFETTIVO oggi
+        // (tenendo conto di un eventuale cambio mansione temporaneo) è questo reparto.
+        const dipsRep=dipsPerf.filter(d=>attivoInData(d,ds) && repartoEffettivoInData(d,ds)===rep);
 
         if(!dipsRep.length || !tempistica){
           cellsEff+=`<td class="tr-eff tr-eff-na" title="${!tempistica?'Imposta la tempistica in Performance Reparto':'Nessun dipendente nel reparto'}">—</td>`;
@@ -2159,6 +2210,7 @@ function openM(id){
     _modalMode='singolo';
     setModalMode('singolo');
     document.getElementById('eDip').innerHTML=S.dipendenti.filter(d=>!d.cessato).map(d=>`<option value="${d.id}">${d.nome}</option>`).join('');
+    document.getElementById('eRepartoTemp').innerHTML=(S.reparti||[]).map(r=>`<option value="${esc(r)}">${shortRep(r)}</option>`).join('');
     if(!document.getElementById('eData').value)document.getElementById('eData').value=new Date().toISOString().split('T')[0];
     document.getElementById('periodoPreview').innerHTML='';
     updERes();
@@ -2271,7 +2323,7 @@ function updPeriodoPreview(){
   const al=document.getElementById('eDataAl').value;
   const oreRowP=document.getElementById('eOreRowP');
   const prev=document.getElementById('periodoPreview');
-  const isGiornata=(tipo==='mancata'||tipo==='malattia');
+  const isGiornata=(tipo==='mancata'||tipo==='malattia'||tipo==='cambio_reparto');
   oreRowP.style.display=isGiornata?'none':'flex';
   if(!dal||!al){prev.innerHTML='';return;}
   if(al<dal){prev.innerHTML='<div class="al a-danger" style="font-size:.75rem">⚠ La data finale deve essere dopo quella iniziale.</div>';return;}
@@ -2293,12 +2345,19 @@ function updERes(){
   const lm={ferie:'Ore Ferie',rol:'Ore ROL/Permessi',t104:'Ore Legge 104',mancata:'Giornata',malattia:'Giornata'};
   document.getElementById('eOreLabel').textContent=lm[tipo]||'Ore';
   const isGiornata=(tipo==='mancata'||tipo==='malattia');
-  // Nasconde campo ore in modalità singolo per mancata/malattia
+  const isCambioReparto=(tipo==='cambio_reparto');
+  // Nasconde campo ore in modalità singolo per mancata/malattia/cambio mansione (sempre giornata intera)
   const oreRow=document.getElementById('eOreRow');
-  if(oreRow) oreRow.style.display=isGiornata?'none':'flex';
+  if(oreRow) oreRow.style.display=(isGiornata||isCambioReparto)?'none':'flex';
+  const repTempRow=document.getElementById('eRepartoTempRow');
+  if(repTempRow) repTempRow.style.display=isCambioReparto?'flex':'none';
   // Aggiorna anche la preview del periodo se siamo in quella modalità
   if(_modalMode==='periodo') { updPeriodoPreview(); return; }
 
+  if(isCambioReparto){
+    el.innerHTML='<div class="al a-info" style="font-size:.75rem">🔄 Per tutta la giornata (o il periodo), le ore di questo dipendente conteranno per il reparto scelto sopra ai fini del calcolo Efficienza — lo storico del suo reparto abituale resta invariato.</div>';
+    return;
+  }
   if(tipo==='t104'){
     el.innerHTML='<div class="al a-info" style="font-size:.75rem">ℹ️ La Legge 104 non ha saldo da scalare — registrata come assenza giornaliera.</div>';
     return;
@@ -2335,7 +2394,7 @@ function updERes(){
 // Esclude "lavorazione_extra" (non è un'assenza) e "mancata" (mancata timbratura — non è
 // un'assenza pianificata, non genera né subisce il controllo di sovrapposizione).
 function verificaSovrapposizioneMansione(dipId, tipo, giorniList){
-  if(tipo==='lavorazione_extra' || tipo==='mancata') return true; // nessun controllo su questi tipi
+  if(tipo==='lavorazione_extra' || tipo==='mancata' || tipo==='cambio_reparto') return true; // nessun controllo su questi tipi
   const dip=S.dipendenti.find(d=>d.id===dipId);
   const mansione=dip&&dip.mansione;
   if(!mansione) return true; // nessuna mansione assegnata: niente da confrontare
@@ -2345,7 +2404,7 @@ function verificaSovrapposizioneMansione(dipId, tipo, giorniList){
   const conflitti=[];
   giorniList.forEach(data=>{
     colleghi.forEach(c=>{
-      const assenza=S.entries.find(e=>e.dipId===c.id && e.tipo!=='lavorazione_extra' && e.tipo!=='mancata' && e.data===data);
+      const assenza=S.entries.find(e=>e.dipId===c.id && e.tipo!=='lavorazione_extra' && e.tipo!=='mancata' && e.tipo!=='cambio_reparto' && e.data===data);
       if(assenza) conflitti.push({nome:c.nome,data,tipo:LABEL_TIPO[assenza.tipo]||assenza.tipo});
     });
   });
@@ -2361,7 +2420,14 @@ function salvaEntry(){
   const tipo=document.getElementById('eTipo').value;
   const note=document.getElementById('eNote').value;
   const isGiornata=(tipo==='mancata'||tipo==='malattia');
+  const isCambioReparto=(tipo==='cambio_reparto');
   if(!dipId){alert('Seleziona un dipendente.');return;}
+  let repartoTemp=null;
+  if(isCambioReparto){
+    repartoTemp=document.getElementById('eRepartoTemp').value;
+    if(!repartoTemp){alert('Seleziona il reparto temporaneo.');return;}
+  }
+  const extra=isCambioReparto?{repartoTemp}:{};
 
   if(_modalMode==='periodo'){
     // ── MODALITÀ PERIODO ──
@@ -2372,23 +2438,23 @@ function salvaEntry(){
     const giorni=getLavorativi(dal,al);
     if(!giorni.length){alert('Nessun giorno lavorativo nel periodo.');return;}
     if(!verificaSovrapposizioneMansione(dipId,tipo,giorni))return;
-    const ore=isGiornata?1:(parseFloat(document.getElementById('eOreP').value)||8);
-    if(!isGiornata&&ore<=0){alert('Inserisci le ore per giorno.');return;}
+    const ore=(isGiornata||isCambioReparto)?1:(parseFloat(document.getElementById('eOreP').value)||8);
+    if(!isGiornata&&!isCambioReparto&&ore<=0){alert('Inserisci le ore per giorno.');return;}
     const now=new Date().toISOString();
     giorni.forEach(data=>{
-      S.entries.push({id:uid(),dipId,tipo,data,ore,note,createdAt:now});
+      S.entries.push({id:uid(),dipId,tipo,data,ore,note,createdAt:now,...extra});
     });
     saveS();closeM('mEntry');
-    const label=isGiornata?`${giorni.length} giornate`:`${giorni.length} giorni × ${fmt(ore)}h = ${fmt(giorni.length*ore)}h`;
+    const label=(isGiornata||isCambioReparto)?`${giorni.length} giornate`:`${giorni.length} giorni × ${fmt(ore)}h = ${fmt(giorni.length*ore)}h`;
     setTimeout(()=>alert(`✅ Inserite ${label} di ${tipo} per il periodo ${dal} → ${al}`),200);
   } else {
     // ── MODALITÀ SINGOLO ──
     const data=document.getElementById('eData').value;
     if(!data){alert('Inserisci la data.');return;}
     if(!verificaSovrapposizioneMansione(dipId,tipo,[data]))return;
-    const ore=isGiornata?1:(parseFloat(document.getElementById('eOre').value)||0);
-    if(!isGiornata&&ore<=0){alert('Inserisci le ore.');return;}
-    S.entries.push({id:uid(),dipId,tipo,data,ore,note,createdAt:new Date().toISOString()});
+    const ore=(isGiornata||isCambioReparto)?1:(parseFloat(document.getElementById('eOre').value)||0);
+    if(!isGiornata&&!isCambioReparto&&ore<=0){alert('Inserisci le ore.');return;}
+    S.entries.push({id:uid(),dipId,tipo,data,ore,note,createdAt:new Date().toISOString(),...extra});
     saveS();closeM('mEntry');
   }
 
@@ -3808,6 +3874,7 @@ function tCfg(tipo){
     assenza_extra:     {label:'Assenza Extra',    col:'#b45309',bg:'#fef3c7'},
     ferie_prev:        {label:'Ferie Prev.',     col:'#be185d',bg:'#fce7f3'},
     rol_prev:          {label:'ROL Prev.',       col:'#0369a1',bg:'#e0f2fe'},
+    cambio_reparto:    {label:'Cambio Mansione', col:'#4338ca',bg:'#e0e7ff'},
   }[tipo]||{label:tipo,col:'var(--text)',bg:'var(--surface2)'};
 }
 
