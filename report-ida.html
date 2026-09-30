@@ -500,6 +500,11 @@ let ultimoExportCodiciMancanti=[], ultimoExportTempoZero=[], ultimoExportCodiciM
 // Conteggio lavorazioni a tempo=0 per tecnico (filtrato sulla filiale selezionata in Step 2) e
 // "fantasmi": tecnici che hanno SOLO lavorazioni a tempo=0 (nessuna lavorazione reale registrata).
 let ultimoConteggioTempoZero={}, ultimoFantasmiTempoZero=[];
+// Codici modello per cui, nel periodo appena analizzato, ALMENO UN collaudatore (tecnico senza
+// linea assegnata) ha registrato lui stesso lavorazioni di Fase 60 — cioè per quel modello non
+// è passato da una linea di montaggio separata, e ha fatto sia il montaggio che il collaudo.
+// Usata per calcolare correttamente il "tempo medio Fase 70" nella card Collaudo.
+let ultimoCodiciFase60Collaudatori=new Set();
 let ultimoProduzioneGrezza=[]; // TUTTE le righe del file Produzione (ogni fase, incluse tempo=0) — usata per la riconciliazione nel report
 // (Classifica Team ora salvata su Firestore, non più in localStorage — vedi collection "kpiClassifica")
 let ultimoTecniciReport=[], ultimoGiorniLavReport=[]; // dati dell'ultimo report generato, usati dai modal di dettaglio delle card KPI
@@ -1121,8 +1126,17 @@ function renderClassificaTeam(dati){
     if(fase==="60"){
       (tempiUsati||[]).forEach(r=>{ const v=r.fasi&&r.fasi["60"]; if(v>0) valori.push(v); });
     } else if(fase==="70"){
-      (tempiUsati||[]).forEach(r=>{ const v=r.fasi&&r.fasi["70"]; if(v>0) valori.push(v); });
-      (tempiNuovi||[]).forEach(r=>{ const v=r.fasi&&r.fasi["70"]; if(v>0) valori.push(v); });
+      (tempiUsati||[]).forEach(r=>{
+        const f70=r.fasi&&r.fasi["70"];
+        if(!(f70>0))return;
+        const f60=r.fasi&&r.fasi["60"];
+        const codice=(r.codice||"").toLowerCase();
+        // Se per questo modello un collaudatore ha fatto lui stesso anche la Fase 60 (non è
+        // passato da una linea separata), conta il tempo combinato 60+70, non solo il collaudo.
+        const faSoloLuiMontaggio=f60>0 && ultimoCodiciFase60Collaudatori.has(codice);
+        valori.push(faSoloLuiMontaggio ? f70+f60 : f70);
+      });
+      (tempiNuovi||[]).forEach(r=>{ const v=r.fasi&&r.fasi["70"]; if(v>0) valori.push(v); }); // i nuovi non hanno mai Fase 60
     }
     if(!valori.length) return null;
     return {media:valori.reduce((s,v)=>s+v,0)/valori.length, n:valori.length};
@@ -1132,7 +1146,8 @@ function renderClassificaTeam(dati){
   const infoTempiMedi=`<div class="al a-info" style="margin-bottom:1rem;font-size:.72rem">
     📐 <b>Tempi medi da Tempi Tecnici</b> (su tutti i modelli caricati su questo browser):
     Montaggio (Fase 60): ${tempo60?`<b>${fmt(tempo60.media)}h</b> — media su ${tempo60.n} modelli`:'<i>n/d, carica i Tempi Tecnici in "Inserimento dati"</i>'}.
-    Collaudo (Fase 70): ${tempo70?`<b>${fmt(tempo70.media)}h</b> — media su ${tempo70.n} modelli`:'<i>n/d, carica i Tempi Tecnici in "Inserimento dati"</i>'}.
+    Collaudo (Fase 70): ${tempo70?`<b>${fmt(tempo70.media)}h</b> — media su ${tempo70.n} modelli`:'<i>n/d, carica i Tempi Tecnici in "Inserimento dati"</i>'}
+    ${ultimoCodiciFase60Collaudatori.size?`(per ${ultimoCodiciFase60Collaudatori.size} modelli senza linea separata, un collaudatore fa lui stesso anche il montaggio: qui il tempo conta Fase 60+70 insieme)`:''}.
   </div>`;
 
   // ── Card "Collaudo — media reparto": stessa idea delle card Linea, ma aggregata su TUTTI i
@@ -1656,6 +1671,15 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
     tec.totStd=totStd;
     tec.totEff=totEff;
     tec.efficienza=(tec.oreEff>0&&totStd>0)?(totStd/tec.oreEff)*100:null;
+  });
+
+  // Codici modello per cui un collaudatore (senza linea assegnata) ha fatto lui stesso la Fase
+  // 60 in questo periodo — per quei modelli non è passato da una linea separata, quindi la sua
+  // efficienza reale su quel modello va misurata sul tempo combinato Fase 60+70, non solo 70.
+  ultimoCodiciFase60Collaudatori=new Set();
+  tecnici.filter(t=>!t.lineaAssegnata).forEach(t=>{
+    const f60=t.perFase["60"];
+    if(f60) f60.lavorazioni.forEach(lav=>{ if(lav.articolo) ultimoCodiciFase60Collaudatori.add((lav.articolo||"").toLowerCase()); });
   });
 
   // ── ANALISI PER LINEA (LINEA 1, LINEA 2, LINEA 3...) ──────────────────
