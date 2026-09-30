@@ -2155,12 +2155,19 @@ window.salvaMultiMesiStorico=async function(){
     }
   }
   const elenco=riusciti.map(s=>`${MESI_B[s.mese]} ${s.anno} (${s.tecnici.length} tecnici)`).join(" · ");
+  // DIAGNOSTICA TEMPORANEA: per ogni mese salvato, il tempo-zero scritto in quel documento —
+  // per verificare che ogni mese abbia il SUO conteggio, non quello di tutto l'anno ripetuto uguale ovunque.
+  const diagnosticaPerMese=riusciti.map(s=>{
+    const tot=s.tecnici.reduce((sum,t)=>sum+(t.lavorazioniZero||0),0);
+    return `${MESI_B[s.mese]}: tot ${tot}`;
+  }).join(" · ");
   msgEl.innerHTML=`
     <div class="al ${falliti.length?'a-warn':'a-ok'}" style="margin-bottom:0">
       ${falliti.length?"⚠️":"✅"} Salvati <b>${riusciti.length}/${lista.length}</b> mesi — ${elenco||"nessuno"}.
       ${falliti.length?`<br>Errori su: ${falliti.map(f=>`${MESI_B[f.mese]} ${f.anno} (${f.errore})`).join(", ")}.`:""}
       Vai alla tab "📈 KPI Produzione" per vedere lo storico aggiornato.
-    </div>`;
+    </div>
+    <div class="al a-info" style="margin-top:.5rem;font-size:.7rem">🔍 <b>Diagnostica temporanea</b> — totale tempo-zero scritto per ciascun mese: ${diagnosticaPerMese}</div>`;
 };
 
 // ── STORICO: CARICAMENTO E RENDER ───────────────────────
