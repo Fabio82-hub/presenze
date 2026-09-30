@@ -102,6 +102,12 @@ tr:hover td{background:#fafafa}
 .classifica-metrica{flex:1;text-align:center;padding:.5rem .3rem;border-radius:8px;background:#f8f9fb}
 .classifica-metrica-val{font-size:1.1rem;font-weight:800}
 .classifica-metrica-lbl{font-size:.6rem;color:var(--text2);text-transform:uppercase;letter-spacing:.03em}
+/* L'Efficienza è la metrica di riferimento del report: sempre più grande e prominente della Performance */
+.classifica-metrica.primaria{background:#f0fdf4}
+.classifica-metrica.primaria .classifica-metrica-val{font-size:1.65rem}
+.classifica-metrica.primaria .classifica-metrica-lbl{font-weight:700;color:var(--text)}
+.classifica-metrica.secondaria .classifica-metrica-val{font-size:.92rem}
+.classifica-metrica.secondaria{opacity:.8}
 .classifica-foot{font-size:.68rem;color:var(--text2);text-align:center;border-top:1px dashed var(--border);padding-top:.4rem;margin-top:.3rem}
 @media print{.no-print{display:none!important}body{background:#fff}.card{break-inside:avoid}}
 </style>
@@ -1067,11 +1073,11 @@ function renderClassificaTeam(dati){
       <div class="classifica-rank">#${i+1} DI ${n}</div>
       <div class="classifica-nome">${t.nome}</div>
       <div class="classifica-metriche">
-        <div class="classifica-metrica">
+        <div class="classifica-metrica primaria">
           <div class="classifica-metrica-val" style="color:${e!==null?(e>=95?'#059669':e>=80?'#d97706':'#dc2626'):'#9ca3af'}">${e!==null?fmt(e)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Efficienza</div>
         </div>
-        <div class="classifica-metrica">
+        <div class="classifica-metrica secondaria">
           <div class="classifica-metrica-val" style="color:${p!==null?(p>=95?'#059669':p>=80?'#d97706':'#dc2626'):'#9ca3af'}">${p!==null?fmt(p)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Performance</div>
         </div>
@@ -1093,11 +1099,11 @@ function renderClassificaTeam(dati){
       <div class="classifica-linea-badge">🏭 LINEA ${l.linea}</div>
       <div class="classifica-nome" style="margin-top:.3rem">${l.membri.length} tecnici</div>
       <div class="classifica-metriche">
-        <div class="classifica-metrica">
+        <div class="classifica-metrica primaria">
           <div class="classifica-metrica-val" style="color:${eff!==null?(eff>=95?'#059669':eff>=80?'#d97706':'#dc2626'):'#9ca3af'}">${eff!==null?fmt(eff)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Efficienza linea</div>
         </div>
-        <div class="classifica-metrica">
+        <div class="classifica-metrica secondaria">
           <div class="classifica-metrica-val" style="color:${perf!==null?(perf>=95?'#059669':perf>=80?'#d97706':'#dc2626'):'#9ca3af'}">${perf!==null?fmt(perf)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Performance linea</div>
         </div>
@@ -1137,15 +1143,40 @@ function renderClassificaTeam(dati){
   const sommaTotEffColl=tecnici.reduce((s,t)=>s+(t.totEff||0),0);
   const effMediaColl=(sommaOreEffColl>0&&sommaTotStdColl>0)?(sommaTotStdColl/sommaOreEffColl)*100:null;
   const perfMediaColl=(sommaTotEffColl>0&&sommaTotStdColl>0)?(sommaTotStdColl/sommaTotEffColl)*100:null;
+  // ── Card "Montaggio — media reparto": stessa idea, ma aggregando TUTTI i membri di TUTTE le
+  // linee insieme (in aggiunta alle card per singola linea già presenti sopra).
+  const tuttiMembriMontaggio=linee.flatMap(l=>l.membri||[]);
+  const sommaTotStdMont=tuttiMembriMontaggio.reduce((s,t)=>s+(t.totStd||0),0);
+  const sommaOreEffMont=tuttiMembriMontaggio.reduce((s,t)=>s+(t.oreEff||0),0);
+  const sommaTotEffMont=tuttiMembriMontaggio.reduce((s,t)=>s+(t.totEff||0),0);
+  const effMediaMont=(sommaOreEffMont>0&&sommaTotStdMont>0)?(sommaTotStdMont/sommaOreEffMont)*100:null;
+  const perfMediaMont=(sommaTotEffMont>0&&sommaTotStdMont>0)?(sommaTotStdMont/sommaTotEffMont)*100:null;
+  const cardMontaggioMedia=tuttiMembriMontaggio.length?`<div class="classifica-card linea" style="border-color:#4f46e5">
+      <div class="classifica-linea-badge" style="background:#e0e7ff;color:#4338ca">⚙️ MONTAGGIO — media reparto</div>
+      <div class="classifica-nome" style="margin-top:.3rem">${tuttiMembriMontaggio.length} tecnici, tutte le linee</div>
+      <div class="classifica-metriche">
+        <div class="classifica-metrica primaria">
+          <div class="classifica-metrica-val" style="color:${effMediaMont!==null?(effMediaMont>=95?'#059669':effMediaMont>=80?'#d97706':'#dc2626'):'#9ca3af'}">${effMediaMont!==null?fmt(effMediaMont)+'%':'n/d'}</div>
+          <div class="classifica-metrica-lbl">Efficienza media</div>
+        </div>
+        <div class="classifica-metrica secondaria">
+          <div class="classifica-metrica-val" style="color:${perfMediaMont!==null?(perfMediaMont>=95?'#059669':perfMediaMont>=80?'#d97706':'#dc2626'):'#9ca3af'}">${perfMediaMont!==null?fmt(perfMediaMont)+'%':'n/d'}</div>
+          <div class="classifica-metrica-lbl">Performance media</div>
+        </div>
+      </div>
+      <div class="classifica-foot">${tempo60?`Tempo medio Fase 60 (Montaggio): ${fmt(tempo60.media)}h su ${tempo60.n} modelli`:'Tempo medio Fase 60: carica i Tempi Tecnici per vederlo'}</div>
+      <div class="classifica-periodo">📅 ${dati.periodoLabel}</div>
+    </div>`:"";
+
   const cardCollaudoMedia=tecnici.length?`<div class="classifica-card linea" style="border-color:#0284c7">
       <div class="classifica-linea-badge" style="background:#e0f2fe;color:#0369a1">🔬 COLLAUDO — media reparto</div>
       <div class="classifica-nome" style="margin-top:.3rem">${tecnici.length} tecnici</div>
       <div class="classifica-metriche">
-        <div class="classifica-metrica">
+        <div class="classifica-metrica primaria">
           <div class="classifica-metrica-val" style="color:${effMediaColl!==null?(effMediaColl>=95?'#059669':effMediaColl>=80?'#d97706':'#dc2626'):'#9ca3af'}">${effMediaColl!==null?fmt(effMediaColl)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Efficienza media</div>
         </div>
-        <div class="classifica-metrica">
+        <div class="classifica-metrica secondaria">
           <div class="classifica-metrica-val" style="color:${perfMediaColl!==null?(perfMediaColl>=95?'#059669':perfMediaColl>=80?'#d97706':'#dc2626'):'#9ca3af'}">${perfMediaColl!==null?fmt(perfMediaColl)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Performance media</div>
         </div>
@@ -1157,6 +1188,7 @@ function renderClassificaTeam(dati){
   contentEl.innerHTML=`
     ${(!linee.length && dati.nessunaMansioneRegistrata)?`<div class="al a-warn" style="margin-bottom:1rem">ℹ️ Per questo periodo non risultano dati di mansione/linea nello storico — probabilmente questi mesi sono stati salvati prima di questo aggiornamento. Rigenera il report e clicca di nuovo "💾 Salva mese nello storico" per i mesi che ti interessano: da quel momento le card Linea torneranno a comparire anche qui.</div>`:""}
     ${infoTempiMedi}
+    ${cardMontaggioMedia?`<div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">⚙️ Montaggio — media reparto</div><div class="classifica-grid" style="margin-bottom:1.5rem">${cardMontaggioMedia}</div>`:""}
     ${linee.length?`<div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">🏭 Linee di produzione</div><div class="classifica-grid" style="margin-bottom:1.5rem">${cardsLinee}</div>`:""}
     ${cardCollaudoMedia?`<div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">🔬 Collaudo — media reparto</div><div class="classifica-grid" style="margin-bottom:1.5rem">${cardCollaudoMedia}</div>`:""}
     <div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">👥 Collaudatori</div>
@@ -1535,6 +1567,22 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
     if(!p.data)return true;
     return p.data>=primoG&&p.data<=ultimoG&&[...fasiSel].includes(p.fase)&&FASI_VALIDE.has(p.fase);
   });
+
+  // Ricalcola qui, SOLO sul periodo appena analizzato (primoG..ultimoG), il conteggio
+  // "lavorazioni a tempo zero" per tecnico. Va rifatto ad OGNI generazione: quello calcolato una
+  // volta sola al caricamento del file Produzione copre l'intero file caricato (es. tutto
+  // l'anno), quindi senza questo ricalcolo la card di un singolo mese mostrerebbe comunque il
+  // conteggio cumulativo su tutti i mesi caricati, non solo quello del periodo selezionato.
+  const righeTempoZeroPeriodo=(ultimoProduzioneGrezza||[]).filter(r=>
+    !(r.tempoEff>0) && r.data && r.data>=primoG && r.data<=ultimoG && FASI_VALIDE.has(r.fase)
+  );
+  ultimoConteggioTempoZero={};
+  righeTempoZeroPeriodo.forEach(r=>{ ultimoConteggioTempoZero[r.tecnico]=(ultimoConteggioTempoZero[r.tecnico]||0)+1; });
+  const prodPeriodoTutteFasiValide=produzione.filter(p=>p.data&&p.data>=primoG&&p.data<=ultimoG&&FASI_VALIDE.has(p.fase));
+  const tecniciConLavorazioniValidePeriodo=new Set(prodPeriodoTutteFasiValide.map(p=>p.tecnico));
+  ultimoFantasmiTempoZero=Object.keys(ultimoConteggioTempoZero)
+    .filter(t=>!tecniciConLavorazioniValidePeriodo.has(t))
+    .map(t=>({nome:t, lavorazioniZero:ultimoConteggioTempoZero[t]}));
 
   const perTecnico={};
   prodPeriodo.forEach(p=>{
@@ -2346,11 +2394,11 @@ window.apriDettaglioLinea=function(numeroLinea){
       <div class="classifica-rank">#${i+1} DI ${membriOrdinati.length}</div>
       <div class="classifica-nome">${m.nome}</div>
       <div class="classifica-metriche">
-        <div class="classifica-metrica">
+        <div class="classifica-metrica primaria">
           <div class="classifica-metrica-val" style="color:${e!==null?(e>=95?'#059669':e>=80?'#d97706':'#dc2626'):'#9ca3af'}">${e!=null?fmt(e)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Efficienza</div>
         </div>
-        <div class="classifica-metrica">
+        <div class="classifica-metrica secondaria">
           <div class="classifica-metrica-val" style="color:${p!==null?(p>=95?'#059669':p>=80?'#d97706':'#dc2626'):'#9ca3af'}">${p!=null?fmt(p)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Performance</div>
         </div>
