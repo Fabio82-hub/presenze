@@ -874,7 +874,7 @@ async function salvaClassificaInMemoria(filiale, periodoLabel, tecniciGrid, cont
       // Linee (LINEA 1, LINEA 2, LINEA 3...): performance/efficienza aggregata + dettaglio membri
       // (stesso formato completo dei collaudatori, per poterne aprire il dettaglio identico)
       linee:(linee||[]).map(l=>({
-        linea:l.linea, count:l.count, oreStd:l.oreStd, oreEff:l.oreEff, performance:l.performance,
+        linea:l.linea, count:l.count, oreStd:l.oreStd, oreEff:l.oreEff, performance:l.performance, efficienza:l.efficienza,
         membri:l.membri.map(nomeMembro=>{
           const tt=(tecniciCompleti||[]).find(x=>x.nome===nomeMembro);
           return tt?mappaTecnicoPerClassifica(tt, conteggioTempoZero):{nome:nomeMembro};
@@ -937,15 +937,17 @@ function aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati){
   const lineeTmp={};
   tecnici.forEach(t=>{
     if(!t.lineaAssegnata)return;
-    if(!lineeTmp[t.lineaAssegnata])lineeTmp[t.lineaAssegnata]={count:0,oreStd:0,oreEff:0,membriSet:new Set()};
+    if(!lineeTmp[t.lineaAssegnata])lineeTmp[t.lineaAssegnata]={count:0,oreStd:0,oreEff:0,orePresenzaEff:0,membriSet:new Set()};
     lineeTmp[t.lineaAssegnata].count+=t.lavorazioni;
     lineeTmp[t.lineaAssegnata].oreStd+=t.totStd;
     lineeTmp[t.lineaAssegnata].oreEff+=t.totEff;
+    lineeTmp[t.lineaAssegnata].orePresenzaEff+=t.oreEff||0; // ore presenza EFFETTIVA del membro (denominatore Efficienza, non le teoriche)
     lineeTmp[t.lineaAssegnata].membriSet.add(t.nome);
   });
   const linee=Object.entries(lineeTmp).map(([linea,l])=>({
     linea, count:l.count, oreStd:l.oreStd, oreEff:l.oreEff,
     performance:l.oreEff>0&&l.oreStd>0?(l.oreStd/l.oreEff)*100:null,
+    efficienza:l.orePresenzaEff>0&&l.oreStd>0?(l.oreStd/l.orePresenzaEff)*100:null,
     membri:[...l.membriSet].map(nomeMembro=>tecnici.find(x=>x.nome===nomeMembro)).filter(Boolean)
   }));
   const tecniciSenzaLinea=tecnici.filter(t=>!t.lineaAssegnata);
@@ -1086,11 +1088,15 @@ function renderClassificaTeam(dati){
   // vedere il dettaglio dei membri che compongono quella linea.
   const linee=dati.linee||[];
   const cardsLinee=linee.map(l=>{
-    const perf=l.performance;
+    const eff=l.efficienza, perf=l.performance;
     return `<div class="classifica-card linea" onclick="apriDettaglioLinea('${l.linea}')">
       <div class="classifica-linea-badge">🏭 LINEA ${l.linea}</div>
       <div class="classifica-nome" style="margin-top:.3rem">${l.membri.length} tecnici</div>
       <div class="classifica-metriche">
+        <div class="classifica-metrica">
+          <div class="classifica-metrica-val" style="color:${eff!==null?(eff>=95?'#059669':eff>=80?'#d97706':'#dc2626'):'#9ca3af'}">${eff!==null?fmt(eff)+'%':'n/d'}</div>
+          <div class="classifica-metrica-lbl">Efficienza linea</div>
+        </div>
         <div class="classifica-metrica">
           <div class="classifica-metrica-val" style="color:${perf!==null?(perf>=95?'#059669':perf>=80?'#d97706':'#dc2626'):'#9ca3af'}">${perf!==null?fmt(perf)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Performance linea</div>
@@ -1101,9 +1107,59 @@ function renderClassificaTeam(dati){
     </div>`;
   }).join("");
 
+  // ── Tempi medi da Tempi Tecnici (tutti i modelli caricati) — Fase 60 (Montaggio, solo USATO)
+  // e Fase 70 (Collaudo, USATO+NUOVO). Sono variabili globali dell'intera pagina: se non sono
+  // mai stati caricati i Tempi Tecnici su QUESTO browser, restano vuote e lo segnaliamo.
+  function mediaTempoFase(fase){
+    const valori=[];
+    if(fase==="60"){
+      (tempiUsati||[]).forEach(r=>{ const v=r.fasi&&r.fasi["60"]; if(v>0) valori.push(v); });
+    } else if(fase==="70"){
+      (tempiUsati||[]).forEach(r=>{ const v=r.fasi&&r.fasi["70"]; if(v>0) valori.push(v); });
+      (tempiNuovi||[]).forEach(r=>{ const v=r.fasi&&r.fasi["70"]; if(v>0) valori.push(v); });
+    }
+    if(!valori.length) return null;
+    return {media:valori.reduce((s,v)=>s+v,0)/valori.length, n:valori.length};
+  }
+  const tempo60=mediaTempoFase("60");
+  const tempo70=mediaTempoFase("70");
+  const infoTempiMedi=`<div class="al a-info" style="margin-bottom:1rem;font-size:.72rem">
+    📐 <b>Tempi medi da Tempi Tecnici</b> (su tutti i modelli caricati su questo browser):
+    Montaggio (Fase 60): ${tempo60?`<b>${fmt(tempo60.media)}h</b> — media su ${tempo60.n} modelli`:'<i>n/d, carica i Tempi Tecnici in "Inserimento dati"</i>'}.
+    Collaudo (Fase 70): ${tempo70?`<b>${fmt(tempo70.media)}h</b> — media su ${tempo70.n} modelli`:'<i>n/d, carica i Tempi Tecnici in "Inserimento dati"</i>'}.
+  </div>`;
+
+  // ── Card "Collaudo — media reparto": stessa idea delle card Linea, ma aggregata su TUTTI i
+  // Collaudatori del periodo (media ponderata: somma Ore Std ÷ somma Ore presenza/lavorazione,
+  // non media semplice delle singole percentuali, per non far pesare troppo chi ha pochi dati).
+  const sommaTotStdColl=tecnici.reduce((s,t)=>s+(t.totStd||0),0);
+  const sommaOreEffColl=tecnici.reduce((s,t)=>s+(t.oreEff||0),0);
+  const sommaTotEffColl=tecnici.reduce((s,t)=>s+(t.totEff||0),0);
+  const effMediaColl=(sommaOreEffColl>0&&sommaTotStdColl>0)?(sommaTotStdColl/sommaOreEffColl)*100:null;
+  const perfMediaColl=(sommaTotEffColl>0&&sommaTotStdColl>0)?(sommaTotStdColl/sommaTotEffColl)*100:null;
+  const cardCollaudoMedia=tecnici.length?`<div class="classifica-card linea" style="border-color:#0284c7">
+      <div class="classifica-linea-badge" style="background:#e0f2fe;color:#0369a1">🔬 COLLAUDO — media reparto</div>
+      <div class="classifica-nome" style="margin-top:.3rem">${tecnici.length} tecnici</div>
+      <div class="classifica-metriche">
+        <div class="classifica-metrica">
+          <div class="classifica-metrica-val" style="color:${effMediaColl!==null?(effMediaColl>=95?'#059669':effMediaColl>=80?'#d97706':'#dc2626'):'#9ca3af'}">${effMediaColl!==null?fmt(effMediaColl)+'%':'n/d'}</div>
+          <div class="classifica-metrica-lbl">Efficienza media</div>
+        </div>
+        <div class="classifica-metrica">
+          <div class="classifica-metrica-val" style="color:${perfMediaColl!==null?(perfMediaColl>=95?'#059669':perfMediaColl>=80?'#d97706':'#dc2626'):'#9ca3af'}">${perfMediaColl!==null?fmt(perfMediaColl)+'%':'n/d'}</div>
+          <div class="classifica-metrica-lbl">Performance media</div>
+        </div>
+      </div>
+      <div class="classifica-foot">${tempo70?`Tempo medio Fase 70 (Collaudo): ${fmt(tempo70.media)}h su ${tempo70.n} modelli`:'Tempo medio Fase 70: carica i Tempi Tecnici per vederlo'}</div>
+      <div class="classifica-periodo">📅 ${dati.periodoLabel}</div>
+    </div>`:"";
+
   contentEl.innerHTML=`
     ${(!linee.length && dati.nessunaMansioneRegistrata)?`<div class="al a-warn" style="margin-bottom:1rem">ℹ️ Per questo periodo non risultano dati di mansione/linea nello storico — probabilmente questi mesi sono stati salvati prima di questo aggiornamento. Rigenera il report e clicca di nuovo "💾 Salva mese nello storico" per i mesi che ti interessano: da quel momento le card Linea torneranno a comparire anche qui.</div>`:""}
-    ${linee.length?`<div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">🏭 Linee di produzione</div><div class="classifica-grid" style="margin-bottom:1.5rem">${cardsLinee}</div><div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">👥 Collaudatori</div>`:""}
+    ${infoTempiMedi}
+    ${linee.length?`<div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">🏭 Linee di produzione</div><div class="classifica-grid" style="margin-bottom:1.5rem">${cardsLinee}</div>`:""}
+    ${cardCollaudoMedia?`<div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">🔬 Collaudo — media reparto</div><div class="classifica-grid" style="margin-bottom:1.5rem">${cardCollaudoMedia}</div>`:""}
+    <div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">👥 Collaudatori</div>
     ${fantasmiVisibili.length?`<div class="al a-danger" style="margin-bottom:1rem">🚨 <b>${fantasmiVisibili.length} tecnico/i</b> con TUTTE le lavorazioni a tempo zero — non compaiono nel report perché non hanno nessun dato analizzabile, ma sono segnalati qui sotto in evidenza.</div>`:""}
     <div class="classifica-grid">${cardsFantasmi}${cardsNormali}</div>
     ${renderElencoEsclusiManuali(esclusiInQuestoElenco)}`;
@@ -1573,9 +1629,19 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
       });
     });
   });
+  // Somma UNA VOLTA SOLA per membro (non una volta per lavorazione) le sue ore di presenza
+  // effettiva nell'intero periodo — serve come denominatore dell'Efficienza di linea, distinto
+  // dalle ore di lavorazione tracciate (l.oreEff sopra) che sono invece il denominatore della Performance.
+  Object.values(lineeTmp).forEach(l=>{
+    l.orePresenzaEff=[...l.membriSet].reduce((s,nome)=>{
+      const t=tecnici.find(x=>x.nome===nome);
+      return s+(t?(t.oreEff||0):0);
+    },0);
+  });
   const lineeFiliale=Object.entries(lineeTmp).map(([linea,l])=>({
     linea, count:l.count, oreStd:l.oreStd, oreEff:l.oreEff,
     performance:l.oreEff>0&&l.oreStd>0?(l.oreStd/l.oreEff)*100:null,
+    efficienza:l.orePresenzaEff>0&&l.oreStd>0?(l.oreStd/l.orePresenzaEff)*100:null,
     membri:[...l.membriSet]
   })).sort((a,b)=>a.linea.localeCompare(b.linea));
   // Tecnici SENZA linea assegnata (restano nella griglia principale della Classifica Team);
