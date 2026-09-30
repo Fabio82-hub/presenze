@@ -2125,7 +2125,12 @@ window.salvaMeseStorico=async function(){
   msgEl.innerHTML='<span style="font-size:.76rem;color:var(--text2)"><span class="spin"></span> Salvataggio...</span>';
   try{
     await setDoc(doc(db,"kpiStorico",docId), s);
-    msgEl.innerHTML=`<div class="al a-ok" style="margin-bottom:0">✅ Salvato: ${MESI_B[s.mese]} ${s.anno} — ${s.filiale.toUpperCase()} (${s.tecnici.length} tecnici). Vai alla tab "📈 KPI Produzione" per vederlo.</div>`;
+    // DIAGNOSTICA TEMPORANEA: mostra cosa è stato effettivamente scritto per il tempo-zero, per
+    // verificare se il numero è già corretto qui (a monte) o se il problema è nel caricamento.
+    const totZero=s.tecnici.reduce((sum,t)=>sum+(t.lavorazioniZero||0),0);
+    const dettZero=s.tecnici.filter(t=>t.lavorazioniZero>0).map(t=>`${t.nome}: ${t.lavorazioniZero}`).join(" · ");
+    msgEl.innerHTML=`<div class="al a-ok" style="margin-bottom:0">✅ Salvato: ${MESI_B[s.mese]} ${s.anno} — ${s.filiale.toUpperCase()} (${s.tecnici.length} tecnici). Vai alla tab "📈 KPI Produzione" per vederlo.</div>
+      <div class="al a-info" style="margin-top:.5rem;font-size:.7rem">🔍 <b>Diagnostica temporanea</b> — tempo-zero appena scritto in questo documento (totale ${totZero} su tutti i tecnici): ${dettZero||'nessuno'}</div>`;
   }catch(err){
     msgEl.innerHTML=`<div class="al a-danger" style="margin-bottom:0">❌ Errore nel salvataggio: ${err.message}</div>`;
   }
