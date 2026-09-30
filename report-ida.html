@@ -1083,7 +1083,7 @@ function renderClassificaTeam(dati){
         </div>
       </div>
       <div class="classifica-foot">${t.lavorazioni} lavorazioni${isUltimi&&!isTop3?" · ⚠️ da richiamare/formare":""}</div>
-      ${zero>0?`<div class="classifica-zero-badge">⏱️ ${zero} lavorazione${zero>1?'i':''} a tempo zero (escluse dal calcolo)</div>`:""}
+      ${zero>0?`<div class="classifica-zero-badge" title="Periodo di riferimento di questo conteggio: ${dati.periodoLabel}">⏱️ ${zero} lavorazione${zero>1?'i':''} a tempo zero nel periodo ${dati.periodoLabel} (escluse dal calcolo)</div>`:""}
       <div class="classifica-periodo">📅 ${dati.periodoLabel} · clicca per il dettaglio</div>
     </div>`;
   }).join("");
