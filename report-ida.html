@@ -1574,7 +1574,7 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
   // l'anno), quindi senza questo ricalcolo la card di un singolo mese mostrerebbe comunque il
   // conteggio cumulativo su tutti i mesi caricati, non solo quello del periodo selezionato.
   const righeTempoZeroPeriodo=(ultimoProduzioneGrezza||[]).filter(r=>
-    !(r.tempoEff>0) && r.data && r.data>=primoG && r.data<=ultimoG && FASI_VALIDE.has(r.fase)
+    !(r.tempoEff>0) && r.data && r.data>=primoG && r.data<=ultimoG && FASI_VALIDE.has(r.fase) && matchaDipendente(r.tecnico,dipsAll)
   );
   ultimoConteggioTempoZero={};
   righeTempoZeroPeriodo.forEach(r=>{ ultimoConteggioTempoZero[r.tecnico]=(ultimoConteggioTempoZero[r.tecnico]||0)+1; });
