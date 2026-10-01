@@ -1154,7 +1154,11 @@ function renderClassificaTeam(dati){
     Montaggio (Fase 60): ${tempo60?`<b>${fmt(tempo60.media)}h</b> — media su ${tempo60.n} modelli`:'<i>n/d, carica i Tempi Tecnici in "Inserimento dati"</i>'}.
     Collaudo (Fase 70): ${tempo70?`<b>${fmt(tempo70.media)}h</b> — media su ${tempo70.n} modelli`:'<i>n/d, carica i Tempi Tecnici in "Inserimento dati"</i>'}
     ${ultimoCodiciFase60Collaudatori.size?`(per ${ultimoCodiciFase60Collaudatori.size} modelli senza linea separata, un collaudatore fa lui stesso anche il montaggio: qui il tempo conta Fase 60+70 insieme)`:''}.
-  </div>`;
+  </div>
+  ${window._diagF60v2?`<div class="al a-info" style="margin-bottom:1rem;font-size:.68rem">🔍 <b>Diagnostica v2</b> — periodo: ${window._diagF60v2.primoG||'?'}..${window._diagF60v2.ultimoG||'?'} · righe Fase 60 nel file: ${window._diagF60v2.righeFase60NelFile??'?'} · nel periodo: ${window._diagF60v2.righeFase60NelPeriodo??'?'}.<br>
+  Collaudatori riconosciuti (${window._diagF60v2.nomiCollaudatori?.length??0}): ${(window._diagF60v2.nomiCollaudatori||[]).slice(0,8).join(", ")||"nessuno"}${(window._diagF60v2.nomiCollaudatori||[]).length>8?"...":""}.<br>
+  Nomi con Fase 60 nel FILE, tutto l'anno (${window._diagF60v2.nomiConFase60NelFile?.length??0}): ${(window._diagF60v2.nomiConFase60NelFile||[]).slice(0,8).join(", ")||"nessuno"}${(window._diagF60v2.nomiConFase60NelFile||[]).length>8?"...":""}.<br>
+  <b>In comune tra i due elenchi (${window._diagF60v2.nomiInComune?.length??0})</b>: ${(window._diagF60v2.nomiInComune||[]).slice(0,8).join(", ")||"nessuno"}.</div>`:""}`;
 
   // ── Card "Collaudo — media reparto": stessa idea delle card Linea, ma aggregata su TUTTI i
   // Collaudatori del periodo (media ponderata: somma Ore Std ÷ somma Ore presenza/lavorazione,
@@ -1722,6 +1726,20 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
     p.fase==="60" && p.data>=primoG && p.data<=ultimoG && p.articolo && nomiCollaudatoriPeriodo.has(p.tecnico)
   );
   righeFase60Collaudatori.forEach(p=>{ ultimoCodiciFase60Collaudatori.add((p.articolo||"").toLowerCase()); });
+  // DIAGNOSTICA TEMPORANEA v2 — scritta con accesso sempre sicuro (?. e fallback), non può MAI
+  // causare il crash di prima: se manca del tutto, il codice che la legge semplicemente non la mostra.
+  try{
+    const righeF60Tutte=produzione.filter(p=>p.fase==="60");
+    const nomiF60Tutte=[...new Set(righeF60Tutte.map(p=>p.tecnico))];
+    window._diagF60v2={
+      primoG, ultimoG,
+      righeFase60NelFile: righeF60Tutte.length,
+      righeFase60NelPeriodo: righeF60Tutte.filter(p=>p.data>=primoG&&p.data<=ultimoG).length,
+      nomiCollaudatori: [...nomiCollaudatoriPeriodo],
+      nomiConFase60NelFile: nomiF60Tutte,
+      nomiInComune: nomiF60Tutte.filter(n=>nomiCollaudatoriPeriodo.has(n))
+    };
+  }catch(e){ window._diagF60v2=null; }
 
   // ── "Collaudo + Montaggio Singolo": i collaudatori (senza linea) che per alcuni modelli fanno
   // ANCHE la Fase 60 loro stessi (non passano da una linea separata). Per loro l'efficienza va
