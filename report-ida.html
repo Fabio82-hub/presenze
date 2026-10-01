@@ -1243,9 +1243,28 @@ function renderClassificaTeam(dati){
   const cmSingolo=dati.collaudoMontaggioSingolo||[];
   const sommaTotStdCM=cmSingolo.reduce((s,t)=>s+(t.totStd||0),0);
   const sommaLavorazioniCM=cmSingolo.reduce((s,t)=>s+(t.lavorazioni||0),0);
-  const tempoMedioCM=sommaLavorazioniCM>0?sommaTotStdCM/sommaLavorazioniCM:null;
   const sommaFase60CM=cmSingolo.reduce((s,t)=>s+(t.lavorazioniFase60||0),0);
   const sommaFase70CM=cmSingolo.reduce((s,t)=>s+(t.lavorazioniFase70||0),0);
+  // Tempo medio "di riferimento" per modello: media di (Fase 60 + Fase 70) presi dai Tempi
+  // Tecnici per i modelli coinvolti in questo pattern — stessa identica logica delle altre due
+  // card (quindi stesso limite: disponibile solo nella sessione in cui è stato appena generato
+  // un report, non recuperabile da solo storico caricato, perché i modelli specifici non vengono
+  // salvati nello storico). È questo il numero confrontabile con una somma fatta a mano sul file
+  // Tempi Tecnici sulla colonna "60+70", NON una media per singola riga di lavorazione.
+  let tempoMedioCM=null, nModelliCM=0;
+  if(ultimoCodiciFase60Collaudatori.size){
+    const tempiIdxCM=buildTempiIdx();
+    const valoriCombinati=[];
+    ultimoCodiciFase60Collaudatori.forEach(codice=>{
+      const tempoObj=tempiIdxCM[codice];
+      const f60=tempoObj?.fasi?.["60"], f70=tempoObj?.fasi?.["70"];
+      if(f60>0 && f70>0) valoriCombinati.push(f60+f70);
+    });
+    if(valoriCombinati.length){
+      tempoMedioCM=valoriCombinati.reduce((s,v)=>s+v,0)/valoriCombinati.length;
+      nModelliCM=valoriCombinati.length;
+    }
+  }
   const sommaOreEffCM=cmSingolo.reduce((s,t)=>s+(t.oreEff||0),0);
   const sommaTotEffCM=cmSingolo.reduce((s,t)=>s+(t.totEff||0),0);
   const effMediaCM=(sommaOreEffCM>0&&sommaTotStdCM>0)?(sommaTotStdCM/sommaOreEffCM)*100:null;
@@ -1263,7 +1282,7 @@ function renderClassificaTeam(dati){
           <div class="classifica-metrica-lbl">Performance media</div>
         </div>
       </div>
-      <div class="classifica-foot">${tempoMedioCM!==null?`Tempo standard medio per lavorazione (Fase 60+70 insieme): ${fmt(tempoMedioCM)}h su ${sommaLavorazioniCM} lavorazioni`:'Tempo standard: Fase 60 + Fase 70 sommate insieme'}<br>Spaccatura: ${sommaFase70CM} lavorazioni di Collaudo (Fase 70) · ${sommaFase60CM} di Montaggio (Fase 60)</div>
+      <div class="classifica-foot">${tempoMedioCM!==null?`Tempo standard medio per modello (Fase 60+70 combinate): ${fmt(tempoMedioCM)}h su ${nModelliCM} modelli`:'Tempo medio per modello: carica i Tempi Tecnici e genera un report fresco per vederlo'}<br>${sommaLavorazioniCM} lavorazioni reali svolte nel periodo — di cui ${sommaFase70CM} di Collaudo (Fase 70) e ${sommaFase60CM} di Montaggio (Fase 60)</div>
       <div class="classifica-periodo">📅 ${dati.periodoLabel} · clicca per il dettaglio dei membri</div>
     </div>`:"";
 
