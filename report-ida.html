@@ -874,7 +874,7 @@ function mappaTecnicoPerClassifica(t, conteggioTempoZero){
     giorniFuoriLinea:Object.entries(t.overrideLinea||{}).map(([data,valore])=>({data,valore}))
   };
 }
-async function salvaClassificaInMemoria(filiale, periodoLabel, tecniciGrid, conteggioTempoZero, fantasmi, linee, tecniciCompleti, anno, mesi){
+async function salvaClassificaInMemoria(filiale, periodoLabel, tecniciGrid, conteggioTempoZero, fantasmi, linee, tecniciCompleti, anno, mesi, collaudoMontaggioSingolo){
   try{
     const dati={
       filiale, periodoLabel,
@@ -890,6 +890,12 @@ async function salvaClassificaInMemoria(filiale, periodoLabel, tecniciGrid, cont
           const tt=(tecniciCompleti||[]).find(x=>x.nome===nomeMembro);
           return tt?mappaTecnicoPerClassifica(tt, conteggioTempoZero):{nome:nomeMembro};
         })
+      })),
+      // Collaudatori che per alcuni modelli fanno anche la Fase 60 (montaggio singolo) loro
+      // stessi: efficienza/performance individuali già calcolate sul tempo combinato 60+70.
+      collaudoMontaggioSingolo:(collaudoMontaggioSingolo||[]).map(c=>({
+        nome:c.nome, lavorazioni:c.lavorazioni, totStd:c.totStd, totEff:c.totEff, oreEff:c.oreEff,
+        efficienza:c.efficienza, performance:c.performance
       }))
     };
     // Salvato su Firestore (non più solo nel browser): visibile identico da qualsiasi PC/browser.
@@ -1169,7 +1175,7 @@ function renderClassificaTeam(dati){
   const sommaTotEffMont=tuttiMembriMontaggio.reduce((s,t)=>s+(t.totEff||0),0);
   const effMediaMont=(sommaOreEffMont>0&&sommaTotStdMont>0)?(sommaTotStdMont/sommaOreEffMont)*100:null;
   const perfMediaMont=(sommaTotEffMont>0&&sommaTotStdMont>0)?(sommaTotStdMont/sommaTotEffMont)*100:null;
-  const cardMontaggioMedia=tuttiMembriMontaggio.length?`<div class="classifica-card linea" style="border-color:#4f46e5">
+  const cardMontaggioMedia=tuttiMembriMontaggio.length?`<div class="classifica-card linea" style="border-color:#4f46e5" onclick="apriDettaglioGruppoAggregato('montaggio')">
       <div class="classifica-linea-badge" style="background:#e0e7ff;color:#4338ca">⚙️ MONTAGGIO — media reparto</div>
       <div class="classifica-nome" style="margin-top:.3rem">${tuttiMembriMontaggio.length} tecnici, tutte le linee</div>
       <div class="classifica-metriche">
@@ -1186,7 +1192,7 @@ function renderClassificaTeam(dati){
       <div class="classifica-periodo">📅 ${dati.periodoLabel}</div>
     </div>`:"";
 
-  const cardCollaudoMedia=tecnici.length?`<div class="classifica-card linea" style="border-color:#0284c7">
+  const cardCollaudoMedia=tecnici.length?`<div class="classifica-card linea" style="border-color:#0284c7" onclick="apriDettaglioGruppoAggregato('collaudo')">
       <div class="classifica-linea-badge" style="background:#e0f2fe;color:#0369a1">🔬 COLLAUDO — media reparto</div>
       <div class="classifica-nome" style="margin-top:.3rem">${tecnici.length} tecnici</div>
       <div class="classifica-metriche">
@@ -1200,7 +1206,34 @@ function renderClassificaTeam(dati){
         </div>
       </div>
       <div class="classifica-foot">${tempo70?`Tempo medio Fase 70 (Collaudo): ${fmt(tempo70.media)}h su ${tempo70.n} modelli`:'Tempo medio Fase 70: carica i Tempi Tecnici per vederlo'}</div>
-      <div class="classifica-periodo">📅 ${dati.periodoLabel}</div>
+      <div class="classifica-periodo">📅 ${dati.periodoLabel} · clicca per il dettaglio dei membri</div>
+    </div>`:"";
+
+  // ── Card "Collaudo + Montaggio Singolo": i collaudatori che per alcuni modelli fanno anche la
+  // Fase 60 (montaggio singolo) loro stessi, non passando da una linea separata. Efficienza e
+  // Performance qui sono calcolate sul tempo standard combinato Fase 60+70, non sulla sola 70 —
+  // già pronte così in dati.collaudoMontaggioSingolo (calcolate alla generazione del report).
+  const cmSingolo=dati.collaudoMontaggioSingolo||[];
+  const sommaTotStdCM=cmSingolo.reduce((s,t)=>s+(t.totStd||0),0);
+  const sommaOreEffCM=cmSingolo.reduce((s,t)=>s+(t.oreEff||0),0);
+  const sommaTotEffCM=cmSingolo.reduce((s,t)=>s+(t.totEff||0),0);
+  const effMediaCM=(sommaOreEffCM>0&&sommaTotStdCM>0)?(sommaTotStdCM/sommaOreEffCM)*100:null;
+  const perfMediaCM=(sommaTotEffCM>0&&sommaTotStdCM>0)?(sommaTotStdCM/sommaTotEffCM)*100:null;
+  const cardCollaudoMontaggioSingolo=cmSingolo.length?`<div class="classifica-card linea" style="border-color:#7c3aed" onclick="apriDettaglioGruppoAggregato('collaudomontaggio')">
+      <div class="classifica-linea-badge" style="background:#ede9fe;color:#6d28d9">🔧 COLLAUDO + MONTAGGIO SINGOLO</div>
+      <div class="classifica-nome" style="margin-top:.3rem">${cmSingolo.length} tecnici</div>
+      <div class="classifica-metriche">
+        <div class="classifica-metrica primaria">
+          <div class="classifica-metrica-val" style="color:${effMediaCM!==null?(effMediaCM>=95?'#059669':effMediaCM>=80?'#d97706':'#dc2626'):'#9ca3af'}">${effMediaCM!==null?fmt(effMediaCM)+'%':'n/d'}</div>
+          <div class="classifica-metrica-lbl">Efficienza media</div>
+        </div>
+        <div class="classifica-metrica secondaria">
+          <div class="classifica-metrica-val" style="color:${perfMediaCM!==null?(perfMediaCM>=95?'#059669':perfMediaCM>=80?'#d97706':'#dc2626'):'#9ca3af'}">${perfMediaCM!==null?fmt(perfMediaCM)+'%':'n/d'}</div>
+          <div class="classifica-metrica-lbl">Performance media</div>
+        </div>
+      </div>
+      <div class="classifica-foot">Tempo standard: Fase 60 + Fase 70 sommate insieme</div>
+      <div class="classifica-periodo">📅 ${dati.periodoLabel} · clicca per il dettaglio dei membri</div>
     </div>`:"";
 
   contentEl.innerHTML=`
@@ -1209,6 +1242,7 @@ function renderClassificaTeam(dati){
     ${cardMontaggioMedia?`<div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">⚙️ Montaggio — media reparto</div><div class="classifica-grid" style="margin-bottom:1.5rem">${cardMontaggioMedia}</div>`:""}
     ${linee.length?`<div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">🏭 Linee di produzione</div><div class="classifica-grid" style="margin-bottom:1.5rem">${cardsLinee}</div>`:""}
     ${cardCollaudoMedia?`<div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">🔬 Collaudo — media reparto</div><div class="classifica-grid" style="margin-bottom:1.5rem">${cardCollaudoMedia}</div>`:""}
+    ${cardCollaudoMontaggioSingolo?`<div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">🔧 Collaudo + Montaggio Singolo</div><div class="classifica-grid" style="margin-bottom:1.5rem">${cardCollaudoMontaggioSingolo}</div>`:""}
     <div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">👥 Collaudatori</div>
     ${fantasmiVisibili.length?`<div class="al a-danger" style="margin-bottom:1rem">🚨 <b>${fantasmiVisibili.length} tecnico/i</b> con TUTTE le lavorazioni a tempo zero — non compaiono nel report perché non hanno nessun dato analizzabile, ma sono segnalati qui sotto in evidenza.</div>`:""}
     <div class="classifica-grid">${cardsFantasmi}${cardsNormali}</div>
@@ -1703,6 +1737,32 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
   };
   diagF60Collaudatori.forEach(p=>{ ultimoCodiciFase60Collaudatori.add((p.articolo||"").toLowerCase()); });
 
+  // ── "Collaudo + Montaggio Singolo": i collaudatori (senza linea) che per alcuni modelli fanno
+  // ANCHE la Fase 60 loro stessi (non passano da una linea separata). Per loro l'efficienza va
+  // misurata sul tempo standard combinato Fase 60+70, non sulla sola Fase 70 — altrimenti il
+  // tempo che dedicano al montaggio apparirebbe come tempo "perso" invece che lavoro produttivo.
+  // Ricalcolato dai dati GREZZI (produzione) per lo stesso motivo della diagnostica sopra: non
+  // deve dipendere dal filtro "Fasi" dell'interfaccia (fasiSel).
+  const nomiConFase60=new Set(diagF60Collaudatori.map(p=>p.tecnico));
+  const collaudoMontaggioSingolo=[...nomiConFase60].map(nome=>{
+    const tec=tecnici.find(t=>t.nome===nome);
+    if(!tec) return null;
+    const righe=produzione.filter(p=>p.tecnico===nome&&p.data>=primoG&&p.data<=ultimoG&&(p.fase==="60"||p.fase==="70"));
+    let totStd=0, totEff=0;
+    righe.forEach(lav=>{
+      const artKey=(lav.articolo||"").toLowerCase();
+      const tempoObj=tempiIdx[artKey];
+      const tStd=tempoObj?parseOre(tempoObj.fasi[lav.fase])||parseOre(tempoObj.fasi.montaggio)||parseOre(tempoObj.fasi.collaudo):0;
+      totStd+=tStd;
+      totEff+=lav.tempoEff||0;
+    });
+    return {
+      nome, lavorazioni:righe.length, totStd, totEff, oreEff:tec.oreEff,
+      efficienza:(tec.oreEff>0&&totStd>0)?(totStd/tec.oreEff)*100:null,
+      performance:(totEff>0&&totStd>0)?(totStd/totEff)*100:null,
+    };
+  }).filter(Boolean);
+
   // ── ANALISI PER LINEA (LINEA 1, LINEA 2, LINEA 3...) ──────────────────
   // I tecnici la cui mansione nel calendario indica una linea vengono raggruppati per linea,
   // riattribuendo (o escludendo) le giornate segnalate come "fuori linea" nelle note del calendario.
@@ -1776,7 +1836,7 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
   const codiciMancantiReport=trovaCodiciMancanti(prodPeriodo);
   const fasiZeroReport=trovaFasiTempoZero(prodPeriodo);
 
-  return {tecnici,tecniciEsclusi,tecniciEsclusiManualmente,giorniLav,troncatoAOggi,ultimoG,primoG,prodPeriodo,codiciMancantiReport,fasiZeroReport,fasiFiliale,repartiFiliale,lineeFiliale,tecniciSenzaLinea};
+  return {tecnici,tecniciEsclusi,tecniciEsclusiManualmente,giorniLav,troncatoAOggi,ultimoG,primoG,prodPeriodo,codiciMancantiReport,fasiZeroReport,fasiFiliale,repartiFiliale,lineeFiliale,tecniciSenzaLinea,collaudoMontaggioSingolo};
 }
 
 // ── UI CHIPS ──────────────────────────────────────────
@@ -1852,7 +1912,7 @@ window.eseguiReport=async function(){
   const tempiIdx=buildTempiIdx();
 
   // Calcolo KPI sul periodo combinato (per la visualizzazione del report)
-  const {tecnici,tecniciEsclusi,tecniciEsclusiManualmente,giorniLav,troncatoAOggi,ultimoG,primoG,prodPeriodo,codiciMancantiReport,fasiZeroReport,fasiFiliale,repartiFiliale,lineeFiliale,tecniciSenzaLinea}=
+  const {tecnici,tecniciEsclusi,tecniciEsclusiManualmente,giorniLav,troncatoAOggi,ultimoG,primoG,prodPeriodo,codiciMancantiReport,fasiZeroReport,fasiFiliale,repartiFiliale,lineeFiliale,tecniciSenzaLinea,collaudoMontaggioSingolo}=
     calcolaKPIPeriodo(filiale,anno,mesi,dipsAll,entries,tempiIdx);
   const labPFull=labP+(troncatoAOggi?" (fino ad oggi)":"");
 
@@ -1874,7 +1934,7 @@ window.eseguiReport=async function(){
 
   // Salva questo report (nomi, efficienza, performance, lavorazioni) nel browser: la tab
   // "Classifica Team" lo ritrova sempre, anche riaprendo la pagina, senza dover rigenerare nulla.
-  await salvaClassificaInMemoria(filiale, labPFull, tecniciSenzaLinea, ultimoConteggioTempoZero, ultimoFantasmiTempoZero, lineeFiliale, tecnici, anno, mesi);
+  await salvaClassificaInMemoria(filiale, labPFull, tecniciSenzaLinea, ultimoConteggioTempoZero, ultimoFantasmiTempoZero, lineeFiliale, tecnici, anno, mesi, collaudoMontaggioSingolo);
   await salvaAnalisiFaseInMemoria(filiale, labPFull, fasiFiliale, repartiFiliale);
 
   // Prepara lo/gli snapshot per il salvataggio nello storico.
@@ -2435,6 +2495,54 @@ window.chiudiDettaglioKpi=function(){
 // esportabile in Excel.
 let ultimoDettaglioLavorazioniExport=[]; // buffer per l'export della card aperta
 // Dettaglio di una LINEA: performance/efficienza dei singoli tecnici che la compongono
+// Dettaglio membri per una delle 3 card aggregate di reparto (Collaudo, Montaggio, Collaudo +
+// Montaggio Singolo) — stesso pattern di apriDettaglioLinea, ma la lista membri cambia a seconda
+// del tipo invece di venire da dati.linee.
+window.apriDettaglioGruppoAggregato=function(tipo){
+  const dati=ultimoDatiClassificaCloud;
+  if(!dati)return;
+  let titolo, membri;
+  if(tipo==="collaudo"){
+    titolo="🔬 COLLAUDO — media reparto";
+    membri=dati.tecnici||[];
+  } else if(tipo==="montaggio"){
+    titolo="⚙️ MONTAGGIO — media reparto";
+    membri=(dati.linee||[]).flatMap(l=>l.membri||[]);
+  } else {
+    titolo="🔧 COLLAUDO + MONTAGGIO SINGOLO";
+    membri=dati.collaudoMontaggioSingolo||[];
+  }
+
+  document.getElementById("kpiModalTitle").innerHTML=titolo;
+  const membriOrdinati=[...membri].sort((a,b)=>(b.efficienza??-1)-(a.efficienza??-1));
+  const cardsMembri=membriOrdinati.map((m,i)=>{
+    const e=m.efficienza, p=m.performance;
+    return `<div class="classifica-card" onclick="apriDettaglioClassifica('${m.nome.replace(/'/g,"\\'")}')" style="cursor:pointer">
+      <div class="classifica-rank">#${i+1} DI ${membriOrdinati.length}</div>
+      <div class="classifica-nome">${m.nome}</div>
+      <div class="classifica-metriche">
+        <div class="classifica-metrica primaria">
+          <div class="classifica-metrica-val" style="color:${e!==null?(e>=95?'#059669':e>=80?'#d97706':'#dc2626'):'#9ca3af'}">${e!=null?fmt(e)+'%':'n/d'}</div>
+          <div class="classifica-metrica-lbl">Efficienza</div>
+        </div>
+        <div class="classifica-metrica secondaria">
+          <div class="classifica-metrica-val" style="color:${p!==null?(p>=95?'#059669':p>=80?'#d97706':'#dc2626'):'#9ca3af'}">${p!=null?fmt(p)+'%':'n/d'}</div>
+          <div class="classifica-metrica-lbl">Performance</div>
+        </div>
+      </div>
+      <div class="classifica-foot">${m.lavorazioni||0} lavorazioni${tipo==="collaudomontaggio"?" (Fase 60+70 insieme)":""}</div>
+      <div class="classifica-periodo">clicca per il dettaglio</div>
+    </div>`;
+  }).join("");
+
+  const body=`
+    <div style="font-size:.75rem;color:var(--text2);margin-bottom:.75rem">Periodo corrente: <b>${dati.periodoLabel}</b> · Filiale: <b>${dati.filiale.toUpperCase()}</b> · ${membri.length} tecnici</div>
+    <div class="classifica-grid">${cardsMembri||'<div style="font-size:.8rem;color:var(--text2)">Nessun tecnico in questo gruppo per il periodo selezionato.</div>'}</div>`;
+
+  document.getElementById("kpiModalBody").innerHTML=body;
+  document.getElementById("kpiModalOverlay").classList.add("open");
+};
+
 window.apriDettaglioLinea=function(numeroLinea){
   const dati=ultimoDatiClassificaCloud;
   if(!dati)return;
