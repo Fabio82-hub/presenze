@@ -1148,7 +1148,8 @@ function renderClassificaTeam(dati){
     Montaggio (Fase 60): ${tempo60?`<b>${fmt(tempo60.media)}h</b> — media su ${tempo60.n} modelli`:'<i>n/d, carica i Tempi Tecnici in "Inserimento dati"</i>'}.
     Collaudo (Fase 70): ${tempo70?`<b>${fmt(tempo70.media)}h</b> — media su ${tempo70.n} modelli`:'<i>n/d, carica i Tempi Tecnici in "Inserimento dati"</i>'}
     ${ultimoCodiciFase60Collaudatori.size?`(per ${ultimoCodiciFase60Collaudatori.size} modelli senza linea separata, un collaudatore fa lui stesso anche il montaggio: qui il tempo conta Fase 60+70 insieme)`:''}.
-  </div>`;
+  </div>
+  <div class="al a-info" style="margin-bottom:1rem;font-size:.68rem">🔍 <b>Diagnostica temporanea</b> — modelli rilevati con Fase 60 fatta da un collaudatore (${ultimoCodiciFase60Collaudatori.size} totali): ${[...ultimoCodiciFase60Collaudatori].slice(0,15).join(", ")||"nessuno"}${ultimoCodiciFase60Collaudatori.size>15?"...":""}</div>`;
 
   // ── Card "Collaudo — media reparto": stessa idea delle card Linea, ma aggregata su TUTTI i
   // Collaudatori del periodo (media ponderata: somma Ore Std ÷ somma Ore presenza/lavorazione,
