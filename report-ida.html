@@ -1149,7 +1149,9 @@ function renderClassificaTeam(dati){
     Collaudo (Fase 70): ${tempo70?`<b>${fmt(tempo70.media)}h</b> — media su ${tempo70.n} modelli`:'<i>n/d, carica i Tempi Tecnici in "Inserimento dati"</i>'}
     ${ultimoCodiciFase60Collaudatori.size?`(per ${ultimoCodiciFase60Collaudatori.size} modelli senza linea separata, un collaudatore fa lui stesso anche il montaggio: qui il tempo conta Fase 60+70 insieme)`:''}.
   </div>
-  <div class="al a-info" style="margin-bottom:1rem;font-size:.68rem">🔍 <b>Diagnostica temporanea</b> — modelli rilevati con Fase 60 fatta da un collaudatore (${ultimoCodiciFase60Collaudatori.size} totali): ${[...ultimoCodiciFase60Collaudatori].slice(0,15).join(", ")||"nessuno"}${ultimoCodiciFase60Collaudatori.size>15?"...":""}</div>`;
+  <div class="al a-info" style="margin-bottom:1rem;font-size:.68rem">🔍 <b>Diagnostica temporanea, passo per passo</b> — righe Fase 60 nel file: ${window._diagFase60.totaliFase60} → nel periodo ${window._diagFase60.primoG}..${window._diagFase60.ultimoG}: ${window._diagFase60.nelPeriodo} → con codice modello: ${window._diagFase60.conArticolo} → di un collaudatore riconosciuto: ${window._diagFase60.diCollaudatori}.<br>
+  Nomi riconosciuti come collaudatori (primi 10): ${window._diagFase60.nomiCollaudatori.join(", ")||"nessuno"}.<br>
+  Nomi che hanno fatto Fase 60 nel periodo (primi 10): ${window._diagFase60.esempioTecniciFase60Periodo.join(", ")||"nessuno"}.</div>`;
 
   // ── Card "Collaudo — media reparto": stessa idea delle card Linea, ma aggregata su TUTTI i
   // Collaudatori del periodo (media ponderata: somma Ore Std ÷ somma Ore presenza/lavorazione,
@@ -1685,11 +1687,21 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
   // collaudatore.
   const nomiCollaudatoriPeriodo=new Set(tecnici.filter(t=>!t.lineaAssegnata).map(t=>t.nome));
   ultimoCodiciFase60Collaudatori=new Set();
-  produzione.forEach(p=>{
-    if(p.fase==="60" && p.data>=primoG && p.data<=ultimoG && p.articolo && nomiCollaudatoriPeriodo.has(p.tecnico)){
-      ultimoCodiciFase60Collaudatori.add((p.articolo||"").toLowerCase());
-    }
-  });
+  // DIAGNOSTICA TEMPORANEA — passo per passo, per capire a quale condizione il conteggio si azzera
+  const diagF60Tutte=produzione.filter(p=>p.fase==="60");
+  const diagF60Periodo=diagF60Tutte.filter(p=>p.data>=primoG&&p.data<=ultimoG);
+  const diagF60PeriodoConArticolo=diagF60Periodo.filter(p=>p.articolo);
+  const diagF60Collaudatori=diagF60PeriodoConArticolo.filter(p=>nomiCollaudatoriPeriodo.has(p.tecnico));
+  window._diagFase60={
+    totaliFase60: diagF60Tutte.length,
+    nelPeriodo: diagF60Periodo.length,
+    conArticolo: diagF60PeriodoConArticolo.length,
+    diCollaudatori: diagF60Collaudatori.length,
+    primoG, ultimoG,
+    nomiCollaudatori: [...nomiCollaudatoriPeriodo].slice(0,10),
+    esempioTecniciFase60Periodo: [...new Set(diagF60Periodo.map(p=>p.tecnico))].slice(0,10)
+  };
+  diagF60Collaudatori.forEach(p=>{ ultimoCodiciFase60Collaudatori.add((p.articolo||"").toLowerCase()); });
 
   // ── ANALISI PER LINEA (LINEA 1, LINEA 2, LINEA 3...) ──────────────────
   // I tecnici la cui mansione nel calendario indica una linea vengono raggruppati per linea,
