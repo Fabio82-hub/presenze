@@ -406,7 +406,7 @@ tr:hover td{background:#fafafa}
     <div class="fr" style="align-items:flex-end;margin-top:.5rem">
       <div class="fg">
         <label class="lbl">Filiale</label>
-        <select id="fasiFiliale" onchange="caricaAnalisiFase()" style="width:180px">
+        <select id="fasiFiliale" style="width:180px">
           <option value="seriate">SERIATE</option>
           <option value="pomezia">POMEZIA</option>
           <option value="orio">ORIO</option>
@@ -414,6 +414,22 @@ tr:hover td{background:#fafafa}
           <option value="elmas">ELMAS</option>
           <option value="modugno">MODUGNO</option>
         </select>
+      </div>
+      <div class="fg" style="flex:1;min-width:280px">
+        <label class="lbl">Periodo storico</label>
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap" id="fasiMesiChips"></div>
+        <div style="display:flex;gap:.3rem;margin-top:.4rem;flex-wrap:wrap;align-items:center">
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selFasiMesi([0,1,2,3,4,5,6,7,8,9,10,11])">Tutti</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selFasiMesi([0,1,2,3,4,5])">1° Sem.</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selFasiMesi([6,7,8,9,10,11])">2° Sem.</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selFasiMesi([0,1,2])">Q1</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selFasiMesi([3,4,5])">Q2</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selFasiMesi([6,7,8])">Q3</button>
+          <button class="btn bg" style="font-size:.67rem;padding:.22rem .5rem" onclick="selFasiMesi([9,10,11])">Q4</button>
+          <select id="fasiAnnoSel" style="font-size:.75rem;padding:.22rem .5rem">
+            <option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option>
+          </select>
+        </div>
       </div>
       <button class="btn bp" onclick="caricaAnalisiFase()">▶ Carica</button>
     </div>
@@ -524,6 +540,7 @@ let mesiSel=new Set([new Date().getMonth()]);
 let fasiSel=new Set(Object.keys(FASI));
 let storicoMesiSel=new Set([0,1,2,3,4,5,6,7,8,9,10,11]); // default: tutto l'anno
 let classificaMesiSel=new Set([0,1,2,3,4,5,6,7,8,9,10,11]); // default: tutto l'anno (Classifica Team, stato indipendente dallo Storico)
+let fasiMesiSel=new Set([0,1,2,3,4,5,6,7,8,9,10,11]); // default: tutto l'anno (Analisi Fase/Reparto, stato indipendente)
 let rawUsati=[], rawNuovi=[], rawProd=[];
 
 // ── HELPERS ──────────────────────────────────────────
@@ -938,6 +955,38 @@ function tec_perFaseSafe(t){ return t.perFase||{}; }
 // Aggrega più mesi dello storico (kpiStorico) in un'unica struttura compatibile con
 // renderClassificaTeam: efficienza/performance come media dei mesi presenti, ore/lavorazioni
 // sommate, mansione/linea prese dal mese più recente disponibile nel periodo.
+// Aggrega lo scarto standard-vs-reale per fase/reparto su più mesi storici insieme (somma i
+// numeri grezzi di ciascun mese, poi ricalcola la Performance una sola volta sul totale — non
+// media le percentuali mensili, altrimenti un mese con pochi dati peserebbe quanto uno pieno).
+function aggregaFasiPeriodo(docsTrovati){
+  const perFase={};
+  docsTrovati.forEach(d=>{
+    (d.fasiFiliale||[]).forEach(f=>{
+      if(!perFase[f.fase]) perFase[f.fase]={fase:f.fase,count:0,oreStd:0,oreEff:0};
+      perFase[f.fase].count+=f.count||0;
+      perFase[f.fase].oreStd+=f.oreStd||0;
+      perFase[f.fase].oreEff+=f.oreEff||0;
+    });
+  });
+  const fasiFiliale=Object.values(perFase)
+    .map(f=>({...f, performance: f.oreEff>0&&f.oreStd>0?(f.oreStd/f.oreEff)*100:null}))
+    .sort((a,b)=>a.fase.localeCompare(b.fase));
+
+  const repartiTmp={linea:{count:0,oreStd:0,oreEff:0},singoloCollaudo:{count:0,oreStd:0,oreEff:0}};
+  fasiFiliale.forEach(f=>{
+    const key=(f.fase==="60"||f.fase==="70")?"singoloCollaudo":"linea";
+    repartiTmp[key].count+=f.count;
+    repartiTmp[key].oreStd+=f.oreStd;
+    repartiTmp[key].oreEff+=f.oreEff;
+  });
+  const repartiFiliale=[
+    {nome:"🔧 Reparto Montaggio Linea (F61-F64)", ...repartiTmp.linea, performance:repartiTmp.linea.oreEff>0&&repartiTmp.linea.oreStd>0?(repartiTmp.linea.oreStd/repartiTmp.linea.oreEff)*100:null},
+    {nome:"🔩 Reparto Montaggio Singolo + Collaudo (F60+F70)", ...repartiTmp.singoloCollaudo, performance:repartiTmp.singoloCollaudo.oreEff>0&&repartiTmp.singoloCollaudo.oreStd>0?(repartiTmp.singoloCollaudo.oreStd/repartiTmp.singoloCollaudo.oreEff)*100:null}
+  ].filter(r=>r.count>0);
+
+  return {fasiFiliale, repartiFiliale};
+}
+
 function aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati){
   const labP=(mesi.length===12?"Anno "+anno:[...mesi].sort((a,b)=>a-b).map(m=>MESI_B[m]).join(", ")+" "+anno);
   const perTecnico={};
@@ -1363,22 +1412,56 @@ window.caricaAnalisiFase=async function(){
   const contentEl=document.getElementById("fasiContent");
   metaEl.innerHTML="";
   contentEl.innerHTML='<div class="card" style="text-align:center;padding:2rem"><span class="spin"></span> Caricamento...</div>';
-  let dati=null;
+
+  const anno=parseInt(document.getElementById("fasiAnnoSel").value);
+  const mesi=[...fasiMesiSel].sort((a,b)=>a-b);
+  if(!mesi.length){
+    contentEl.innerHTML=`<div class="card"><div class="al a-warn" style="margin-bottom:0">Seleziona almeno un mese nel periodo storico.</div></div>`;
+    return;
+  }
+  const labP=(mesi.length===12?"Anno "+anno:mesi.map(m=>MESI_B[m]).join(", ")+" "+anno);
+
+  // Prova prima a leggere lo storico mensile (kpiStorico, lo stesso usato da Classifica Team) per
+  // i mesi selezionati — disponibile solo per i mesi generati e salvati DOPO questa modifica.
+  let docsTrovati=[];
   try{
-    const snap=await getDoc(doc(db,"kpiAnalisiFase",filiale));
-    if(snap.exists()) dati=snap.data();
+    for(const m of mesi){
+      const docId=`${filiale}_${anno}_${String(m+1).padStart(2,"0")}`;
+      const snap=await getDoc(doc(db,"kpiStorico",docId));
+      if(snap.exists() && snap.data().fasiFiliale) docsTrovati.push(snap.data());
+    }
   }catch(e){
     contentEl.innerHTML=`<div class="card"><div class="al a-danger" style="margin-bottom:0">Errore nel caricamento: ${e.message}</div></div>`;
     return;
   }
 
+  let dati=null, daStorico=docsTrovati.length>0;
+  if(daStorico){
+    const agg=aggregaFasiPeriodo(docsTrovati);
+    dati={filiale, periodoLabel:labP, fasiFiliale:agg.fasiFiliale, repartiFiliale:agg.repartiFiliale};
+  } else {
+    // Fallback: nessuno storico salvato per questi mesi -> mostra l'ultima generazione completa
+    // (comportamento di sempre, prima di questo filtro per periodo)
+    try{
+      const snap=await getDoc(doc(db,"kpiAnalisiFase",filiale));
+      if(snap.exists()) dati=snap.data();
+    }catch(e){
+      contentEl.innerHTML=`<div class="card"><div class="al a-danger" style="margin-bottom:0">Errore nel caricamento: ${e.message}</div></div>`;
+      return;
+    }
+  }
+
   if(!dati||!dati.fasiFiliale||!dati.fasiFiliale.length){
-    contentEl.innerHTML=`<div class="card"><div class="al a-info" style="margin-bottom:0">Nessun report generato finora per questa filiale. Vai su "📥 Inserimento dati", carica Tempi Tecnici e Produzione, genera il report: l'analisi per fase/reparto comparirà qui automaticamente e resterà disponibile — identica — anche da un altro PC.</div></div>`;
+    contentEl.innerHTML=`<div class="card"><div class="al a-info" style="margin-bottom:0">Nessun dato disponibile per questo periodo, né come ultima generazione. Vai su "📥 Inserimento dati", carica Tempi Tecnici e Produzione, genera il report e salvalo: l'analisi per fase/reparto comparirà qui, filtrabile per mese.</div></div>`;
     return;
   }
 
-  const dataFmt=new Date(dati.dataGenerazione).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
-  metaEl.innerHTML=`Ultimo caricamento: <b>${dati.filiale.toUpperCase()}</b> · ${dati.periodoLabel} — generato il ${dataFmt}. <button class="btn bg no-print" style="font-size:.65rem;padding:.2rem .5rem;margin-left:.4rem" onclick="switchTab('report')">Aggiorna con un nuovo caricamento</button>`;
+  if(daStorico){
+    metaEl.innerHTML=`Periodo visualizzato: <b>${filiale.toUpperCase()}</b> · ${labP} <small style="color:var(--text2)">(storico salvato per ${docsTrovati.length}/${mesi.length} mesi selezionati)</small>. <button class="btn bg no-print" style="font-size:.65rem;padding:.2rem .5rem;margin-left:.4rem" onclick="switchTab('report')">Vai a Inserimento dati</button>`;
+  } else {
+    const dataFmt=new Date(dati.dataGenerazione).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+    metaEl.innerHTML=`⚠️ Nessuno storico salvato per ${labP} — mostro invece <b>l'ultima generazione completa</b>: ${dati.periodoLabel}, generata il ${dataFmt}. <button class="btn bg no-print" style="font-size:.65rem;padding:.2rem .5rem;margin-left:.4rem" onclick="switchTab('report')">Genera e salva per questo periodo</button>`;
+  }
 
   contentEl.innerHTML=`
   <div class="card">
@@ -1965,6 +2048,18 @@ window.toggleClassificaMese=function(i){
 };
 window.selClassificaMesi=function(arr){classificaMesiSel=new Set(arr);buildClassificaMesiChips();};
 
+function buildFasiMesiChips(){
+  const el=document.getElementById("fasiMesiChips");
+  if(!el)return;
+  el.innerHTML=MESI_B.map((m,i)=>
+    `<div class="mese-chip ${fasiMesiSel.has(i)?"sel":""}" id="fmc${i}" onclick="toggleFasiMese(${i})">${m}</div>`).join("");
+}
+window.toggleFasiMese=function(i){
+  fasiMesiSel.has(i)?fasiMesiSel.delete(i):fasiMesiSel.add(i);
+  document.getElementById("fmc"+i)?.classList.toggle("sel",fasiMesiSel.has(i));
+};
+window.selFasiMesi=function(arr){fasiMesiSel=new Set(arr);buildFasiMesiChips();};
+
 function buildFasiChips(){
   document.getElementById("fasiChips").innerHTML=Object.entries(FASI).map(([k,v])=>
     `<div class="mese-chip sel" id="fc${k}" onclick="toggleFase('${k}')" style="font-family:monospace">F${k}</div>`).join("");
@@ -2041,6 +2136,9 @@ window.eseguiReport=async function(){
       // collaudatore) — serve per ricalcolare il "tempo medio per modello" anche caricando lo
       // storico (non solo da un report appena generato).
       codiciFase60Collaudatori: datiPeriodo.codiciFase60Collaudatori||[],
+      // Scarto standard-vs-reale per fase/reparto DI QUESTO mese — permette di filtrare
+      // "Analisi Fase/Reparto" per periodo, sommando più mesi insieme quando selezionati.
+      fasiFiliale: datiPeriodo.fasiFiliale||[], repartiFiliale: datiPeriodo.repartiFiliale||[],
       tecnici:datiPeriodo.tecnici.map(t=>{
         // Se questo tecnico fa anche Fase 60 (montaggio singolo) per alcuni modelli, qui sotto
         // ci sono i SUOI totStd/totEff combinati (Fase 60+70) per QUESTO mese — si sommano poi
@@ -2060,7 +2158,7 @@ window.eseguiReport=async function(){
     };
   }
   if(mesi.length===1){
-    ultimoReportSnapshot=costruisciSnapshot(mesi[0],{tecnici,giorniLav,troncatoAOggi,ultimoG,collaudoMontaggioSingolo,codiciFase60Collaudatori});
+    ultimoReportSnapshot=costruisciSnapshot(mesi[0],{tecnici,giorniLav,troncatoAOggi,ultimoG,collaudoMontaggioSingolo,codiciFase60Collaudatori,fasiFiliale,repartiFiliale});
     ultimoReportSnapshotMulti=null;
   } else {
     ultimoReportSnapshot=null;
@@ -3127,7 +3225,7 @@ window.apriDettaglioKpiStorico=function(tipo){
 };
 
 window.addEventListener("DOMContentLoaded",async()=>{
-  buildMesiChips();buildFasiChips();buildStoricoMesiChips();buildClassificaMesiChips();
+  buildMesiChips();buildFasiChips();buildStoricoMesiChips();buildClassificaMesiChips();buildFasiMesiChips();
   await ripristinaTempiDaMemoria(); // ricarica i Tempi Tecnici salvati in precedenza (dal cloud, condivisi tra tutti i PC), senza richiedere un nuovo upload
   await caricaEsclusiManuali(); // ricarica dal cloud l'elenco di chi è stato escluso manualmente dall'analisi
   // Apertura diretta della tab KPI Produzione se la pagina viene raggiunta con #storico (es. da index.html)
