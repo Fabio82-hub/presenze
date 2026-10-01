@@ -1154,10 +1154,7 @@ function renderClassificaTeam(dati){
     Montaggio (Fase 60): ${tempo60?`<b>${fmt(tempo60.media)}h</b> — media su ${tempo60.n} modelli`:'<i>n/d, carica i Tempi Tecnici in "Inserimento dati"</i>'}.
     Collaudo (Fase 70): ${tempo70?`<b>${fmt(tempo70.media)}h</b> — media su ${tempo70.n} modelli`:'<i>n/d, carica i Tempi Tecnici in "Inserimento dati"</i>'}
     ${ultimoCodiciFase60Collaudatori.size?`(per ${ultimoCodiciFase60Collaudatori.size} modelli senza linea separata, un collaudatore fa lui stesso anche il montaggio: qui il tempo conta Fase 60+70 insieme)`:''}.
-  </div>
-  <div class="al a-info" style="margin-bottom:1rem;font-size:.68rem">🔍 <b>Diagnostica temporanea, passo per passo</b> — righe Fase 60 nel file: ${window._diagFase60.totaliFase60} → nel periodo ${window._diagFase60.primoG}..${window._diagFase60.ultimoG}: ${window._diagFase60.nelPeriodo} → con codice modello: ${window._diagFase60.conArticolo} → di un collaudatore riconosciuto: ${window._diagFase60.diCollaudatori}.<br>
-  Nomi riconosciuti come collaudatori (primi 10): ${window._diagFase60.nomiCollaudatori.join(", ")||"nessuno"}.<br>
-  Nomi che hanno fatto Fase 60 nel periodo (primi 10): ${window._diagFase60.esempioTecniciFase60Periodo.join(", ")||"nessuno"}.</div>`;
+  </div>`;
 
   // ── Card "Collaudo — media reparto": stessa idea delle card Linea, ma aggregata su TUTTI i
   // Collaudatori del periodo (media ponderata: somma Ore Std ÷ somma Ore presenza/lavorazione,
@@ -1721,21 +1718,10 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
   // collaudatore.
   const nomiCollaudatoriPeriodo=new Set(tecnici.filter(t=>!t.lineaAssegnata).map(t=>t.nome));
   ultimoCodiciFase60Collaudatori=new Set();
-  // DIAGNOSTICA TEMPORANEA — passo per passo, per capire a quale condizione il conteggio si azzera
-  const diagF60Tutte=produzione.filter(p=>p.fase==="60");
-  const diagF60Periodo=diagF60Tutte.filter(p=>p.data>=primoG&&p.data<=ultimoG);
-  const diagF60PeriodoConArticolo=diagF60Periodo.filter(p=>p.articolo);
-  const diagF60Collaudatori=diagF60PeriodoConArticolo.filter(p=>nomiCollaudatoriPeriodo.has(p.tecnico));
-  window._diagFase60={
-    totaliFase60: diagF60Tutte.length,
-    nelPeriodo: diagF60Periodo.length,
-    conArticolo: diagF60PeriodoConArticolo.length,
-    diCollaudatori: diagF60Collaudatori.length,
-    primoG, ultimoG,
-    nomiCollaudatori: [...nomiCollaudatoriPeriodo].slice(0,10),
-    esempioTecniciFase60Periodo: [...new Set(diagF60Periodo.map(p=>p.tecnico))].slice(0,10)
-  };
-  diagF60Collaudatori.forEach(p=>{ ultimoCodiciFase60Collaudatori.add((p.articolo||"").toLowerCase()); });
+  const righeFase60Collaudatori=produzione.filter(p=>
+    p.fase==="60" && p.data>=primoG && p.data<=ultimoG && p.articolo && nomiCollaudatoriPeriodo.has(p.tecnico)
+  );
+  righeFase60Collaudatori.forEach(p=>{ ultimoCodiciFase60Collaudatori.add((p.articolo||"").toLowerCase()); });
 
   // ── "Collaudo + Montaggio Singolo": i collaudatori (senza linea) che per alcuni modelli fanno
   // ANCHE la Fase 60 loro stessi (non passano da una linea separata). Per loro l'efficienza va
@@ -1743,7 +1729,7 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
   // tempo che dedicano al montaggio apparirebbe come tempo "perso" invece che lavoro produttivo.
   // Ricalcolato dai dati GREZZI (produzione) per lo stesso motivo della diagnostica sopra: non
   // deve dipendere dal filtro "Fasi" dell'interfaccia (fasiSel).
-  const nomiConFase60=new Set(diagF60Collaudatori.map(p=>p.tecnico));
+  const nomiConFase60=new Set(righeFase60Collaudatori.map(p=>p.tecnico));
   const collaudoMontaggioSingolo=[...nomiConFase60].map(nome=>{
     const tec=tecnici.find(t=>t.nome===nome);
     if(!tec) return null;
@@ -2230,12 +2216,7 @@ window.salvaMeseStorico=async function(){
   msgEl.innerHTML='<span style="font-size:.76rem;color:var(--text2)"><span class="spin"></span> Salvataggio...</span>';
   try{
     await setDoc(doc(db,"kpiStorico",docId), s);
-    // DIAGNOSTICA TEMPORANEA: mostra cosa è stato effettivamente scritto per il tempo-zero, per
-    // verificare se il numero è già corretto qui (a monte) o se il problema è nel caricamento.
-    const totZero=s.tecnici.reduce((sum,t)=>sum+(t.lavorazioniZero||0),0);
-    const dettZero=s.tecnici.filter(t=>t.lavorazioniZero>0).map(t=>`${t.nome}: ${t.lavorazioniZero}`).join(" · ");
-    msgEl.innerHTML=`<div class="al a-ok" style="margin-bottom:0">✅ Salvato: ${MESI_B[s.mese]} ${s.anno} — ${s.filiale.toUpperCase()} (${s.tecnici.length} tecnici). Vai alla tab "📈 KPI Produzione" per vederlo.</div>
-      <div class="al a-info" style="margin-top:.5rem;font-size:.7rem">🔍 <b>Diagnostica temporanea</b> — tempo-zero appena scritto in questo documento (totale ${totZero} su tutti i tecnici): ${dettZero||'nessuno'}</div>`;
+    msgEl.innerHTML=`<div class="al a-ok" style="margin-bottom:0">✅ Salvato: ${MESI_B[s.mese]} ${s.anno} — ${s.filiale.toUpperCase()} (${s.tecnici.length} tecnici). Vai alla tab "📈 KPI Produzione" per vederlo.</div>`;
   }catch(err){
     msgEl.innerHTML=`<div class="al a-danger" style="margin-bottom:0">❌ Errore nel salvataggio: ${err.message}</div>`;
   }
@@ -2260,19 +2241,12 @@ window.salvaMultiMesiStorico=async function(){
     }
   }
   const elenco=riusciti.map(s=>`${MESI_B[s.mese]} ${s.anno} (${s.tecnici.length} tecnici)`).join(" · ");
-  // DIAGNOSTICA TEMPORANEA: per ogni mese salvato, il tempo-zero scritto in quel documento —
-  // per verificare che ogni mese abbia il SUO conteggio, non quello di tutto l'anno ripetuto uguale ovunque.
-  const diagnosticaPerMese=riusciti.map(s=>{
-    const tot=s.tecnici.reduce((sum,t)=>sum+(t.lavorazioniZero||0),0);
-    return `${MESI_B[s.mese]}: tot ${tot}`;
-  }).join(" · ");
   msgEl.innerHTML=`
     <div class="al ${falliti.length?'a-warn':'a-ok'}" style="margin-bottom:0">
       ${falliti.length?"⚠️":"✅"} Salvati <b>${riusciti.length}/${lista.length}</b> mesi — ${elenco||"nessuno"}.
       ${falliti.length?`<br>Errori su: ${falliti.map(f=>`${MESI_B[f.mese]} ${f.anno} (${f.errore})`).join(", ")}.`:""}
       Vai alla tab "📈 KPI Produzione" per vedere lo storico aggiornato.
-    </div>
-    <div class="al a-info" style="margin-top:.5rem;font-size:.7rem">🔍 <b>Diagnostica temporanea</b> — totale tempo-zero scritto per ciascun mese: ${diagnosticaPerMese}</div>`;
+    </div>`;
 };
 
 // ── STORICO: CARICAMENTO E RENDER ───────────────────────
