@@ -2439,13 +2439,13 @@ function renderStorico(docs,filiale,el){
   <div class="card">
     <div class="ct">📋 Riepilogo mensile filiale</div>
     <table>
-      <thead><tr><th>Mese</th><th style="text-align:right">Tecnici</th><th style="text-align:right">Performance media</th><th style="text-align:right">Efficienza media</th><th style="text-align:right">Giorni lav.</th></tr></thead>
+      <thead><tr><th>Mese</th><th style="text-align:right">Tecnici</th><th style="text-align:right">Efficienza media</th><th style="text-align:right">Performance media</th><th style="text-align:right">Giorni lav.</th></tr></thead>
       <tbody>
         ${docs.map((d,i)=>`<tr>
           <td><b>${labelMese(d)}</b>${d.troncatoAOggi?` <small style="color:#9ca3af">(fino al ${d.ultimoGiornoConsiderato})</small>`:""}</td>
           <td style="text-align:right">${d.tecnici.length}</td>
-          <td style="text-align:right">${trendPerf[i]!==null?`<span class="badge ${perfBcls(trendPerf[i])}">${fmt(trendPerf[i])}%</span>`:"—"}</td>
           <td style="text-align:right">${trendEff[i]!==null?`<span class="badge ${perfBcls(trendEff[i])}">${fmt(trendEff[i])}%</span>`:"—"}</td>
+          <td style="text-align:right">${trendPerf[i]!==null?`<span class="badge ${perfBcls(trendPerf[i])}">${fmt(trendPerf[i])}%</span>`:"—"}</td>
           <td style="text-align:right">${d.giorniLav}</td>
         </tr>`).join("")}
       </tbody>
@@ -2454,8 +2454,8 @@ function renderStorico(docs,filiale,el){
   el.innerHTML=html;
 }
 
-// Grafico "fatto in casa" (nessuna libreria esterna): Performance a BARRE (dato principale,
-// ben visibile e con valore numerico sopra ogni barra) + Efficienza come linea sottile di contesto.
+// Grafico "fatto in casa" (nessuna libreria esterna): Efficienza a BARRE (dato principale,
+// ben visibile e con valore numerico sopra ogni barra) + Performance come linea sottile di contesto.
 function renderTrendChart(labels,valoriPerf,valoriEff){
   const n=labels.length;
   const barW=54, gap=26;
@@ -2479,8 +2479,9 @@ function renderTrendChart(labels,valoriPerf,valoriEff){
   svg+=`<line x1="${padL}" y1="${y(100)}" x2="${w-padR}" y2="${y(100)}" stroke="#059669" stroke-width="1.5" stroke-dasharray="5,4" opacity=".55"/>`;
   svg+=`<text x="${w-padR}" y="${y(100)-6}" font-size="11" fill="#059669" text-anchor="end" opacity=".8">obiettivo 100%</text>`;
 
-  // Barre Performance (dato principale)
-  valoriPerf.forEach((v,i)=>{
+  // Barre Efficienza (dato principale — stessa convenzione di tutto il resto del report:
+  // l'Efficienza ha sempre priorità visiva sulla Performance)
+  valoriEff.forEach((v,i)=>{
     if(v===null||v===undefined)return;
     const bx=xCenter(i)-barW/2, by=y(v), bh=padT+innerH-by;
     const col=colBar(v);
@@ -2488,10 +2489,10 @@ function renderTrendChart(labels,valoriPerf,valoriEff){
     svg+=`<text x="${xCenter(i)}" y="${by-9}" font-size="14" font-weight="700" fill="${col}" text-anchor="middle">${fmt(v)}%</text>`;
   });
 
-  // Linea Efficienza (contesto secondario)
-  const ptsEff=valoriEff.map((v,i)=>v===null?null:`${xCenter(i)},${y(v)}`).filter(Boolean).join(" ");
-  if(ptsEff) svg+=`<polyline points="${ptsEff}" fill="none" stroke="#4338ca" stroke-width="2" stroke-dasharray="6,4"/>`;
-  valoriEff.forEach((v,i)=>{
+  // Linea Performance (contesto secondario)
+  const ptsPerf=valoriPerf.map((v,i)=>v===null?null:`${xCenter(i)},${y(v)}`).filter(Boolean).join(" ");
+  if(ptsPerf) svg+=`<polyline points="${ptsPerf}" fill="none" stroke="#4338ca" stroke-width="2" stroke-dasharray="6,4"/>`;
+  valoriPerf.forEach((v,i)=>{
     if(v===null||v===undefined)return;
     svg+=`<circle cx="${xCenter(i)}" cy="${y(v)}" r="4" fill="#fff" stroke="#4338ca" stroke-width="2"/>`;
   });
@@ -2503,8 +2504,8 @@ function renderTrendChart(labels,valoriPerf,valoriEff){
   svg+="</svg>";
 
   const legend=`<div style="display:flex;gap:1.25rem;flex-wrap:wrap;margin-bottom:.6rem">
-    <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:600;color:var(--text)"><span style="width:14px;height:14px;border-radius:3px;background:#059669;display:inline-block"></span>Performance media (barre, dato principale)</span>
-    <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--text2)"><span style="width:14px;height:2px;background:#4338ca;display:inline-block;border-top:2px dashed #4338ca"></span>Efficienza media (linea, contesto)</span>
+    <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:600;color:var(--text)"><span style="width:14px;height:14px;border-radius:3px;background:#059669;display:inline-block"></span>Efficienza media (barre, dato principale)</span>
+    <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--text2)"><span style="width:14px;height:2px;background:#4338ca;display:inline-block;border-top:2px dashed #4338ca"></span>Performance media (linea, contesto)</span>
   </div>`;
   return `${legend}${svg}`;
 }
@@ -2933,6 +2934,11 @@ window.apriDettaglioClassifica=async function(nome){
       </tr>`).join("")}</tbody></table>
     </div>
     <button class="btn bp no-print" style="font-size:.7rem;margin-top:.65rem" onclick="esportaExcel(ultimoDettaglioLavorazioniExport,'lavorazioni_${nome.replace(/[^a-zA-Z0-9]/g,'_')}.xlsx','Lavorazioni')">📥 Esporta lavorazioni in Excel</button>`;
+  } else if(tec.lavorazioni>0){
+    // Il tecnico HA lavorazioni valide (compaiono nei totali/percentuali sopra) — manca solo il
+    // dettaglio riga per riga, che lo storico aggregato non conserva (solo il report appena
+    // generato lo tiene in memoria per questo tipo di esportazione).
+    body+=`<div class="al a-info" style="margin-bottom:0">Questo periodo proviene dallo storico salvato: le ${tec.lavorazioni} lavorazioni risultano nei totali e nelle percentuali qui sopra, ma il dettaglio riga per riga (articolo, fase, tempi) non viene conservato nello storico — è disponibile solo subito dopo aver generato un report fresco in "📈 KPI Produzione", prima di salvarlo.</div>`;
   } else {
     body+=`<div class="al a-info" style="margin-bottom:0">Nessuna lavorazione valida disponibile per l'export.</div>`;
   }
