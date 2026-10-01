@@ -387,7 +387,7 @@ tr:hover td{background:#fafafa}
       <summary style="cursor:pointer;font-weight:700;color:var(--text)">ℹ️ Come vengono calcolate Efficienza e Performance</summary>
       <div style="margin-top:.6rem;color:var(--text2);line-height:1.55">
         <p><b>Performance</b> = Ore Standard ÷ Ore di Lavorazione Reali — quanto tempo "dovrebbe" servire secondo i Tempi Tecnici, confrontato con quanto ci ha messo davvero il tecnico a completare quella lavorazione.</p>
-        <p><b>Efficienza</b> = Ore Standard ÷ Ore di Presenza Effettive — stesso tempo standard, ma confrontato con <u>tutte</u> le ore in cui il tecnico era presente in azienda (ferie/permessi/malattia già tolti), non solo le ore spese sulle lavorazioni tracciate. È per questo che l'Efficienza è il dato mostrato più in grande su ogni card: tiene conto anche di pause, tempi morti e attività non cronometrate.</p>
+        <p><b>Efficienza</b> = Ore Standard ÷ Ore di Presenza Effettive — stesso tempo standard, ma confrontato con <u>tutte</u> le ore in cui il tecnico era presente in azienda (ferie/permessi/malattia già tolti), non solo le ore spese sulle lavorazioni tracciate: tiene conto anche di pause, tempi morti e attività non cronometrate. La <b>Performance</b> resta il dato mostrato più in grande su ogni card, con l'Efficienza di contorno.</p>
         <p><b>Card di gruppo</b> (Linea, Collaudo, Montaggio): non è una media delle percentuali dei singoli — si sommano prima tutte le Ore Standard e tutte le Ore Presenza/Lavorazione del gruppo, poi si fa un'unica divisione. Così chi ha lavorato di più pesa di più nella media, invece di contare quanto chi ha lavorato pochissimo.</p>
         <p><b>Collaudo + Montaggio Singolo</b>: stessa logica, ma per chi fa sia Collaudo (Fase 70) sia Montaggio (Fase 60) sullo stesso modello — perché quel modello non passa da una linea separata — le Ore Standard sommano il tempo di riferimento di <u>entrambe</u> le fasi, non solo quella di Collaudo.</p>
       </div>
@@ -960,6 +960,7 @@ function tec_perFaseSafe(t){ return t.perFase||{}; }
 // media le percentuali mensili, altrimenti un mese con pochi dati peserebbe quanto uno pieno).
 function aggregaFasiPeriodo(docsTrovati){
   const perFase={};
+  const perLineaFase={}; // "1" -> {61:{count,oreStd,oreEff}, 62:{...}, ...}
   docsTrovati.forEach(d=>{
     (d.fasiFiliale||[]).forEach(f=>{
       if(!perFase[f.fase]) perFase[f.fase]={fase:f.fase,count:0,oreStd:0,oreEff:0};
@@ -967,7 +968,23 @@ function aggregaFasiPeriodo(docsTrovati){
       perFase[f.fase].oreStd+=f.oreStd||0;
       perFase[f.fase].oreEff+=f.oreEff||0;
     });
+    (d.lineeFasiFiliale||[]).forEach(l=>{
+      if(!perLineaFase[l.linea]) perLineaFase[l.linea]={};
+      (l.perFase||[]).forEach(f=>{
+        if(!perLineaFase[l.linea][f.fase]) perLineaFase[l.linea][f.fase]={count:0,oreStd:0,oreEff:0};
+        perLineaFase[l.linea][f.fase].count+=f.count||0;
+        perLineaFase[l.linea][f.fase].oreStd+=f.oreStd||0;
+        perLineaFase[l.linea][f.fase].oreEff+=f.oreEff||0;
+      });
+    });
   });
+  const lineeFasiFiliale=Object.entries(perLineaFase).map(([linea,fasi])=>({
+    linea,
+    perFase:Object.entries(fasi).map(([fase,d])=>({
+      fase, count:d.count, oreStd:d.oreStd, oreEff:d.oreEff,
+      performance:d.oreEff>0&&d.oreStd>0?(d.oreStd/d.oreEff)*100:null
+    })).sort((a,b)=>a.fase.localeCompare(b.fase))
+  })).sort((a,b)=>a.linea.localeCompare(b.linea));
   const fasiFiliale=Object.values(perFase)
     .map(f=>({...f, performance: f.oreEff>0&&f.oreStd>0?(f.oreStd/f.oreEff)*100:null}))
     .sort((a,b)=>a.fase.localeCompare(b.fase));
@@ -984,7 +1001,7 @@ function aggregaFasiPeriodo(docsTrovati){
     {nome:"🔩 Reparto Montaggio Singolo + Collaudo (F60+F70)", ...repartiTmp.singoloCollaudo, performance:repartiTmp.singoloCollaudo.oreEff>0&&repartiTmp.singoloCollaudo.oreStd>0?(repartiTmp.singoloCollaudo.oreStd/repartiTmp.singoloCollaudo.oreEff)*100:null}
   ].filter(r=>r.count>0);
 
-  return {fasiFiliale, repartiFiliale};
+  return {fasiFiliale, repartiFiliale, lineeFasiFiliale};
 }
 
 function aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati){
@@ -1165,16 +1182,16 @@ function renderClassificaTeam(dati){
     return;
   }
 
-  // Ordina per efficienza (dato principale della classifica); chi non ha un valore va in fondo
+  // Ordina per performance (dato principale della classifica); chi non ha un valore va in fondo
   const tecnici=[...tecniciVisibili].sort((a,b)=>{
-    const ea=a.efficienza??-1, eb=b.efficienza??-1;
-    return eb-ea;
+    const pa=a.performance??-1, pb=b.performance??-1;
+    return pb-pa;
   });
   const n=tecnici.length;
-  // Il "teschio" (da richiamare) va assegnato solo a chi ha un vero valore di efficienza basso,
+  // Il "teschio" (da richiamare) va assegnato solo a chi ha un vero valore di performance basso,
   // MAI a chi ha semplicemente il dato mancante (n/d) — altrimenti si penalizza ingiustamente
   // chi magari è solo escluso dal calendario, invece di chi rende davvero poco.
-  const nValidi=tecnici.filter(t=>t.efficienza!==null&&t.efficienza!==undefined).length;
+  const nValidi=tecnici.filter(t=>t.performance!==null&&t.performance!==undefined).length;
   const sogliaTeschio=Math.min(3,Math.floor(nValidi*0.15)||1);
 
   const medaglie=["🥇","🥈","🥉"];
@@ -1193,11 +1210,11 @@ function renderClassificaTeam(dati){
       <div class="classifica-rank">#${i+1} DI ${n}</div>
       <div class="classifica-nome">${t.nome}</div>
       <div class="classifica-metriche">
-        <div class="classifica-metrica primaria">
+        <div class="classifica-metrica secondaria">
           <div class="classifica-metrica-val" style="color:${e!==null?(e>=95?'#059669':e>=80?'#d97706':'#dc2626'):'#9ca3af'}">${e!==null?fmt(e)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Efficienza</div>
         </div>
-        <div class="classifica-metrica secondaria">
+        <div class="classifica-metrica primaria">
           <div class="classifica-metrica-val" style="color:${p!==null?(p>=95?'#059669':p>=80?'#d97706':'#dc2626'):'#9ca3af'}">${p!==null?fmt(p)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Performance</div>
         </div>
@@ -1219,11 +1236,11 @@ function renderClassificaTeam(dati){
       <div class="classifica-linea-badge">🏭 LINEA ${l.linea}</div>
       <div class="classifica-nome" style="margin-top:.3rem">${l.membri.length} tecnici</div>
       <div class="classifica-metriche">
-        <div class="classifica-metrica primaria">
+        <div class="classifica-metrica secondaria">
           <div class="classifica-metrica-val" style="color:${eff!==null?(eff>=95?'#059669':eff>=80?'#d97706':'#dc2626'):'#9ca3af'}">${eff!==null?fmt(eff)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Efficienza linea</div>
         </div>
-        <div class="classifica-metrica secondaria">
+        <div class="classifica-metrica primaria">
           <div class="classifica-metrica-val" style="color:${perf!==null?(perf>=95?'#059669':perf>=80?'#d97706':'#dc2626'):'#9ca3af'}">${perf!==null?fmt(perf)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Performance linea</div>
         </div>
@@ -1289,11 +1306,11 @@ function renderClassificaTeam(dati){
       <div class="classifica-linea-badge" style="background:#e0e7ff;color:#4338ca">⚙️ MONTAGGIO — media reparto</div>
       <div class="classifica-nome" style="margin-top:.3rem">${tuttiMembriMontaggio.length} tecnici, tutte le linee</div>
       <div class="classifica-metriche">
-        <div class="classifica-metrica primaria">
+        <div class="classifica-metrica secondaria">
           <div class="classifica-metrica-val" style="color:${effMediaMont!==null?(effMediaMont>=95?'#059669':effMediaMont>=80?'#d97706':'#dc2626'):'#9ca3af'}">${effMediaMont!==null?fmt(effMediaMont)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Efficienza media</div>
         </div>
-        <div class="classifica-metrica secondaria">
+        <div class="classifica-metrica primaria">
           <div class="classifica-metrica-val" style="color:${perfMediaMont!==null?(perfMediaMont>=95?'#059669':perfMediaMont>=80?'#d97706':'#dc2626'):'#9ca3af'}">${perfMediaMont!==null?fmt(perfMediaMont)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Performance media</div>
         </div>
@@ -1306,11 +1323,11 @@ function renderClassificaTeam(dati){
       <div class="classifica-linea-badge" style="background:#e0f2fe;color:#0369a1">🔬 COLLAUDO — media reparto</div>
       <div class="classifica-nome" style="margin-top:.3rem">${tecnici.length} tecnici</div>
       <div class="classifica-metriche">
-        <div class="classifica-metrica primaria">
+        <div class="classifica-metrica secondaria">
           <div class="classifica-metrica-val" style="color:${effMediaColl!==null?(effMediaColl>=95?'#059669':effMediaColl>=80?'#d97706':'#dc2626'):'#9ca3af'}">${effMediaColl!==null?fmt(effMediaColl)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Efficienza media</div>
         </div>
-        <div class="classifica-metrica secondaria">
+        <div class="classifica-metrica primaria">
           <div class="classifica-metrica-val" style="color:${perfMediaColl!==null?(perfMediaColl>=95?'#059669':perfMediaColl>=80?'#d97706':'#dc2626'):'#9ca3af'}">${perfMediaColl!==null?fmt(perfMediaColl)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Performance media</div>
         </div>
@@ -1357,11 +1374,11 @@ function renderClassificaTeam(dati){
       <div class="classifica-linea-badge" style="background:#ede9fe;color:#6d28d9">🔧 COLLAUDO + MONTAGGIO SINGOLO</div>
       <div class="classifica-nome" style="margin-top:.3rem">${cmSingolo.length} tecnici</div>
       <div class="classifica-metriche">
-        <div class="classifica-metrica primaria">
+        <div class="classifica-metrica secondaria">
           <div class="classifica-metrica-val" style="color:${effMediaCM!==null?(effMediaCM>=95?'#059669':effMediaCM>=80?'#d97706':'#dc2626'):'#9ca3af'}">${effMediaCM!==null?fmt(effMediaCM)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Efficienza media</div>
         </div>
-        <div class="classifica-metrica secondaria">
+        <div class="classifica-metrica primaria">
           <div class="classifica-metrica-val" style="color:${perfMediaCM!==null?(perfMediaCM>=95?'#059669':perfMediaCM>=80?'#d97706':'#dc2626'):'#9ca3af'}">${perfMediaCM!==null?fmt(perfMediaCM)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Performance media</div>
         </div>
@@ -1398,11 +1415,12 @@ function renderElencoEsclusiManuali(esclusi){
 }
 
 // ── ANALISI FASE/REPARTO: salvataggio persistente e rendering ───────────
-async function salvaAnalisiFaseInMemoria(filiale, periodoLabel, fasiFiliale, repartiFiliale){
+async function salvaAnalisiFaseInMemoria(filiale, periodoLabel, fasiFiliale, repartiFiliale, lineeFiliale){
   try{
     await setDoc(doc(db,"kpiAnalisiFase",filiale), {
       filiale, periodoLabel, dataGenerazione:new Date().toISOString(),
-      fasiFiliale, repartiFiliale
+      fasiFiliale, repartiFiliale,
+      lineeFasiFiliale: (lineeFiliale||[]).map(l=>({linea:l.linea, perFase:l.perFase||[]}))
     });
   }catch(e){ console.warn("Impossibile salvare l'Analisi Fase/Reparto sul cloud:", e); }
 }
@@ -1438,7 +1456,7 @@ window.caricaAnalisiFase=async function(){
   let dati=null, daStorico=docsTrovati.length>0;
   if(daStorico){
     const agg=aggregaFasiPeriodo(docsTrovati);
-    dati={filiale, periodoLabel:labP, fasiFiliale:agg.fasiFiliale, repartiFiliale:agg.repartiFiliale};
+    dati={filiale, periodoLabel:labP, fasiFiliale:agg.fasiFiliale, repartiFiliale:agg.repartiFiliale, lineeFasiFiliale:agg.lineeFasiFiliale};
   } else {
     // Fallback: nessuno storico salvato per questi mesi -> mostra l'ultima generazione completa
     // (comportamento di sempre, prima di questo filtro per periodo)
@@ -1491,6 +1509,30 @@ window.caricaAnalisiFase=async function(){
         <div class="kpi-label">${r.nome}<br><small style="font-weight:400">${fmt(r.oreStd)}h std / ${fmt(r.oreEff)}h reali · ${r.count} lav.</small></div>
       </div>`).join("")}
     </div>
+    ${(dati.lineeFasiFiliale&&dati.lineeFasiFiliale.length)?`
+    <div class="sep" style="margin:1rem 0"></div>
+    <div style="font-size:.78rem;font-weight:700;margin-bottom:.3rem">Dettaglio per Linea — Fase 61/62/63/64</div>
+    <div class="al a-info" style="font-size:.72rem;margin-bottom:.75rem">
+      Stesso confronto standard-vs-reale della tabella principale, ma scomposto per singola linea di montaggio — utile per capire se una fase è lenta ovunque (problema di processo/attrezzatura) o solo su una linea specifica (problema locale: persone, postazione, materiali).
+    </div>
+    ${dati.lineeFasiFiliale.map(l=>`
+      <div style="font-size:.76rem;font-weight:700;margin:.6rem 0 .4rem">🏭 LINEA ${l.linea}</div>
+      <table>
+        <thead><tr><th>Fase</th><th style="text-align:right">Lavorazioni</th><th style="text-align:right">Ore Std</th><th style="text-align:right">Ore Reali</th><th style="text-align:right">Performance (std/reale)</th></tr></thead>
+        <tbody>
+          ${l.perFase.map(f=>{
+            const perf=f.performance;
+            return `<tr>
+              <td><span class="fase-badge f${f.fase}">F${f.fase}</span> <small style="color:var(--text2)">${FASI[f.fase]?.label.replace(/^Fase \d+ — /,"")||""}</small></td>
+              <td style="text-align:right">${f.count}</td>
+              <td style="text-align:right;font-family:monospace">${fmt(f.oreStd)}h</td>
+              <td style="text-align:right;font-family:monospace">${fmt(f.oreEff)}h</td>
+              <td style="text-align:right">${perf!==null?`<span class="badge ${perfBcls(perf)}">${fmt(perf)}%</span>`:"<span class='badge b-gray'>n/d</span>"}</td>
+            </tr>`;
+          }).join("")}
+        </tbody>
+      </table>`).join("")}
+    `:""}
   </div>`;
 };
 
@@ -1939,7 +1981,7 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
   // ── ANALISI PER LINEA (LINEA 1, LINEA 2, LINEA 3...) ──────────────────
   // I tecnici la cui mansione nel calendario indica una linea vengono raggruppati per linea,
   // riattribuendo (o escludendo) le giornate segnalate come "fuori linea" nelle note del calendario.
-  const lineeTmp={}; // "1" -> {count,oreStd,oreEff,membriSet}
+  const lineeTmp={}; // "1" -> {count,oreStd,oreEff,membriSet,perFase:{61:{count,oreStd,oreEff},...}}
   tecnici.forEach(tec=>{
     if(!tec.lineaAssegnata)return;
     Object.values(tec.perFase).forEach(f=>{
@@ -1947,11 +1989,17 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
         const ov=tec.overrideLinea[lav.data];
         if(ov==="escludi")return; // nota: giornata non inerente alla linea, esclusa dal conteggio
         const linEff=ov||tec.lineaAssegnata; // nota con altra linea specifica -> sposta lì
-        if(!lineeTmp[linEff])lineeTmp[linEff]={count:0,oreStd:0,oreEff:0,membriSet:new Set()};
+        if(!lineeTmp[linEff])lineeTmp[linEff]={count:0,oreStd:0,oreEff:0,membriSet:new Set(),perFase:{}};
         lineeTmp[linEff].count++;
         lineeTmp[linEff].oreStd+=lav.tStd||0;
         lineeTmp[linEff].oreEff+=lav.tempoEff||0;
         lineeTmp[linEff].membriSet.add(tec.nome);
+        // Scomposizione per fase (61-64) DENTRO questa linea — per il dettaglio "Linea X / Fase Y"
+        // in Analisi Fase/Reparto, oltre al generico "Fase 61/62/63" su tutte le linee insieme.
+        if(!lineeTmp[linEff].perFase[lav.fase])lineeTmp[linEff].perFase[lav.fase]={count:0,oreStd:0,oreEff:0};
+        lineeTmp[linEff].perFase[lav.fase].count++;
+        lineeTmp[linEff].perFase[lav.fase].oreStd+=lav.tStd||0;
+        lineeTmp[linEff].perFase[lav.fase].oreEff+=lav.tempoEff||0;
       });
     });
   });
@@ -1968,7 +2016,11 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
     linea, count:l.count, oreStd:l.oreStd, oreEff:l.oreEff,
     performance:l.oreEff>0&&l.oreStd>0?(l.oreStd/l.oreEff)*100:null,
     efficienza:l.orePresenzaEff>0&&l.oreStd>0?(l.oreStd/l.orePresenzaEff)*100:null,
-    membri:[...l.membriSet]
+    membri:[...l.membriSet],
+    perFase:Object.entries(l.perFase).map(([fase,d])=>({
+      fase, count:d.count, oreStd:d.oreStd, oreEff:d.oreEff,
+      performance:d.oreEff>0&&d.oreStd>0?(d.oreStd/d.oreEff)*100:null
+    })).sort((a,b)=>a.fase.localeCompare(b.fase))
   })).sort((a,b)=>a.linea.localeCompare(b.linea));
   // Tecnici SENZA linea assegnata (restano nella griglia principale della Classifica Team);
   // chi appartiene a una linea viene invece rappresentato solo tramite la card di linea.
@@ -2120,7 +2172,7 @@ window.eseguiReport=async function(){
   // Salva questo report (nomi, efficienza, performance, lavorazioni) nel browser: la tab
   // "Classifica Team" lo ritrova sempre, anche riaprendo la pagina, senza dover rigenerare nulla.
   await salvaClassificaInMemoria(filiale, labPFull, tecniciSenzaLinea, ultimoConteggioTempoZero, ultimoFantasmiTempoZero, lineeFiliale, tecnici, anno, mesi, collaudoMontaggioSingolo, diagF60Info, codiciFase60Collaudatori);
-  await salvaAnalisiFaseInMemoria(filiale, labPFull, fasiFiliale, repartiFiliale);
+  await salvaAnalisiFaseInMemoria(filiale, labPFull, fasiFiliale, repartiFiliale, lineeFiliale);
 
   // Prepara lo/gli snapshot per il salvataggio nello storico.
   // - 1 solo mese selezionato -> uno snapshot singolo (comportamento di sempre)
@@ -2139,6 +2191,8 @@ window.eseguiReport=async function(){
       // Scarto standard-vs-reale per fase/reparto DI QUESTO mese — permette di filtrare
       // "Analisi Fase/Reparto" per periodo, sommando più mesi insieme quando selezionati.
       fasiFiliale: datiPeriodo.fasiFiliale||[], repartiFiliale: datiPeriodo.repartiFiliale||[],
+      // Scomposizione per fase (61-64) DENTRO ciascuna linea, per il dettaglio "Linea X / Fase Y".
+      lineeFasiFiliale: (datiPeriodo.lineeFiliale||[]).map(l=>({linea:l.linea, perFase:l.perFase||[]})),
       tecnici:datiPeriodo.tecnici.map(t=>{
         // Se questo tecnico fa anche Fase 60 (montaggio singolo) per alcuni modelli, qui sotto
         // ci sono i SUOI totStd/totEff combinati (Fase 60+70) per QUESTO mese — si sommano poi
@@ -2158,7 +2212,7 @@ window.eseguiReport=async function(){
     };
   }
   if(mesi.length===1){
-    ultimoReportSnapshot=costruisciSnapshot(mesi[0],{tecnici,giorniLav,troncatoAOggi,ultimoG,collaudoMontaggioSingolo,codiciFase60Collaudatori,fasiFiliale,repartiFiliale});
+    ultimoReportSnapshot=costruisciSnapshot(mesi[0],{tecnici,giorniLav,troncatoAOggi,ultimoG,collaudoMontaggioSingolo,codiciFase60Collaudatori,fasiFiliale,repartiFiliale,lineeFiliale});
     ultimoReportSnapshotMulti=null;
   } else {
     ultimoReportSnapshot=null;
@@ -2603,13 +2657,13 @@ function renderStorico(docs,filiale,el){
   <div class="card">
     <div class="ct">📋 Riepilogo mensile filiale</div>
     <table>
-      <thead><tr><th>Mese</th><th style="text-align:right">Tecnici</th><th style="text-align:right">Efficienza media</th><th style="text-align:right">Performance media</th><th style="text-align:right">Giorni lav.</th></tr></thead>
+      <thead><tr><th>Mese</th><th style="text-align:right">Tecnici</th><th style="text-align:right">Performance media</th><th style="text-align:right">Efficienza media</th><th style="text-align:right">Giorni lav.</th></tr></thead>
       <tbody>
         ${docs.map((d,i)=>`<tr>
           <td><b>${labelMese(d)}</b>${d.troncatoAOggi?` <small style="color:#9ca3af">(fino al ${d.ultimoGiornoConsiderato})</small>`:""}</td>
           <td style="text-align:right">${d.tecnici.length}</td>
-          <td style="text-align:right">${trendEff[i]!==null?`<span class="badge ${perfBcls(trendEff[i])}">${fmt(trendEff[i])}%</span>`:"—"}</td>
           <td style="text-align:right">${trendPerf[i]!==null?`<span class="badge ${perfBcls(trendPerf[i])}">${fmt(trendPerf[i])}%</span>`:"—"}</td>
+          <td style="text-align:right">${trendEff[i]!==null?`<span class="badge ${perfBcls(trendEff[i])}">${fmt(trendEff[i])}%</span>`:"—"}</td>
           <td style="text-align:right">${d.giorniLav}</td>
         </tr>`).join("")}
       </tbody>
@@ -2643,9 +2697,9 @@ function renderTrendChart(labels,valoriPerf,valoriEff){
   svg+=`<line x1="${padL}" y1="${y(100)}" x2="${w-padR}" y2="${y(100)}" stroke="#059669" stroke-width="1.5" stroke-dasharray="5,4" opacity=".55"/>`;
   svg+=`<text x="${w-padR}" y="${y(100)-6}" font-size="11" fill="#059669" text-anchor="end" opacity=".8">obiettivo 100%</text>`;
 
-  // Barre Efficienza (dato principale — stessa convenzione di tutto il resto del report:
-  // l'Efficienza ha sempre priorità visiva sulla Performance)
-  valoriEff.forEach((v,i)=>{
+  // Barre Performance (dato principale — stessa convenzione di tutto il resto del report:
+  // la Performance ha sempre priorità visiva sull'Efficienza)
+  valoriPerf.forEach((v,i)=>{
     if(v===null||v===undefined)return;
     const bx=xCenter(i)-barW/2, by=y(v), bh=padT+innerH-by;
     const col=colBar(v);
@@ -2653,10 +2707,10 @@ function renderTrendChart(labels,valoriPerf,valoriEff){
     svg+=`<text x="${xCenter(i)}" y="${by-9}" font-size="14" font-weight="700" fill="${col}" text-anchor="middle">${fmt(v)}%</text>`;
   });
 
-  // Linea Performance (contesto secondario)
-  const ptsPerf=valoriPerf.map((v,i)=>v===null?null:`${xCenter(i)},${y(v)}`).filter(Boolean).join(" ");
-  if(ptsPerf) svg+=`<polyline points="${ptsPerf}" fill="none" stroke="#4338ca" stroke-width="2" stroke-dasharray="6,4"/>`;
-  valoriPerf.forEach((v,i)=>{
+  // Linea Efficienza (contesto secondario)
+  const ptsEff=valoriEff.map((v,i)=>v===null?null:`${xCenter(i)},${y(v)}`).filter(Boolean).join(" ");
+  if(ptsEff) svg+=`<polyline points="${ptsEff}" fill="none" stroke="#4338ca" stroke-width="2" stroke-dasharray="6,4"/>`;
+  valoriEff.forEach((v,i)=>{
     if(v===null||v===undefined)return;
     svg+=`<circle cx="${xCenter(i)}" cy="${y(v)}" r="4" fill="#fff" stroke="#4338ca" stroke-width="2"/>`;
   });
@@ -2668,8 +2722,8 @@ function renderTrendChart(labels,valoriPerf,valoriEff){
   svg+="</svg>";
 
   const legend=`<div style="display:flex;gap:1.25rem;flex-wrap:wrap;margin-bottom:.6rem">
-    <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:600;color:var(--text)"><span style="width:14px;height:14px;border-radius:3px;background:#059669;display:inline-block"></span>Efficienza media (barre, dato principale)</span>
-    <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--text2)"><span style="width:14px;height:2px;background:#4338ca;display:inline-block;border-top:2px dashed #4338ca"></span>Performance media (linea, contesto)</span>
+    <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:600;color:var(--text)"><span style="width:14px;height:14px;border-radius:3px;background:#059669;display:inline-block"></span>Performance media (barre, dato principale)</span>
+    <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--text2)"><span style="width:14px;height:2px;background:#4338ca;display:inline-block;border-top:2px dashed #4338ca"></span>Efficienza media (linea, contesto)</span>
   </div>`;
   return `${legend}${svg}`;
 }
@@ -2703,18 +2757,18 @@ window.apriDettaglioGruppoAggregato=function(tipo){
   }
 
   document.getElementById("kpiModalTitle").innerHTML=titolo;
-  const membriOrdinati=[...membri].sort((a,b)=>(b.efficienza??-1)-(a.efficienza??-1));
+  const membriOrdinati=[...membri].sort((a,b)=>(b.performance??-1)-(a.performance??-1));
   const cardsMembri=membriOrdinati.map((m,i)=>{
     const e=m.efficienza, p=m.performance;
     return `<div class="classifica-card" onclick="apriDettaglioClassifica('${m.nome.replace(/'/g,"\\'")}')" style="cursor:pointer">
       <div class="classifica-rank">#${i+1} DI ${membriOrdinati.length}</div>
       <div class="classifica-nome">${m.nome}</div>
       <div class="classifica-metriche">
-        <div class="classifica-metrica primaria">
+        <div class="classifica-metrica secondaria">
           <div class="classifica-metrica-val" style="color:${e!==null?(e>=95?'#059669':e>=80?'#d97706':'#dc2626'):'#9ca3af'}">${e!=null?fmt(e)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Efficienza</div>
         </div>
-        <div class="classifica-metrica secondaria">
+        <div class="classifica-metrica primaria">
           <div class="classifica-metrica-val" style="color:${p!==null?(p>=95?'#059669':p>=80?'#d97706':'#dc2626'):'#9ca3af'}">${p!=null?fmt(p)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Performance</div>
         </div>
@@ -2740,7 +2794,7 @@ window.apriDettaglioLinea=function(numeroLinea){
 
   document.getElementById("kpiModalTitle").innerHTML=`🏭 LINEA ${numeroLinea}`;
   const perf=l.performance;
-  const membriOrdinati=[...l.membri].sort((a,b)=>(b.efficienza??-1)-(a.efficienza??-1));
+  const membriOrdinati=[...l.membri].sort((a,b)=>(b.performance??-1)-(a.performance??-1));
 
   const cardsMembri=membriOrdinati.map((m,i)=>{
     const e=m.efficienza, p=m.performance;
@@ -2748,11 +2802,11 @@ window.apriDettaglioLinea=function(numeroLinea){
       <div class="classifica-rank">#${i+1} DI ${membriOrdinati.length}</div>
       <div class="classifica-nome">${m.nome}</div>
       <div class="classifica-metriche">
-        <div class="classifica-metrica primaria">
+        <div class="classifica-metrica secondaria">
           <div class="classifica-metrica-val" style="color:${e!==null?(e>=95?'#059669':e>=80?'#d97706':'#dc2626'):'#9ca3af'}">${e!=null?fmt(e)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Efficienza</div>
         </div>
-        <div class="classifica-metrica secondaria">
+        <div class="classifica-metrica primaria">
           <div class="classifica-metrica-val" style="color:${p!==null?(p>=95?'#059669':p>=80?'#d97706':'#dc2626'):'#9ca3af'}">${p!=null?fmt(p)+'%':'n/d'}</div>
           <div class="classifica-metrica-lbl">Performance</div>
         </div>
@@ -3073,11 +3127,11 @@ window.apriDettaglioClassifica=async function(nome){
   body+=`<div style="font-size:.82rem;font-weight:800;margin:.5rem 0">📈 Andamento mensile</div>`;
   if(trendMesi.length){
     body+=renderTrendChart(trendMesi.map(m=>m.label), trendMesi.map(m=>m.performance), trendMesi.map(m=>m.efficienza));
-    body+=`<table style="margin-top:.5rem"><thead><tr><th>Mese</th><th style="text-align:right">Efficienza</th><th style="text-align:right">Performance</th></tr></thead><tbody>
+    body+=`<table style="margin-top:.5rem"><thead><tr><th>Mese</th><th style="text-align:right">Performance</th><th style="text-align:right">Efficienza</th></tr></thead><tbody>
       ${trendMesi.map(m=>`<tr>
         <td>${m.label}</td>
-        <td style="text-align:right">${m.efficienza!==null?`<span class="badge ${perfBcls(m.efficienza)}">${fmt(m.efficienza)}%</span>`:"—"}</td>
         <td style="text-align:right">${m.performance!==null?`<span class="badge ${perfBcls(m.performance)}">${fmt(m.performance)}%</span>`:"—"}</td>
+        <td style="text-align:right">${m.efficienza!==null?`<span class="badge ${perfBcls(m.efficienza)}">${fmt(m.efficienza)}%</span>`:"—"}</td>
       </tr>`).join("")}
     </tbody></table>`;
   } else {
@@ -3121,7 +3175,7 @@ window.apriDettaglioKpi=function(tipo){
 
   if(tipo==="tecnici"){
     title=`👥 Tecnici analizzati (${tec.length})`;
-    const ordinati=[...tec].sort((a,b)=>(b.efficienza??-1)-(a.efficienza??-1));
+    const ordinati=[...tec].sort((a,b)=>(b.performance??-1)-(a.performance??-1));
     body=ordinati.map(t=>rigaSemplice(
       t.nome,
       `<span class="badge ${t.efficienza!==null?perfBcls(t.efficienza):"b-gray"}" style="min-width:60px;text-align:center;flex-shrink:0">${t.efficienza!==null?fmt(t.efficienza)+"%":"n/d"}</span>`,
