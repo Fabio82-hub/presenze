@@ -894,7 +894,8 @@ async function salvaClassificaInMemoria(filiale, periodoLabel, tecniciGrid, cont
       // Collaudatori che per alcuni modelli fanno anche la Fase 60 (montaggio singolo) loro
       // stessi: efficienza/performance individuali già calcolate sul tempo combinato 60+70.
       collaudoMontaggioSingolo:(collaudoMontaggioSingolo||[]).map(c=>({
-        nome:c.nome, lavorazioni:c.lavorazioni, totStd:c.totStd, totEff:c.totEff, oreEff:c.oreEff,
+        nome:c.nome, lavorazioni:c.lavorazioni, lavorazioniFase60:c.lavorazioniFase60, lavorazioniFase70:c.lavorazioniFase70,
+        totStd:c.totStd, totEff:c.totEff, oreEff:c.oreEff,
         efficienza:c.efficienza, performance:c.performance
       })),
       diagF60Info: diagF60Info||null // diagnostica temporanea, legata a QUESTO calcolo specifico
@@ -915,7 +916,7 @@ function aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati){
 
   [...docsTrovati].sort((a,b)=>a.mese-b.mese).forEach(d=>{
     (d.tecnici||[]).forEach(t=>{
-      if(!perTecnico[t.nome]) perTecnico[t.nome]={effs:[],perfs:[],lavorazioni:0,lavorazioniZero:0,totStd:0,totEff:0,oreEff:0,oreDisp:0,mansione:null,lineaAssegnata:null,dipMatch:null,totStdConFase60:0,totEffConFase60:0,lavorazioniConFase60:0,haFase60:false};
+      if(!perTecnico[t.nome]) perTecnico[t.nome]={effs:[],perfs:[],lavorazioni:0,lavorazioniZero:0,totStd:0,totEff:0,oreEff:0,oreDisp:0,mansione:null,lineaAssegnata:null,dipMatch:null,totStdConFase60:0,totEffConFase60:0,lavorazioniConFase60:0,lavorazioniFase60:0,lavorazioniFase70:0,haFase60:false};
       const p=perTecnico[t.nome];
       if(t.efficienza!=null) p.effs.push(t.efficienza);
       if(t.performance!=null) p.perfs.push(t.performance);
@@ -935,6 +936,8 @@ function aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati){
         p.totStdConFase60+=t.totStdConFase60||0;
         p.totEffConFase60+=t.totEffConFase60||0;
         p.lavorazioniConFase60+=t.lavorazioniConFase60||0;
+        p.lavorazioniFase60+=t.lavorazioniFase60ConFase60||0;
+        p.lavorazioniFase70+=t.lavorazioniFase70ConFase60||0;
       }
     });
   });
@@ -985,7 +988,8 @@ function aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati){
   const collaudoMontaggioSingolo=Object.entries(perTecnico)
     .filter(([,p])=>p.haFase60)
     .map(([nome,p])=>({
-      nome, lavorazioni:p.lavorazioniConFase60, totStd:p.totStdConFase60, totEff:p.totEffConFase60, oreEff:p.oreEff,
+      nome, lavorazioni:p.lavorazioniConFase60, lavorazioniFase60:p.lavorazioniFase60, lavorazioniFase70:p.lavorazioniFase70,
+      totStd:p.totStdConFase60, totEff:p.totEffConFase60, oreEff:p.oreEff,
       efficienza:(p.oreEff>0&&p.totStdConFase60>0)?(p.totStdConFase60/p.oreEff)*100:null,
       performance:(p.totEffConFase60>0&&p.totStdConFase60>0)?(p.totStdConFase60/p.totEffConFase60)*100:null,
     }));
@@ -1240,6 +1244,8 @@ function renderClassificaTeam(dati){
   const sommaTotStdCM=cmSingolo.reduce((s,t)=>s+(t.totStd||0),0);
   const sommaLavorazioniCM=cmSingolo.reduce((s,t)=>s+(t.lavorazioni||0),0);
   const tempoMedioCM=sommaLavorazioniCM>0?sommaTotStdCM/sommaLavorazioniCM:null;
+  const sommaFase60CM=cmSingolo.reduce((s,t)=>s+(t.lavorazioniFase60||0),0);
+  const sommaFase70CM=cmSingolo.reduce((s,t)=>s+(t.lavorazioniFase70||0),0);
   const sommaOreEffCM=cmSingolo.reduce((s,t)=>s+(t.oreEff||0),0);
   const sommaTotEffCM=cmSingolo.reduce((s,t)=>s+(t.totEff||0),0);
   const effMediaCM=(sommaOreEffCM>0&&sommaTotStdCM>0)?(sommaTotStdCM/sommaOreEffCM)*100:null;
@@ -1257,7 +1263,7 @@ function renderClassificaTeam(dati){
           <div class="classifica-metrica-lbl">Performance media</div>
         </div>
       </div>
-      <div class="classifica-foot">${tempoMedioCM!==null?`Tempo standard medio per lavorazione (Fase 60+70 insieme): ${fmt(tempoMedioCM)}h su ${sommaLavorazioniCM} lavorazioni`:'Tempo standard: Fase 60 + Fase 70 sommate insieme'}</div>
+      <div class="classifica-foot">${tempoMedioCM!==null?`Tempo standard medio per lavorazione (Fase 60+70 insieme): ${fmt(tempoMedioCM)}h su ${sommaLavorazioniCM} lavorazioni`:'Tempo standard: Fase 60 + Fase 70 sommate insieme'}<br>Spaccatura: ${sommaFase70CM} lavorazioni di Collaudo (Fase 70) · ${sommaFase60CM} di Montaggio (Fase 60)</div>
       <div class="classifica-periodo">📅 ${dati.periodoLabel} · clicca per il dettaglio dei membri</div>
     </div>`:"";
 
@@ -1777,16 +1783,17 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
     const tec=tecnici.find(t=>t.nome===nome);
     if(!tec) return null;
     const righe=produzione.filter(p=>p.tecnico===nome&&p.data>=primoG&&p.data<=ultimoG&&(p.fase==="60"||p.fase==="70"));
-    let totStd=0, totEff=0;
+    let totStd=0, totEff=0, lavorazioniFase60=0, lavorazioniFase70=0;
     righe.forEach(lav=>{
       const artKey=(lav.articolo||"").toLowerCase();
       const tempoObj=tempiIdx[artKey];
       const tStd=tempoObj?parseOre(tempoObj.fasi[lav.fase])||parseOre(tempoObj.fasi.montaggio)||parseOre(tempoObj.fasi.collaudo):0;
       totStd+=tStd;
       totEff+=lav.tempoEff||0;
+      if(lav.fase==="60") lavorazioniFase60++; else lavorazioniFase70++;
     });
     return {
-      nome, lavorazioni:righe.length, totStd, totEff, oreEff:tec.oreEff,
+      nome, lavorazioni:righe.length, lavorazioniFase60, lavorazioniFase70, totStd, totEff, oreEff:tec.oreEff,
       efficienza:(tec.oreEff>0&&totStd>0)?(totStd/tec.oreEff)*100:null,
       performance:(totEff>0&&totStd>0)?(totStd/totEff)*100:null,
     };
@@ -1988,7 +1995,8 @@ window.eseguiReport=async function(){
           totStd:t.totStd, totEff:t.totEff, oreEff:t.oreEff, oreDisp:t.oreDisp,
           lavorazioni:t.lavorazioni.length,
           lavorazioniZero:(ultimoConteggioTempoZero&&ultimoConteggioTempoZero[t.nome])||0,
-          totStdConFase60: cm?cm.totStd:null, totEffConFase60: cm?cm.totEff:null, lavorazioniConFase60: cm?cm.lavorazioni:null
+          totStdConFase60: cm?cm.totStd:null, totEffConFase60: cm?cm.totEff:null, lavorazioniConFase60: cm?cm.lavorazioni:null,
+          lavorazioniFase60ConFase60: cm?cm.lavorazioniFase60:null, lavorazioniFase70ConFase60: cm?cm.lavorazioniFase70:null
         };
       })
     };
@@ -2555,7 +2563,7 @@ window.apriDettaglioGruppoAggregato=function(tipo){
           <div class="classifica-metrica-lbl">Performance</div>
         </div>
       </div>
-      <div class="classifica-foot">${m.lavorazioni||0} lavorazioni${tipo==="collaudomontaggio"?" (Fase 60+70 insieme)":""}</div>
+      <div class="classifica-foot">${m.lavorazioni||0} lavorazioni${tipo==="collaudomontaggio"?` (${m.lavorazioniFase70||0} Collaudo F70 · ${m.lavorazioniFase60||0} Montaggio F60)`:""}</div>
       <div class="classifica-periodo">clicca per il dettaglio</div>
     </div>`;
   }).join("");
