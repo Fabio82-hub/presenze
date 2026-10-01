@@ -1676,10 +1676,15 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
   // Codici modello per cui un collaudatore (senza linea assegnata) ha fatto lui stesso la Fase
   // 60 in questo periodo — per quei modelli non è passato da una linea separata, quindi la sua
   // efficienza reale su quel modello va misurata sul tempo combinato Fase 60+70, non solo 70.
+  // NB: legge tec.lavorazioni (l'elenco GREZZO, non filtrato) e non tec.perFase, apposta — se
+  // l'utente ha deselezionato la Fase 60 nel filtro "Fasi" dell'interfaccia (fasiSel), tec.perFase
+  // non conterrebbe più quella fase, ma questo controllo deve valere comunque, a prescindere da
+  // cosa l'utente ha scelto di vedere nell'analisi principale.
   ultimoCodiciFase60Collaudatori=new Set();
   tecnici.filter(t=>!t.lineaAssegnata).forEach(t=>{
-    const f60=t.perFase["60"];
-    if(f60) f60.lavorazioni.forEach(lav=>{ if(lav.articolo) ultimoCodiciFase60Collaudatori.add((lav.articolo||"").toLowerCase()); });
+    t.lavorazioni.forEach(lav=>{
+      if(lav.fase==="60" && lav.articolo) ultimoCodiciFase60Collaudatori.add((lav.articolo||"").toLowerCase());
+    });
   });
 
   // ── ANALISI PER LINEA (LINEA 1, LINEA 2, LINEA 3...) ──────────────────
