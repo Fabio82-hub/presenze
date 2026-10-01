@@ -2942,11 +2942,11 @@ window.apriDettaglioClassifica=async function(nome){
       </tr>`).join("")}</tbody></table>
     </div>
     <button class="btn bp no-print" style="font-size:.7rem;margin-top:.65rem" onclick="esportaExcel(ultimoDettaglioLavorazioniExport,'lavorazioni_${nome.replace(/[^a-zA-Z0-9]/g,'_')}.xlsx','Lavorazioni')">📥 Esporta lavorazioni in Excel</button>`;
-  } else if(tec.lavorazioni>0){
+  } else if(t.lavorazioni>0){
     // Il tecnico HA lavorazioni valide (compaiono nei totali/percentuali sopra) — manca solo il
     // dettaglio riga per riga, che lo storico aggregato non conserva (solo il report appena
     // generato lo tiene in memoria per questo tipo di esportazione).
-    body+=`<div class="al a-info" style="margin-bottom:0">Questo periodo proviene dallo storico salvato: le ${tec.lavorazioni} lavorazioni risultano nei totali e nelle percentuali qui sopra, ma il dettaglio riga per riga (articolo, fase, tempi) non viene conservato nello storico — è disponibile solo subito dopo aver generato un report fresco in "📈 KPI Produzione", prima di salvarlo.</div>`;
+    body+=`<div class="al a-info" style="margin-bottom:0">Questo periodo proviene dallo storico salvato: le ${t.lavorazioni} lavorazioni risultano nei totali e nelle percentuali qui sopra, ma il dettaglio riga per riga (articolo, fase, tempi) non viene conservato nello storico — è disponibile solo subito dopo aver generato un report fresco in "📈 KPI Produzione", prima di salvarlo.</div>`;
   } else {
     body+=`<div class="al a-info" style="margin-bottom:0">Nessuna lavorazione valida disponibile per l'export.</div>`;
   }
