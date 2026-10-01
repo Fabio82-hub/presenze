@@ -874,7 +874,7 @@ function mappaTecnicoPerClassifica(t, conteggioTempoZero){
     giorniFuoriLinea:Object.entries(t.overrideLinea||{}).map(([data,valore])=>({data,valore}))
   };
 }
-async function salvaClassificaInMemoria(filiale, periodoLabel, tecniciGrid, conteggioTempoZero, fantasmi, linee, tecniciCompleti, anno, mesi, collaudoMontaggioSingolo, diagF60Info){
+async function salvaClassificaInMemoria(filiale, periodoLabel, tecniciGrid, conteggioTempoZero, fantasmi, linee, tecniciCompleti, anno, mesi, collaudoMontaggioSingolo, diagF60Info, codiciFase60Collaudatori){
   try{
     const dati={
       filiale, periodoLabel,
@@ -898,7 +898,8 @@ async function salvaClassificaInMemoria(filiale, periodoLabel, tecniciGrid, cont
         totStd:c.totStd, totEff:c.totEff, oreEff:c.oreEff,
         efficienza:c.efficienza, performance:c.performance
       })),
-      diagF60Info: diagF60Info||null // diagnostica temporanea, legata a QUESTO calcolo specifico
+      diagF60Info: diagF60Info||null, // diagnostica temporanea, legata a QUESTO calcolo specifico
+      codiciFase60Collaudatori: codiciFase60Collaudatori||[] // modelli con questo pattern, legati a QUESTO calcolo specifico (non sovrascrivibili da altre chiamate)
     };
     // Salvato su Firestore (non più solo nel browser): visibile identico da qualsiasi PC/browser.
     await setDoc(doc(db,"kpiClassifica",filiale), dati);
@@ -1252,10 +1253,11 @@ function renderClassificaTeam(dati){
   // salvati nello storico). È questo il numero confrontabile con una somma fatta a mano sul file
   // Tempi Tecnici sulla colonna "60+70", NON una media per singola riga di lavorazione.
   let tempoMedioCM=null, nModelliCM=0;
-  if(ultimoCodiciFase60Collaudatori.size){
+  const codiciCMPeriodo=dati.codiciFase60Collaudatori||[];
+  if(codiciCMPeriodo.length){
     const tempiIdxCM=buildTempiIdx();
     const valoriCombinati=[];
-    ultimoCodiciFase60Collaudatori.forEach(codice=>{
+    codiciCMPeriodo.forEach(codice=>{
       const tempoObj=tempiIdxCM[codice];
       const f60=tempoObj?.fasi?.["60"], f70=tempoObj?.fasi?.["70"];
       if(f60>0 && f70>0) valoriCombinati.push(f60+f70);
@@ -1891,7 +1893,7 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
   const codiciMancantiReport=trovaCodiciMancanti(prodPeriodo);
   const fasiZeroReport=trovaFasiTempoZero(prodPeriodo);
 
-  return {tecnici,tecniciEsclusi,tecniciEsclusiManualmente,giorniLav,troncatoAOggi,ultimoG,primoG,prodPeriodo,codiciMancantiReport,fasiZeroReport,fasiFiliale,repartiFiliale,lineeFiliale,tecniciSenzaLinea,collaudoMontaggioSingolo,diagF60Info};
+  return {tecnici,tecniciEsclusi,tecniciEsclusiManualmente,giorniLav,troncatoAOggi,ultimoG,primoG,prodPeriodo,codiciMancantiReport,fasiZeroReport,fasiFiliale,repartiFiliale,lineeFiliale,tecniciSenzaLinea,collaudoMontaggioSingolo,diagF60Info,codiciFase60Collaudatori:[...ultimoCodiciFase60Collaudatori]};
 }
 
 // ── UI CHIPS ──────────────────────────────────────────
@@ -1967,7 +1969,7 @@ window.eseguiReport=async function(){
   const tempiIdx=buildTempiIdx();
 
   // Calcolo KPI sul periodo combinato (per la visualizzazione del report)
-  const {tecnici,tecniciEsclusi,tecniciEsclusiManualmente,giorniLav,troncatoAOggi,ultimoG,primoG,prodPeriodo,codiciMancantiReport,fasiZeroReport,fasiFiliale,repartiFiliale,lineeFiliale,tecniciSenzaLinea,collaudoMontaggioSingolo,diagF60Info}=
+  const {tecnici,tecniciEsclusi,tecniciEsclusiManualmente,giorniLav,troncatoAOggi,ultimoG,primoG,prodPeriodo,codiciMancantiReport,fasiZeroReport,fasiFiliale,repartiFiliale,lineeFiliale,tecniciSenzaLinea,collaudoMontaggioSingolo,diagF60Info,codiciFase60Collaudatori}=
     calcolaKPIPeriodo(filiale,anno,mesi,dipsAll,entries,tempiIdx);
   const labPFull=labP+(troncatoAOggi?" (fino ad oggi)":"");
 
@@ -1989,7 +1991,7 @@ window.eseguiReport=async function(){
 
   // Salva questo report (nomi, efficienza, performance, lavorazioni) nel browser: la tab
   // "Classifica Team" lo ritrova sempre, anche riaprendo la pagina, senza dover rigenerare nulla.
-  await salvaClassificaInMemoria(filiale, labPFull, tecniciSenzaLinea, ultimoConteggioTempoZero, ultimoFantasmiTempoZero, lineeFiliale, tecnici, anno, mesi, collaudoMontaggioSingolo, diagF60Info);
+  await salvaClassificaInMemoria(filiale, labPFull, tecniciSenzaLinea, ultimoConteggioTempoZero, ultimoFantasmiTempoZero, lineeFiliale, tecnici, anno, mesi, collaudoMontaggioSingolo, diagF60Info, codiciFase60Collaudatori);
   await salvaAnalisiFaseInMemoria(filiale, labPFull, fasiFiliale, repartiFiliale);
 
   // Prepara lo/gli snapshot per il salvataggio nello storico.
