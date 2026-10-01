@@ -914,8 +914,13 @@ function tec_perFaseSafe(t){ return t.perFase||{}; }
 function aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati){
   const labP=(mesi.length===12?"Anno "+anno:[...mesi].sort((a,b)=>a-b).map(m=>MESI_B[m]).join(", ")+" "+anno);
   const perTecnico={};
+  // Unione dei modelli con pattern Collaudo+Montaggio Singolo su tutti i mesi caricati — per
+  // ricalcolare il "tempo medio per modello" anche da storico, non solo da un report appena
+  // generato (disponibile solo per i mesi salvati DOPO l'introduzione di questo campo).
+  const codiciFase60Collaudatori=new Set();
 
   [...docsTrovati].sort((a,b)=>a.mese-b.mese).forEach(d=>{
+    (d.codiciFase60Collaudatori||[]).forEach(c=>codiciFase60Collaudatori.add(c));
     (d.tecnici||[]).forEach(t=>{
       if(!perTecnico[t.nome]) perTecnico[t.nome]={effs:[],perfs:[],lavorazioni:0,lavorazioniZero:0,totStd:0,totEff:0,oreEff:0,oreDisp:0,mansione:null,lineaAssegnata:null,dipMatch:null,totStdConFase60:0,totEffConFase60:0,lavorazioniConFase60:0,lavorazioniFase60:0,lavorazioniFase70:0,haFase60:false};
       const p=perTecnico[t.nome];
@@ -1007,7 +1012,8 @@ function aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati){
     tecnici:tecniciSenzaLinea,
     fantasmi,
     linee,
-    collaudoMontaggioSingolo
+    collaudoMontaggioSingolo,
+    codiciFase60Collaudatori:[...codiciFase60Collaudatori]
   };
 }
 
@@ -2004,6 +2010,10 @@ window.eseguiReport=async function(){
       filiale, anno, mese:meseSing,
       giorniLav:datiPeriodo.giorniLav.length, troncatoAOggi:datiPeriodo.troncatoAOggi, ultimoGiornoConsiderato:datiPeriodo.ultimoG,
       dataSalvataggio:new Date().toISOString(),
+      // Modelli di QUESTO mese con il pattern Collaudo+Montaggio Singolo (Fase 60 fatta da un
+      // collaudatore) — serve per ricalcolare il "tempo medio per modello" anche caricando lo
+      // storico (non solo da un report appena generato).
+      codiciFase60Collaudatori: datiPeriodo.codiciFase60Collaudatori||[],
       tecnici:datiPeriodo.tecnici.map(t=>{
         // Se questo tecnico fa anche Fase 60 (montaggio singolo) per alcuni modelli, qui sotto
         // ci sono i SUOI totStd/totEff combinati (Fase 60+70) per QUESTO mese — si sommano poi
@@ -2023,7 +2033,7 @@ window.eseguiReport=async function(){
     };
   }
   if(mesi.length===1){
-    ultimoReportSnapshot=costruisciSnapshot(mesi[0],{tecnici,giorniLav,troncatoAOggi,ultimoG,collaudoMontaggioSingolo});
+    ultimoReportSnapshot=costruisciSnapshot(mesi[0],{tecnici,giorniLav,troncatoAOggi,ultimoG,collaudoMontaggioSingolo,codiciFase60Collaudatori});
     ultimoReportSnapshotMulti=null;
   } else {
     ultimoReportSnapshot=null;
