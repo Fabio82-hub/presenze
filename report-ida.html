@@ -383,6 +383,15 @@ tr:hover td{background:#fafafa}
       </div>
       <button class="btn bp" onclick="caricaClassifica()">▶ Carica</button>
     </div>
+    <details style="margin-top:.75rem;font-size:.78rem;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:.6rem .8rem">
+      <summary style="cursor:pointer;font-weight:700;color:var(--text)">ℹ️ Come vengono calcolate Efficienza e Performance</summary>
+      <div style="margin-top:.6rem;color:var(--text2);line-height:1.55">
+        <p><b>Performance</b> = Ore Standard ÷ Ore di Lavorazione Reali — quanto tempo "dovrebbe" servire secondo i Tempi Tecnici, confrontato con quanto ci ha messo davvero il tecnico a completare quella lavorazione.</p>
+        <p><b>Efficienza</b> = Ore Standard ÷ Ore di Presenza Effettive — stesso tempo standard, ma confrontato con <u>tutte</u> le ore in cui il tecnico era presente in azienda (ferie/permessi/malattia già tolti), non solo le ore spese sulle lavorazioni tracciate. È per questo che l'Efficienza è il dato mostrato più in grande su ogni card: tiene conto anche di pause, tempi morti e attività non cronometrate.</p>
+        <p><b>Card di gruppo</b> (Linea, Collaudo, Montaggio): non è una media delle percentuali dei singoli — si sommano prima tutte le Ore Standard e tutte le Ore Presenza/Lavorazione del gruppo, poi si fa un'unica divisione. Così chi ha lavorato di più pesa di più nella media, invece di contare quanto chi ha lavorato pochissimo.</p>
+        <p><b>Collaudo + Montaggio Singolo</b>: stessa logica, ma per chi fa sia Collaudo (Fase 70) sia Montaggio (Fase 60) sullo stesso modello — perché quel modello non passa da una linea separata — le Ore Standard sommano il tempo di riferimento di <u>entrambe</u> le fasi, non solo quella di Collaudo.</p>
+      </div>
+    </details>
     <div id="classificaMeta" style="margin-top:.5rem;font-size:.75rem;color:var(--text2)"></div>
   </div>
   <div id="classificaContent"></div>
@@ -793,21 +802,24 @@ window.confermaTempi=function(){
   })).filter(r=>r.codice);
   const tot=tempiUsati.length+tempiNuovi.length;
   if(!tot){alert("Nessuna riga valida. Controlla le colonne selezionate.");return;}
-  salvaTempiInMemoria(); // persiste in localStorage: non andranno ricaricati alla prossima apertura
+  salvaTempiInMemoria(); // persiste su cloud + localStorage: visibili da qualsiasi PC, non andranno ricaricati alla prossima apertura
   mostraTempiOk();
   document.getElementById("step2").style.display="block";
 };
 
-// Salva i Tempi Tecnici nel browser (localStorage) così restano disponibili anche
-// dopo aver chiuso/riaperto la pagina, senza doverli ricaricare ogni volta.
-function salvaTempiInMemoria(){
-  try{
-    localStorage.setItem(LS_KEY_TEMPI, JSON.stringify({
-      tempiUsati, tempiNuovi,
-      fileName: ultimoNomeFileTempi||"file.xlsx",
-      savedAt: new Date().toISOString()
-    }));
-  }catch(e){ console.warn("Impossibile salvare i Tempi Tecnici in memoria locale:", e); }
+// Salva i Tempi Tecnici SUL CLOUD (condivisi tra tutti i PC/browser, come il resto dei dati
+// della filiale) — più una copia in localStorage, usata solo come cache per un caricamento
+// istantaneo e come fallback se per qualche motivo il cloud non fosse raggiungibile.
+async function salvaTempiInMemoria(){
+  const payload={
+    tempiUsati, tempiNuovi,
+    fileName: ultimoNomeFileTempi||"file.xlsx",
+    savedAt: new Date().toISOString()
+  };
+  try{ localStorage.setItem(LS_KEY_TEMPI, JSON.stringify(payload)); }
+  catch(e){ console.warn("Impossibile salvare i Tempi Tecnici in memoria locale:", e); }
+  try{ await setDoc(doc(db,"config","tempiTecnici"), payload); }
+  catch(e){ console.warn("Impossibile salvare i Tempi Tecnici sul cloud:", e); }
 }
 // Mostra il pannello "Tempi Tecnici in memoria" e nasconde la dropzone di caricamento
 function mostraTempiOk(){
@@ -822,9 +834,11 @@ function mostraTempiOk(){
     `✅ <b>Tempi Tecnici in memoria</b>: ${meta.fileName||"file.xlsx"} — ${tempiUsati.length} D.A. usati + ${tempiNuovi.length} D.A. nuovi${dataFmt?` <small style="color:var(--text2)">(caricati il ${dataFmt})</small>`:""}<br>
     <small style="color:var(--text2)">Non serve ricaricarlo ad ogni apertura: resta qui finché non lo rimuovi o lo sostituisci.</small>`;
 }
-window.resetTempi=function(){
+window.resetTempi=async function(){
   tempiUsati=[];tempiNuovi=[];rawUsati=[];rawNuovi=[];ultimoNomeFileTempi="";
   try{ localStorage.removeItem(LS_KEY_TEMPI); }catch(e){}
+  try{ await setDoc(doc(db,"config","tempiTecnici"), {tempiUsati:[],tempiNuovi:[],fileName:"",savedAt:new Date().toISOString()}); }
+  catch(e){ console.warn("Impossibile svuotare i Tempi Tecnici sul cloud:", e); }
   document.getElementById("fTempi").value="";
   document.getElementById("tempiStatus").innerHTML="";
   document.getElementById("tempiMapping").style.display="none";
@@ -834,23 +848,36 @@ window.resetTempi=function(){
   document.getElementById("step3").style.display="none";
   document.getElementById("risultati").style.display="none";
 };
-// Al riavvio: se i Tempi Tecnici erano già stati salvati in una sessione precedente, li ricarica
-// automaticamente dal browser (localStorage) senza richiedere un nuovo upload del file.
-function ripristinaTempiDaMemoria(){
-  let raw;
-  try{ raw=localStorage.getItem(LS_KEY_TEMPI); }catch(e){ return; }
-  if(!raw)return;
+// Al riavvio: ricarica i Tempi Tecnici salvati — PRIMA dal cloud (condivisi tra tutti i PC),
+// poi dal localStorage solo come fallback (se il cloud non risponde, o per un primo avvio
+// offline). Senza richiedere un nuovo upload del file.
+async function ripristinaTempiDaMemoria(){
+  let dati=null;
   try{
-    const dati=JSON.parse(raw);
-    if(!dati||!Array.isArray(dati.tempiUsati))return;
-    tempiUsati=dati.tempiUsati||[];
-    tempiNuovi=dati.tempiNuovi||[];
-    ultimoNomeFileTempi=dati.fileName||"";
-    if(tempiUsati.length+tempiNuovi.length>0){
-      mostraTempiOk();
-      document.getElementById("step2").style.display="block";
+    const snap=await getDoc(doc(db,"config","tempiTecnici"));
+    if(snap.exists()) dati=snap.data();
+  }catch(e){ console.warn("Impossibile leggere i Tempi Tecnici dal cloud:", e); }
+
+  if(!dati||!Array.isArray(dati.tempiUsati)){
+    let raw;
+    try{ raw=localStorage.getItem(LS_KEY_TEMPI); }catch(e){ raw=null; }
+    if(raw){
+      try{ dati=JSON.parse(raw); }catch(e){ dati=null; }
     }
-  }catch(e){ console.warn("Impossibile ripristinare i Tempi Tecnici salvati:", e); }
+  }
+  if(!dati||!Array.isArray(dati.tempiUsati))return;
+
+  tempiUsati=dati.tempiUsati||[];
+  tempiNuovi=dati.tempiNuovi||[];
+  ultimoNomeFileTempi=dati.fileName||"";
+  if(tempiUsati.length+tempiNuovi.length>0){
+    // Allinea la cache locale con GLI STESSI dati appena letti (stesso fileName/savedAt
+    // originali, non un nuovo salvataggio) — serve solo perché mostraTempiOk() li rilegge da
+    // lì per mostrare la data corretta anche al primo accesso da un PC che non li aveva ancora.
+    try{ localStorage.setItem(LS_KEY_TEMPI, JSON.stringify(dati)); }catch(e){}
+    mostraTempiOk();
+    document.getElementById("step2").style.display="block";
+  }
 }
 
 // ── CLASSIFICA TEAM: salvataggio persistente e rendering ────────────────
@@ -3101,7 +3128,7 @@ window.apriDettaglioKpiStorico=function(tipo){
 
 window.addEventListener("DOMContentLoaded",async()=>{
   buildMesiChips();buildFasiChips();buildStoricoMesiChips();buildClassificaMesiChips();
-  ripristinaTempiDaMemoria(); // ricarica i Tempi Tecnici salvati in precedenza (se presenti), senza richiedere un nuovo upload
+  await ripristinaTempiDaMemoria(); // ricarica i Tempi Tecnici salvati in precedenza (dal cloud, condivisi tra tutti i PC), senza richiedere un nuovo upload
   await caricaEsclusiManuali(); // ricarica dal cloud l'elenco di chi è stato escluso manualmente dall'analisi
   // Apertura diretta della tab KPI Produzione se la pagina viene raggiunta con #storico (es. da index.html)
   if(window.location.hash==="#storico") switchTab("storico");
