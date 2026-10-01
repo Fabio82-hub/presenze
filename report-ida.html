@@ -874,7 +874,7 @@ function mappaTecnicoPerClassifica(t, conteggioTempoZero){
     giorniFuoriLinea:Object.entries(t.overrideLinea||{}).map(([data,valore])=>({data,valore}))
   };
 }
-async function salvaClassificaInMemoria(filiale, periodoLabel, tecniciGrid, conteggioTempoZero, fantasmi, linee, tecniciCompleti, anno, mesi, collaudoMontaggioSingolo){
+async function salvaClassificaInMemoria(filiale, periodoLabel, tecniciGrid, conteggioTempoZero, fantasmi, linee, tecniciCompleti, anno, mesi, collaudoMontaggioSingolo, diagF60Info){
   try{
     const dati={
       filiale, periodoLabel,
@@ -896,7 +896,8 @@ async function salvaClassificaInMemoria(filiale, periodoLabel, tecniciGrid, cont
       collaudoMontaggioSingolo:(collaudoMontaggioSingolo||[]).map(c=>({
         nome:c.nome, lavorazioni:c.lavorazioni, totStd:c.totStd, totEff:c.totEff, oreEff:c.oreEff,
         efficienza:c.efficienza, performance:c.performance
-      }))
+      })),
+      diagF60Info: diagF60Info||null // diagnostica temporanea, legata a QUESTO calcolo specifico
     };
     // Salvato su Firestore (non più solo nel browser): visibile identico da qualsiasi PC/browser.
     await setDoc(doc(db,"kpiClassifica",filiale), dati);
@@ -1155,10 +1156,10 @@ function renderClassificaTeam(dati){
     Collaudo (Fase 70): ${tempo70?`<b>${fmt(tempo70.media)}h</b> — media su ${tempo70.n} modelli`:'<i>n/d, carica i Tempi Tecnici in "Inserimento dati"</i>'}
     ${ultimoCodiciFase60Collaudatori.size?`(per ${ultimoCodiciFase60Collaudatori.size} modelli senza linea separata, un collaudatore fa lui stesso anche il montaggio: qui il tempo conta Fase 60+70 insieme)`:''}.
   </div>
-  ${window._diagF60v2?`<div class="al a-info" style="margin-bottom:1rem;font-size:.68rem">🔍 <b>Diagnostica v2</b> — periodo: ${window._diagF60v2.primoG||'?'}..${window._diagF60v2.ultimoG||'?'} · righe Fase 60 nel file: ${window._diagF60v2.righeFase60NelFile??'?'} · nel periodo: ${window._diagF60v2.righeFase60NelPeriodo??'?'}.<br>
-  Collaudatori riconosciuti (${window._diagF60v2.nomiCollaudatori?.length??0}): ${(window._diagF60v2.nomiCollaudatori||[]).slice(0,8).join(", ")||"nessuno"}${(window._diagF60v2.nomiCollaudatori||[]).length>8?"...":""}.<br>
-  Nomi con Fase 60 nel FILE, tutto l'anno (${window._diagF60v2.nomiConFase60NelFile?.length??0}): ${(window._diagF60v2.nomiConFase60NelFile||[]).slice(0,8).join(", ")||"nessuno"}${(window._diagF60v2.nomiConFase60NelFile||[]).length>8?"...":""}.<br>
-  <b>In comune tra i due elenchi (${window._diagF60v2.nomiInComune?.length??0})</b>: ${(window._diagF60v2.nomiInComune||[]).slice(0,8).join(", ")||"nessuno"}.</div>`:""}`;
+  ${dati.diagF60Info?`<div class="al a-info" style="margin-bottom:1rem;font-size:.68rem">🔍 <b>Diagnostica v3</b> (legata a questo calcolo) — periodo: ${dati.diagF60Info.primoG||'?'}..${dati.diagF60Info.ultimoG||'?'} · righe Fase 60 nel file: ${dati.diagF60Info.righeFase60NelFile??'?'} · nel periodo: ${dati.diagF60Info.righeFase60NelPeriodo??'?'}.<br>
+  Collaudatori riconosciuti (${dati.diagF60Info.nomiCollaudatori?.length??0}): ${(dati.diagF60Info.nomiCollaudatori||[]).slice(0,8).join(", ")||"nessuno"}${(dati.diagF60Info.nomiCollaudatori||[]).length>8?"...":""}.<br>
+  Nomi con Fase 60 nel FILE, tutto l'anno (${dati.diagF60Info.nomiConFase60NelFile?.length??0}): ${(dati.diagF60Info.nomiConFase60NelFile||[]).slice(0,8).join(", ")||"nessuno"}${(dati.diagF60Info.nomiConFase60NelFile||[]).length>8?"...":""}.<br>
+  <b>In comune tra i due elenchi (${dati.diagF60Info.nomiInComune?.length??0})</b>: ${(dati.diagF60Info.nomiInComune||[]).slice(0,8).join(", ")||"nessuno"}.</div>`:""}`;
 
   // ── Card "Collaudo — media reparto": stessa idea delle card Linea, ma aggregata su TUTTI i
   // Collaudatori del periodo (media ponderata: somma Ore Std ÷ somma Ore presenza/lavorazione,
@@ -1728,10 +1729,11 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
   righeFase60Collaudatori.forEach(p=>{ ultimoCodiciFase60Collaudatori.add((p.articolo||"").toLowerCase()); });
   // DIAGNOSTICA TEMPORANEA v2 — scritta con accesso sempre sicuro (?. e fallback), non può MAI
   // causare il crash di prima: se manca del tutto, il codice che la legge semplicemente non la mostra.
+  let diagF60Info=null;
   try{
     const righeF60Tutte=produzione.filter(p=>p.fase==="60");
     const nomiF60Tutte=[...new Set(righeF60Tutte.map(p=>p.tecnico))];
-    window._diagF60v2={
+    diagF60Info={
       primoG, ultimoG,
       righeFase60NelFile: righeF60Tutte.length,
       righeFase60NelPeriodo: righeF60Tutte.filter(p=>p.data>=primoG&&p.data<=ultimoG).length,
@@ -1739,7 +1741,7 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
       nomiConFase60NelFile: nomiF60Tutte,
       nomiInComune: nomiF60Tutte.filter(n=>nomiCollaudatoriPeriodo.has(n))
     };
-  }catch(e){ window._diagF60v2=null; }
+  }catch(e){ diagF60Info=null; }
 
   // ── "Collaudo + Montaggio Singolo": i collaudatori (senza linea) che per alcuni modelli fanno
   // ANCHE la Fase 60 loro stessi (non passano da una linea separata). Per loro l'efficienza va
@@ -1840,7 +1842,7 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
   const codiciMancantiReport=trovaCodiciMancanti(prodPeriodo);
   const fasiZeroReport=trovaFasiTempoZero(prodPeriodo);
 
-  return {tecnici,tecniciEsclusi,tecniciEsclusiManualmente,giorniLav,troncatoAOggi,ultimoG,primoG,prodPeriodo,codiciMancantiReport,fasiZeroReport,fasiFiliale,repartiFiliale,lineeFiliale,tecniciSenzaLinea,collaudoMontaggioSingolo};
+  return {tecnici,tecniciEsclusi,tecniciEsclusiManualmente,giorniLav,troncatoAOggi,ultimoG,primoG,prodPeriodo,codiciMancantiReport,fasiZeroReport,fasiFiliale,repartiFiliale,lineeFiliale,tecniciSenzaLinea,collaudoMontaggioSingolo,diagF60Info};
 }
 
 // ── UI CHIPS ──────────────────────────────────────────
@@ -1916,7 +1918,7 @@ window.eseguiReport=async function(){
   const tempiIdx=buildTempiIdx();
 
   // Calcolo KPI sul periodo combinato (per la visualizzazione del report)
-  const {tecnici,tecniciEsclusi,tecniciEsclusiManualmente,giorniLav,troncatoAOggi,ultimoG,primoG,prodPeriodo,codiciMancantiReport,fasiZeroReport,fasiFiliale,repartiFiliale,lineeFiliale,tecniciSenzaLinea,collaudoMontaggioSingolo}=
+  const {tecnici,tecniciEsclusi,tecniciEsclusiManualmente,giorniLav,troncatoAOggi,ultimoG,primoG,prodPeriodo,codiciMancantiReport,fasiZeroReport,fasiFiliale,repartiFiliale,lineeFiliale,tecniciSenzaLinea,collaudoMontaggioSingolo,diagF60Info}=
     calcolaKPIPeriodo(filiale,anno,mesi,dipsAll,entries,tempiIdx);
   const labPFull=labP+(troncatoAOggi?" (fino ad oggi)":"");
 
@@ -1938,7 +1940,7 @@ window.eseguiReport=async function(){
 
   // Salva questo report (nomi, efficienza, performance, lavorazioni) nel browser: la tab
   // "Classifica Team" lo ritrova sempre, anche riaprendo la pagina, senza dover rigenerare nulla.
-  await salvaClassificaInMemoria(filiale, labPFull, tecniciSenzaLinea, ultimoConteggioTempoZero, ultimoFantasmiTempoZero, lineeFiliale, tecnici, anno, mesi, collaudoMontaggioSingolo);
+  await salvaClassificaInMemoria(filiale, labPFull, tecniciSenzaLinea, ultimoConteggioTempoZero, ultimoFantasmiTempoZero, lineeFiliale, tecnici, anno, mesi, collaudoMontaggioSingolo, diagF60Info);
   await salvaAnalisiFaseInMemoria(filiale, labPFull, fasiFiliale, repartiFiliale);
 
   // Prepara lo/gli snapshot per il salvataggio nello storico.
