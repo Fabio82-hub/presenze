@@ -908,6 +908,9 @@ function mappaTecnicoPerClassifica(t, conteggioTempoZero){
     lavorazioni:t.lavorazioni.length,
     lavorazioniZero:(conteggioTempoZero&&conteggioTempoZero[t.nome])||0,
     totStd:t.totStd, totEff:t.totEff, oreEff:t.oreEff, oreDisp:t.oreDisp,
+    // Solo Fase 70 (Collaudo "puro") — per far coincidere la card "Collaudo — media reparto" con
+    // la riga F70 di Analisi Fase/Reparto, che guarda esclusivamente questa fase.
+    totStdF70: tec_perFaseSafe(t)["70"]?.oreStd||0, totEffF70: tec_perFaseSafe(t)["70"]?.oreEff||0,
     lavorazioniDettaglio:Object.values(tec_perFaseSafe(t)).flatMap(f=>f.lavorazioni.map(l=>({
       Articolo:l.articolo, Fase:l.fase, "Data Fine":l.data,
       "Tempo Reale (h)":Math.round((l.tempoEff||0)*100)/100,
@@ -1015,7 +1018,7 @@ function aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati){
   [...docsTrovati].sort((a,b)=>a.mese-b.mese).forEach(d=>{
     (d.codiciFase60Collaudatori||[]).forEach(c=>codiciFase60Collaudatori.add(c));
     (d.tecnici||[]).forEach(t=>{
-      if(!perTecnico[t.nome]) perTecnico[t.nome]={effs:[],perfs:[],lavorazioni:0,lavorazioniZero:0,totStd:0,totEff:0,oreEff:0,oreDisp:0,mansione:null,lineaAssegnata:null,dipMatch:null,totStdConFase60:0,totEffConFase60:0,lavorazioniConFase60:0,lavorazioniFase60:0,lavorazioniFase70:0,haFase60:false};
+      if(!perTecnico[t.nome]) perTecnico[t.nome]={effs:[],perfs:[],lavorazioni:0,lavorazioniZero:0,totStd:0,totEff:0,oreEff:0,oreDisp:0,mansione:null,lineaAssegnata:null,dipMatch:null,totStdConFase60:0,totEffConFase60:0,lavorazioniConFase60:0,lavorazioniFase60:0,lavorazioniFase70:0,haFase60:false,totStdF70:0,totEffF70:0};
       const p=perTecnico[t.nome];
       if(t.efficienza!=null) p.effs.push(t.efficienza);
       if(t.performance!=null) p.perfs.push(t.performance);
@@ -1038,6 +1041,8 @@ function aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati){
         p.lavorazioniFase60+=t.lavorazioniFase60ConFase60||0;
         p.lavorazioniFase70+=t.lavorazioniFase70ConFase60||0;
       }
+      p.totStdF70+=t.totStdF70||0;
+      p.totEffF70+=t.totEffF70||0;
     });
   });
 
@@ -1048,6 +1053,7 @@ function aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati){
     efficienza:media(p.effs), performance:media(p.perfs),
     lavorazioni:p.lavorazioni, lavorazioniZero:p.lavorazioniZero,
     totStd:p.totStd, totEff:p.totEff, oreEff:p.oreEff, oreDisp:p.oreDisp,
+    totStdF70:p.totStdF70, totEffF70:p.totEffF70,
     // Il dettaglio riga-per-riga delle lavorazioni esiste solo nel report appena generato,
     // non nello storico aggregato: qui resta vuoto (il grafico "Andamento mensile" nel
     // dettaglio funziona comunque, perché legge lo storico in autonomia).
@@ -1289,9 +1295,12 @@ function renderClassificaTeam(dati){
   // ── Card "Collaudo — media reparto": stessa idea delle card Linea, ma aggregata su TUTTI i
   // Collaudatori del periodo (media ponderata: somma Ore Std ÷ somma Ore presenza/lavorazione,
   // non media semplice delle singole percentuali, per non far pesare troppo chi ha pochi dati).
-  const sommaTotStdColl=tecnici.reduce((s,t)=>s+(t.totStd||0),0);
+  // Solo Fase 70 (non tutto il lavoro della persona) — così questa card coincide sempre con la
+  // riga F70 di Analisi Fase/Reparto, che guarda esclusivamente questa fase sugli stessi 17
+  // collaudatori. L'Efficienza resta sulle ore di PRESENZA (oreEff), che non sono fase-specifiche.
+  const sommaTotStdColl=tecnici.reduce((s,t)=>s+(t.totStdF70||0),0);
   const sommaOreEffColl=tecnici.reduce((s,t)=>s+(t.oreEff||0),0);
-  const sommaTotEffColl=tecnici.reduce((s,t)=>s+(t.totEff||0),0);
+  const sommaTotEffColl=tecnici.reduce((s,t)=>s+(t.totEffF70||0),0);
   const effMediaColl=(sommaOreEffColl>0&&sommaTotStdColl>0)?(sommaTotStdColl/sommaOreEffColl)*100:null;
   const perfMediaColl=(sommaTotEffColl>0&&sommaTotStdColl>0)?(sommaTotStdColl/sommaTotEffColl)*100:null;
   // ── Card "Montaggio — media reparto": stessa idea, ma aggregando TUTTI i membri di TUTTE le
@@ -2027,12 +2036,16 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
   const tecniciSenzaLinea=tecnici.filter(t=>!t.lineaAssegnata);
 
   // ── ANALISI PER FASE/REPARTO (tutta la filiale, non per singolo tecnico) ──
-  // Aggrega lo scarto standard-vs-reale per ciascuna fase (60-64-70), sommando i dati di TUTTI
-  // i tecnici. Fa emergere problemi di processo/attrezzatura (una fase sistematicamente lenta,
-  // indipendentemente da chi la esegue) invece che di singola persona.
+  // Aggrega lo scarto standard-vs-reale per ciascuna fase (60-64-70). Fase 60/70 contano solo i
+  // tecnici SENZA linea (collaudatori) — stessa popolazione esatta della card "Collaudo — media
+  // reparto" in Classifica Team, così le due viste dicono sempre la stessa cosa. Fase 61-64
+  // contano solo chi è assegnato a una linea, coerente con le card Linea.
   const perFaseFiliale={};
   tecnici.forEach(tec=>{
     Object.values(tec.perFase).forEach(f=>{
+      const faseELinea=["61","62","63","64"].includes(f.fase);
+      if(faseELinea && !tec.lineaAssegnata) return; // fase di linea fatta da un non-linea: non è il caso normale, la escludiamo da questa vista
+      if(!faseELinea && tec.lineaAssegnata) return;  // fase 60/70 fatta da chi è assegnato a una linea: idem, esclusa qui
       if(!perFaseFiliale[f.fase])perFaseFiliale[f.fase]={fase:f.fase,count:0,oreStd:0,oreEff:0};
       perFaseFiliale[f.fase].count+=f.count;
       perFaseFiliale[f.fase].oreStd+=f.oreStd;
@@ -2206,7 +2219,10 @@ window.eseguiReport=async function(){
           lavorazioni:t.lavorazioni.length,
           lavorazioniZero:(ultimoConteggioTempoZero&&ultimoConteggioTempoZero[t.nome])||0,
           totStdConFase60: cm?cm.totStd:null, totEffConFase60: cm?cm.totEff:null, lavorazioniConFase60: cm?cm.lavorazioni:null,
-          lavorazioniFase60ConFase60: cm?cm.lavorazioniFase60:null, lavorazioniFase70ConFase60: cm?cm.lavorazioniFase70:null
+          lavorazioniFase60ConFase60: cm?cm.lavorazioniFase60:null, lavorazioniFase70ConFase60: cm?cm.lavorazioniFase70:null,
+          // Solo Fase 70 di QUESTO mese per questo tecnico — per far coincidere "Collaudo — media
+          // reparto" con la riga F70 di Analisi Fase/Reparto anche caricando lo storico.
+          totStdF70: (t.perFase&&t.perFase["70"])?t.perFase["70"].oreStd:0, totEffF70: (t.perFase&&t.perFase["70"])?t.perFase["70"].oreEff:0
         };
       })
     };
