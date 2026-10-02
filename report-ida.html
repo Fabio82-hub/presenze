@@ -133,6 +133,7 @@ tr:hover td{background:#fafafa}
     <button class="tab" id="tabBtnClassifica" onclick="switchTab('classifica')">🏆 Classifica Team</button>
     <button class="tab" id="tabBtnFasi" onclick="switchTab('fasi')">📊 Analisi Fase/Reparto</button>
     <button class="tab" id="tabBtnCerca" onclick="switchTab('cerca')">🔍 Cerca Tecnico</button>
+    <button class="tab" id="tabBtnGuasti" onclick="switchTab('guasti')">⚠️ Difettosità</button>
   </div>
   <a href="index.html" class="btn bg" style="font-size:.75rem;text-decoration:none;margin-bottom:.4rem">🏠 Torna alla Home</a>
 </div>
@@ -455,6 +456,57 @@ tr:hover td{background:#fafafa}
   <div id="cercaTecnicoContent"></div>
 </div><!-- /tab-cerca -->
 
+<div class="tc" id="tab-guasti">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <div class="ct" style="border-bottom:none;margin-bottom:0;padding-bottom:0">⚠️ Difettosità per Tecnico — guasti/difetti imputati</div>
+    </div>
+    <div class="al a-info" style="margin-top:.5rem">
+      "Utente Prec." (chi ha lavorato nella fase precedente) è considerato il responsabile del guasto; "Utente" è solo chi lo ha segnalato. Puoi correggere a mano sia il responsabile sia il motivo direttamente nella tabella qui sotto, per ogni singola riga.
+    </div>
+    <div class="fr" style="align-items:flex-end;margin-top:.75rem">
+      <div class="fg">
+        <label class="lbl">Filiale</label>
+        <select id="guastiFiliale" style="width:180px">
+          <option value="seriate">SERIATE</option>
+          <option value="pomezia">POMEZIA</option>
+          <option value="orio">ORIO</option>
+          <option value="perugia">PERUGIA</option>
+          <option value="elmas">ELMAS</option>
+          <option value="modugno">MODUGNO</option>
+        </select>
+      </div>
+    </div>
+    <div class="al a-info" style="margin-top:.75rem">
+      Colonne attese: <b>Data</b> · <b>Fase</b> (dove è stato rilevato) · <b>Utente</b> (chi segnala) · <b>Cod./Desc. Motivo</b> · <b>Fase Prec.</b> · <b>Utente Prec.</b> (responsabile) · Modello · Matricola
+    </div>
+    <div class="upload-zone" id="uzGuasti" onclick="document.getElementById('fGuasti').click()">
+      <div class="uz-icon">⚠️</div>
+      <div class="uz-text">Carica file motivi guasto (.xlsx)</div>
+      <div class="uz-sub">trascina qui o clicca per selezionare</div>
+    </div>
+    <input type="file" id="fGuasti" accept=".xlsx,.xls" style="display:none">
+    <div id="guastiStatus" style="margin-top:.65rem"></div>
+    <div id="guastiMapping" style="display:none;margin-top:1rem">
+      <div class="sep"></div>
+      <div class="fr" style="gap:.5rem">
+        <div class="fg"><label class="lbl">Data</label><select id="gData" style="width:140px"></select></div>
+        <div class="fg"><label class="lbl">Fase (rilevazione)</label><select id="gFase" style="width:140px"></select></div>
+        <div class="fg"><label class="lbl">Utente (segnalatore)</label><select id="gUtente" style="width:150px"></select></div>
+        <div class="fg"><label class="lbl">Cod. Motivo</label><select id="gCodMotivo" style="width:130px"></select></div>
+        <div class="fg"><label class="lbl">Desc. Motivo</label><select id="gDescMotivo" style="width:150px"></select></div>
+        <div class="fg"><label class="lbl">Fase Prec.</label><select id="gFasePrec" style="width:130px"></select></div>
+        <div class="fg"><label class="lbl">Utente Prec. (responsabile)</label><select id="gUtentePrec" style="width:170px"></select></div>
+        <div class="fg"><label class="lbl">Modello</label><select id="gModello" style="width:130px"></select></div>
+        <div class="fg"><label class="lbl">Matricola</label><select id="gMatricola" style="width:130px"></select></div>
+      </div>
+      <div id="guastiPreview" class="preview-box" style="margin-top:.6rem"></div>
+      <button class="btn bp" style="margin-top:.7rem" onclick="confermaGuasti()">✓ Conferma e sostituisci</button>
+    </div>
+  </div>
+  <div id="guastiContent"></div>
+</div><!-- /tab-guasti -->
+
 
 
 
@@ -548,6 +600,7 @@ function isoD(y,m,d){return y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padS
 function localDS(dt){return isoD(dt.getFullYear(),dt.getMonth(),dt.getDate());}
 function fmt(v,d=1){v=parseFloat(v)||0;return v%1===0?v.toFixed(0):v.toFixed(d).replace(/\.?0+$/,"");}
 function parseFase(val){return String(val||"").replace(/[^0-9]/g,"").trim();}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,9);}
 function parseOre(val){
   val=String(val||"").replace(",",".").trim();
   // Gestisce formato HH:MM
@@ -1588,6 +1641,165 @@ document.getElementById("fProd").addEventListener("change",function(){
   });
 });
 
+// ── DIFETTOSITÀ PER TECNICO ──────────────────────────────
+let rawGuasti=[], guasti=[], guastiCaricatiAlmeno1Volta=false;
+
+document.getElementById("fGuasti").addEventListener("change",function(){
+  const file=this.files[0];if(!file)return;
+  document.getElementById("guastiStatus").innerHTML='<span style="font-size:.76rem;color:var(--text2)"><span class="spin"></span> Lettura...</span>';
+  parseExcel(file, wb=>{
+    rawGuasti=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:"",raw:false});
+    const colsSet=new Set();
+    rawGuasti.forEach(r=>Object.keys(r).forEach(k=>colsSet.add(k)));
+    const cols=[...colsSet];
+    popolaSelect("gData",cols,["data"]);
+    popolaSelect("gFase",cols,["fase"]); // nota: "fase prec." contiene anche "fase", va dopo nell'ordine di priorità sotto
+    popolaSelect("gUtente",cols,["utente"]);
+    popolaSelect("gCodMotivo",cols,["cod. motivo","cod motivo"]);
+    popolaSelect("gDescMotivo",cols,["desc. motivo","desc motivo"]);
+    popolaSelect("gFasePrec",cols,["fase prec","fase. prec"]);
+    popolaSelect("gUtentePrec",cols,["utente prec"]);
+    popolaSelect("gModello",cols,["modello"]);
+    popolaSelect("gMatricola",cols,["matricola"]);
+    // "Fase" va scelta DOPO "Fase Prec." per evitare che l'autodetect prenda la colonna sbagliata
+    // (entrambe contengono la parola "fase"): se gFase è finita per sbaglio su una colonna che
+    // contiene "prec", la sposta sulla prima colonna che la contiene SENZA "prec".
+    const selFase=document.getElementById("gFase");
+    if(selFase.value.toLowerCase().includes("prec")){
+      const giusta=cols.find(c=>c.toLowerCase().includes("fase")&&!c.toLowerCase().includes("prec"));
+      if(giusta) selFase.value=giusta;
+    }
+    document.getElementById("guastiStatus").innerHTML=`<div class="al a-ok">✅ ${rawGuasti.length} righe caricate</div>`;
+    document.getElementById("guastiMapping").style.display="block";
+    anteprima(rawGuasti,"guastiPreview");
+  });
+});
+
+window.confermaGuasti=async function(){
+  const colData=document.getElementById("gData").value;
+  const colFase=document.getElementById("gFase").value;
+  const colUtente=document.getElementById("gUtente").value;
+  const colCodMotivo=document.getElementById("gCodMotivo").value;
+  const colDescMotivo=document.getElementById("gDescMotivo").value;
+  const colFasePrec=document.getElementById("gFasePrec").value;
+  const colUtentePrec=document.getElementById("gUtentePrec").value;
+  const colModello=document.getElementById("gModello").value;
+  const colMatricola=document.getElementById("gMatricola").value;
+  guasti=rawGuasti.map(r=>({
+    id:uid(),
+    data:parseData(r[colData]),
+    fase:parseFase(r[colFase]),
+    utente:String(r[colUtente]||"").trim(),
+    codMotivo:String(r[colCodMotivo]||"").trim(),
+    descMotivo:String(r[colDescMotivo]||"").trim(),
+    fasePrec:parseFase(r[colFasePrec]),
+    utentePrec:String(r[colUtentePrec]||"").trim(),
+    modello:String(r[colModello]||"").trim(),
+    matricola:String(r[colMatricola]||"").trim(),
+  })).filter(g=>g.data); // scarta righe senza data valida (probabilmente vuote/di servizio)
+  await salvaGuastiInMemoria();
+  document.getElementById("guastiStatus").innerHTML=`<div class="al a-ok">✅ ${guasti.length} guasti caricati e salvati sul cloud per ${document.getElementById("guastiFiliale").value.toUpperCase()}</div>`;
+  document.getElementById("guastiMapping").style.display="none";
+  renderGuasti();
+};
+
+async function salvaGuastiInMemoria(){
+  const filiale=document.getElementById("guastiFiliale").value;
+  try{ await setDoc(doc(db,"guastiFiliale",filiale), {filiale, guasti, dataSalvataggio:new Date().toISOString()}); }
+  catch(e){ console.warn("Impossibile salvare i guasti sul cloud:", e); }
+}
+
+window.caricaGuastiSalvati=async function(){
+  guastiCaricatiAlmeno1Volta=true;
+  const filiale=document.getElementById("guastiFiliale").value;
+  document.getElementById("guastiContent").innerHTML='<div class="card" style="text-align:center;padding:1.5rem"><span class="spin"></span> Caricamento...</div>';
+  try{
+    const snap=await getDoc(doc(db,"guastiFiliale",filiale));
+    guasti=snap.exists()?(snap.data().guasti||[]):[];
+  }catch(e){
+    document.getElementById("guastiContent").innerHTML=`<div class="card"><div class="al a-danger" style="margin-bottom:0">Errore nel caricamento: ${e.message}</div></div>`;
+    return;
+  }
+  renderGuasti();
+};
+document.getElementById("guastiFiliale").addEventListener("change", caricaGuastiSalvati);
+
+window.modificaGuastoCampo=async function(id, campo, valore){
+  const g=guasti.find(x=>x.id===id);
+  if(!g)return;
+  g[campo]=valore;
+  await salvaGuastiInMemoria();
+};
+
+function renderGuasti(){
+  const el=document.getElementById("guastiContent");
+  if(!guasti.length){
+    el.innerHTML=`<div class="card"><div class="al a-info" style="margin-bottom:0">Nessun file di guasti caricato per questa filiale. Carica il file "Motivi Guasto" qui sopra.</div></div>`;
+    return;
+  }
+
+  // Percentuale di difettosità per tecnico: guasti imputati (come Utente Prec.) ÷ sue lavorazioni
+  // totali nel file Produzione caricato in questa sessione (serve aver caricato anche quello).
+  const guastiPerUtente={};
+  guasti.forEach(g=>{
+    if(!g.utentePrec)return;
+    guastiPerUtente[g.utentePrec]=(guastiPerUtente[g.utentePrec]||0)+1;
+  });
+  const lavorazioniPerUtente={};
+  (produzione||[]).forEach(p=>{ lavorazioniPerUtente[p.tecnico]=(lavorazioniPerUtente[p.tecnico]||0)+1; });
+  const haProduzioneCaricata=(produzione||[]).length>0;
+
+  const righeDifettosita=Object.entries(guastiPerUtente).map(([nome,nGuasti])=>{
+    const nLav=lavorazioniPerUtente[nome]||0;
+    return {nome, nGuasti, nLav, pct: nLav>0?(nGuasti/nLav)*100:null};
+  }).sort((a,b)=>(b.pct??-1)-(a.pct??-1));
+
+  const cardsDifettosita=righeDifettosita.map(r=>`
+    <div class="kpi ${r.pct!==null?(r.pct<=2?'ok':r.pct<=5?'warn':'danger'):''}">
+      <div class="kpi-val">${r.pct!==null?fmt(r.pct)+'%':'n/d'}</div>
+      <div class="kpi-label">${r.nome}<br><small style="font-weight:400">${r.nGuasti} guasti imputati${r.nLav?` / ${r.nLav} lavorazioni`:' · nessuna lavorazione caricata in questa sessione'}</small></div>
+    </div>`).join("");
+
+  const tecniciNoti=[...new Set([...Object.keys(guastiPerUtente), ...(produzione||[]).map(p=>p.tecnico)])].sort();
+
+  const tabellaGuasti=guasti.slice().sort((a,b)=>(b.data||"").localeCompare(a.data||"")).map(g=>`
+    <tr>
+      <td style="white-space:nowrap">${g.data||"—"}</td>
+      <td>${g.modello||"—"}</td>
+      <td>${g.matricola||"—"}</td>
+      <td style="text-align:center"><span class="fase-badge f${g.fase}">F${g.fase||"?"}</span></td>
+      <td><input type="text" value="${g.descMotivo.replace(/"/g,"&quot;")}" style="width:100%;border:1px solid var(--border);border-radius:5px;padding:.2rem .35rem;font-size:.72rem"
+            onchange="modificaGuastoCampo('${g.id}','descMotivo',this.value)"></td>
+      <td style="white-space:nowrap">${g.utente||"—"}</td>
+      <td>
+        <select style="width:100%;border:1px solid var(--border);border-radius:5px;padding:.2rem .35rem;font-size:.72rem;font-weight:700;color:#dc2626"
+            onchange="modificaGuastoCampo('${g.id}','utentePrec',this.value)">
+          <option value="">— nessuno —</option>
+          ${tecniciNoti.map(n=>`<option value="${n}" ${n===g.utentePrec?"selected":""}>${n}</option>`).join("")}
+        </select>
+      </td>
+    </tr>`).join("");
+
+  el.innerHTML=`
+    <div class="card">
+      <div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">📊 Percentuale di difettosità per tecnico (responsabile = Utente Prec.)</div>
+      ${!haProduzioneCaricata?'<div class="al a-warn" style="margin-bottom:.75rem">⚠️ Nessun file Produzione caricato in questa sessione: la percentuale richiede di sapere quante lavorazioni ha fatto ciascun tecnico. Vai su "Inserimento Dati" e carica/conferma il file Produzione, poi torna qui.</div>':''}
+      <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">${cardsDifettosita}</div>
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:.6rem">
+        <div style="font-size:.82rem;font-weight:800">📋 Elenco guasti (${guasti.length}) — modificabile</div>
+      </div>
+      <div class="al a-info" style="font-size:.72rem;margin-bottom:.6rem">Clicca su "Descrizione motivo" o sul menu "Responsabile" per correggere una riga — si salva automaticamente sul cloud.</div>
+      <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Data</th><th>Modello</th><th>Matricola</th><th>Fase</th><th>Descrizione motivo</th><th>Segnalato da</th><th>Responsabile (Utente Prec.)</th></tr></thead>
+        <tbody>${tabellaGuasti}</tbody>
+      </table>
+      </div>
+    </div>`;
+}
+
 window.confermaProd=async function(){
   const colTec=document.getElementById("pTec").value;
   const colStop=document.getElementById("pStop").value;
@@ -2502,13 +2714,16 @@ window.switchTab=function(tab){
   document.getElementById("tab-classifica").classList.toggle("active",tab==="classifica");
   document.getElementById("tab-fasi").classList.toggle("active",tab==="fasi");
   document.getElementById("tab-cerca").classList.toggle("active",tab==="cerca");
+  document.getElementById("tab-guasti").classList.toggle("active",tab==="guasti");
   document.getElementById("tabBtnReport").classList.toggle("active",tab==="report");
   document.getElementById("tabBtnStorico").classList.toggle("active",tab==="storico");
   document.getElementById("tabBtnClassifica").classList.toggle("active",tab==="classifica");
   document.getElementById("tabBtnFasi").classList.toggle("active",tab==="fasi");
   document.getElementById("tabBtnCerca").classList.toggle("active",tab==="cerca");
+  document.getElementById("tabBtnGuasti").classList.toggle("active",tab==="guasti");
   if(tab==="classifica") caricaClassifica();
   if(tab==="fasi") caricaAnalisiFase();
+  if(tab==="guasti" && !guastiCaricatiAlmeno1Volta) caricaGuastiSalvati();
 };
 
 // ── STORICO: SALVATAGGIO ────────────────────────────────
