@@ -911,6 +911,7 @@ function mappaTecnicoPerClassifica(t, conteggioTempoZero){
     // Solo Fase 70 (Collaudo "puro") — per far coincidere la card "Collaudo — media reparto" con
     // la riga F70 di Analisi Fase/Reparto, che guarda esclusivamente questa fase.
     totStdF70: tec_perFaseSafe(t)["70"]?.oreStd||0, totEffF70: tec_perFaseSafe(t)["70"]?.oreEff||0,
+    haFase60: !!(tec_perFaseSafe(t)["60"]&&tec_perFaseSafe(t)["60"].count>0),
     lavorazioniDettaglio:Object.values(tec_perFaseSafe(t)).flatMap(f=>f.lavorazioni.map(l=>({
       Articolo:l.articolo, Fase:l.fase, "Data Fine":l.data,
       "Tempo Reale (h)":Math.round((l.tempoEff||0)*100)/100,
@@ -992,17 +993,21 @@ function aggregaFasiPeriodo(docsTrovati){
     .map(f=>({...f, performance: f.oreEff>0&&f.oreStd>0?(f.oreStd/f.oreEff)*100:null}))
     .sort((a,b)=>a.fase.localeCompare(b.fase));
 
-  const repartiTmp={linea:{count:0,oreStd:0,oreEff:0},singoloCollaudo:{count:0,oreStd:0,oreEff:0}};
-  fasiFiliale.forEach(f=>{
-    const key=(f.fase==="60"||f.fase==="70")?"singoloCollaudo":"linea";
-    repartiTmp[key].count+=f.count;
-    repartiTmp[key].oreStd+=f.oreStd;
-    repartiTmp[key].oreEff+=f.oreEff;
+  // repartiFiliale NON si deriva più da fasiFiliale (da quando la Fase 70 dei dual-ruolo non ci
+  // è più dentro) — si sommano direttamente i reparti già calcolati correttamente mese per mese
+  // e salvati così com'erano.
+  const repartiTmp={};
+  docsTrovati.forEach(d=>{
+    (d.repartiFiliale||[]).forEach(r=>{
+      if(!repartiTmp[r.nome]) repartiTmp[r.nome]={nome:r.nome,count:0,oreStd:0,oreEff:0};
+      repartiTmp[r.nome].count+=r.count||0;
+      repartiTmp[r.nome].oreStd+=r.oreStd||0;
+      repartiTmp[r.nome].oreEff+=r.oreEff||0;
+    });
   });
-  const repartiFiliale=[
-    {nome:"🔧 Reparto Montaggio Linea (F61-F64)", ...repartiTmp.linea, performance:repartiTmp.linea.oreEff>0&&repartiTmp.linea.oreStd>0?(repartiTmp.linea.oreStd/repartiTmp.linea.oreEff)*100:null},
-    {nome:"🔩 Reparto Montaggio Singolo + Collaudo (F60+F70)", ...repartiTmp.singoloCollaudo, performance:repartiTmp.singoloCollaudo.oreEff>0&&repartiTmp.singoloCollaudo.oreStd>0?(repartiTmp.singoloCollaudo.oreStd/repartiTmp.singoloCollaudo.oreEff)*100:null}
-  ].filter(r=>r.count>0);
+  const repartiFiliale=Object.values(repartiTmp)
+    .map(r=>({...r, performance:r.oreEff>0&&r.oreStd>0?(r.oreStd/r.oreEff)*100:null}))
+    .filter(r=>r.count>0);
 
   return {fasiFiliale, repartiFiliale, lineeFasiFiliale};
 }
@@ -1053,7 +1058,7 @@ function aggregaClassificaPeriodo(filiale, anno, mesi, docsTrovati){
     efficienza:media(p.effs), performance:media(p.perfs),
     lavorazioni:p.lavorazioni, lavorazioniZero:p.lavorazioniZero,
     totStd:p.totStd, totEff:p.totEff, oreEff:p.oreEff, oreDisp:p.oreDisp,
-    totStdF70:p.totStdF70, totEffF70:p.totEffF70,
+    totStdF70:p.totStdF70, totEffF70:p.totEffF70, haFase60:p.haFase60,
     // Il dettaglio riga-per-riga delle lavorazioni esiste solo nel report appena generato,
     // non nello storico aggregato: qui resta vuoto (il grafico "Andamento mensile" nel
     // dettaglio funziona comunque, perché legge lo storico in autonomia).
@@ -1331,7 +1336,10 @@ function renderClassificaTeam(dati){
   // Conta solo chi ha davvero lavorazioni di Fase 70 in questo periodo — coerente con Efficienza
   // e Performance qui sopra, che ora sono calcolate esclusivamente su quella fase: un collaudatore
   // senza nessuna Fase 70 nel periodo (es. ha fatto solo Fase 60) non va incluso nel conteggio.
-  const tecniciConF70=tecnici.filter(t=>(t.totStdF70||0)>0);
+  // Solo collaudatori "puri": hanno Fase 70 ma MAI Fase 60 — chi fa entrambe le fasi sta
+  // esclusivamente nella card "Collaudo + Montaggio Singolo", mai qui (altrimenti le sue ore di
+  // Fase 70 verrebbero contate due volte in due card diverse).
+  const tecniciConF70=tecnici.filter(t=>(t.totStdF70||0)>0 && !t.haFase60);
   const cardCollaudoMedia=tecniciConF70.length?`<div class="classifica-card linea" style="border-color:#0284c7" onclick="apriDettaglioGruppoAggregato('collaudo')">
       <div class="classifica-linea-badge" style="background:#e0f2fe;color:#0369a1">🔬 COLLAUDO — media reparto</div>
       <div class="classifica-nome" style="margin-top:.3rem">${tecniciConF70.length} tecnici</div>
@@ -1346,6 +1354,7 @@ function renderClassificaTeam(dati){
         </div>
       </div>
       <div class="classifica-foot">${tempo70?`Tempo medio Fase 70 (Collaudo): ${fmt(tempo70.media)}h su ${tempo70.n} modelli`:'Tempo medio Fase 70: carica i Tempi Tecnici per vederlo'}</div>
+
       <div class="classifica-periodo">📅 ${dati.periodoLabel} · clicca per il dettaglio dei membri</div>
     </div>`:"";
 
@@ -2040,16 +2049,31 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
   const tecniciSenzaLinea=tecnici.filter(t=>!t.lineaAssegnata);
 
   // ── ANALISI PER FASE/REPARTO (tutta la filiale, non per singolo tecnico) ──
-  // Aggrega lo scarto standard-vs-reale per ciascuna fase (60-64-70). Fase 60/70 contano solo i
-  // tecnici SENZA linea (collaudatori) — stessa popolazione esatta della card "Collaudo — media
-  // reparto" in Classifica Team, così le due viste dicono sempre la stessa cosa. Fase 61-64
-  // contano solo chi è assegnato a una linea, coerente con le card Linea.
+  // Aggrega lo scarto standard-vs-reale per ciascuna fase. Popolazioni mutuamente esclusive, una
+  // persona conta in UN SOLO posto:
+  // - Fase 61-64: solo chi è assegnato a una linea (coerente con le card Linea)
+  // - Fase 70 "pura": solo i collaudatori che NON fanno MAI Fase 60 — stessa identica popolazione
+  //   della card "Collaudo — media reparto" in Classifica Team
+  // - Fase 60 + la Fase 70 di chi la fa INSIEME alla Fase 60: finiscono SOLO nel reparto
+  //   "Montaggio Singolo + Collaudo", mai nella riga generica F70 — stessa popolazione della card
+  //   "Collaudo + Montaggio Singolo". Senza questa esclusione, un dual-ruolo verrebbe contato
+  //   due volte: una nella riga F70 "pura" e una nel reparto combinato.
   const perFaseFiliale={};
+  const repartoSingoloCollaudo={count:0,oreStd:0,oreEff:0};
   tecnici.forEach(tec=>{
+    const haFase60=!!(tec.perFase["60"] && tec.perFase["60"].count>0);
     Object.values(tec.perFase).forEach(f=>{
       const faseELinea=["61","62","63","64"].includes(f.fase);
-      if(faseELinea && !tec.lineaAssegnata) return; // fase di linea fatta da un non-linea: non è il caso normale, la escludiamo da questa vista
-      if(!faseELinea && tec.lineaAssegnata) return;  // fase 60/70 fatta da chi è assegnato a una linea: idem, esclusa qui
+      if(faseELinea && !tec.lineaAssegnata) return; // fase di linea fatta da un non-linea: esclusa da questa vista
+      if(!faseELinea && tec.lineaAssegnata) return;  // fase 60/70 fatta da chi è assegnato a una linea: idem, esclusa
+
+      if(f.fase==="60"){
+        repartoSingoloCollaudo.count+=f.count; repartoSingoloCollaudo.oreStd+=f.oreStd; repartoSingoloCollaudo.oreEff+=f.oreEff;
+      } else if(f.fase==="70" && haFase60){
+        // Fase 70 di un dual-ruolo: va SOLO nel reparto combinato, mai nella riga generica F70
+        repartoSingoloCollaudo.count+=f.count; repartoSingoloCollaudo.oreStd+=f.oreStd; repartoSingoloCollaudo.oreEff+=f.oreEff;
+        return;
+      }
       if(!perFaseFiliale[f.fase])perFaseFiliale[f.fase]={fase:f.fase,count:0,oreStd:0,oreEff:0};
       perFaseFiliale[f.fase].count+=f.count;
       perFaseFiliale[f.fase].oreStd+=f.oreStd;
@@ -2060,19 +2084,19 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
     .map(f=>({...f, performance: f.oreEff>0&&f.oreStd>0?(f.oreStd/f.oreEff)*100:null}))
     .sort((a,b)=>a.fase.localeCompare(b.fase));
 
-  // Raggruppamento in REPARTI (secondo indicazione): la Fase 60 (montaggio singolo) va
-  // accorpata con la Fase 70 (collaudo) in UN reparto unico; le Fasi 61-64 (montaggio linea)
-  // formano l'altro reparto — NON usa il campo "tipo" di FASI (quello raggruppa 60 con 61-64).
-  const repartiTmp={linea:{count:0,oreStd:0,oreEff:0},singoloCollaudo:{count:0,oreStd:0,oreEff:0}};
+  // Raggruppamento in REPARTI: Fase 61-64 (montaggio linea) da un lato; Fase 60 + la Fase 70 dei
+  // soli dual-ruolo dall'altro (repartoSingoloCollaudo, calcolato sopra DIRETTAMENTE dai dati
+  // grezzi — non si può più derivare sommando le righe fasiFiliale, perché la loro Fase 70 non ci
+  // è più dentro).
+  const repartoLinea={count:0,oreStd:0,oreEff:0};
   fasiFiliale.forEach(f=>{
-    const key=(f.fase==="60"||f.fase==="70")?"singoloCollaudo":"linea"; // 61-64 -> linea
-    repartiTmp[key].count+=f.count;
-    repartiTmp[key].oreStd+=f.oreStd;
-    repartiTmp[key].oreEff+=f.oreEff;
+    if(["61","62","63","64"].includes(f.fase)){
+      repartoLinea.count+=f.count; repartoLinea.oreStd+=f.oreStd; repartoLinea.oreEff+=f.oreEff;
+    }
   });
   const repartiFiliale=[
-    {nome:"🔧 Reparto Montaggio Linea (F61-F64)", ...repartiTmp.linea, performance:repartiTmp.linea.oreEff>0&&repartiTmp.linea.oreStd>0?(repartiTmp.linea.oreStd/repartiTmp.linea.oreEff)*100:null},
-    {nome:"🔩 Reparto Montaggio Singolo + Collaudo (F60+F70)", ...repartiTmp.singoloCollaudo, performance:repartiTmp.singoloCollaudo.oreEff>0&&repartiTmp.singoloCollaudo.oreStd>0?(repartiTmp.singoloCollaudo.oreStd/repartiTmp.singoloCollaudo.oreEff)*100:null}
+    {nome:"🔧 Reparto Montaggio Linea (F61-F64)", ...repartoLinea, performance:repartoLinea.oreEff>0&&repartoLinea.oreStd>0?(repartoLinea.oreStd/repartoLinea.oreEff)*100:null},
+    {nome:"🔩 Reparto Montaggio Singolo + Collaudo (F60+F70)", ...repartoSingoloCollaudo, performance:repartoSingoloCollaudo.oreEff>0&&repartoSingoloCollaudo.oreStd>0?(repartoSingoloCollaudo.oreStd/repartoSingoloCollaudo.oreEff)*100:null}
   ].filter(r=>r.count>0);
 
   const codiciMancantiReport=trovaCodiciMancanti(prodPeriodo);
@@ -2767,8 +2791,8 @@ window.apriDettaglioGruppoAggregato=function(tipo){
   let titolo, membri;
   if(tipo==="collaudo"){
     titolo="🔬 COLLAUDO — media reparto";
-    // Stesso filtro della card: solo chi ha davvero lavorazioni di Fase 70 in questo periodo.
-    membri=(dati.tecnici||[]).filter(t=>(t.totStdF70||0)>0);
+    // Stesso filtro della card: solo collaudatori puri (Fase 70 ma mai Fase 60 insieme).
+    membri=(dati.tecnici||[]).filter(t=>(t.totStdF70||0)>0 && !t.haFase60);
   } else if(tipo==="montaggio"){
     titolo="⚙️ MONTAGGIO — media reparto";
     membri=(dati.linee||[]).flatMap(l=>l.membri||[]);
