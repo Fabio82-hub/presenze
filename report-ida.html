@@ -1328,9 +1328,13 @@ function renderClassificaTeam(dati){
       <div class="classifica-periodo">📅 ${dati.periodoLabel}</div>
     </div>`:"";
 
-  const cardCollaudoMedia=tecnici.length?`<div class="classifica-card linea" style="border-color:#0284c7" onclick="apriDettaglioGruppoAggregato('collaudo')">
+  // Conta solo chi ha davvero lavorazioni di Fase 70 in questo periodo — coerente con Efficienza
+  // e Performance qui sopra, che ora sono calcolate esclusivamente su quella fase: un collaudatore
+  // senza nessuna Fase 70 nel periodo (es. ha fatto solo Fase 60) non va incluso nel conteggio.
+  const tecniciConF70=tecnici.filter(t=>(t.totStdF70||0)>0);
+  const cardCollaudoMedia=tecniciConF70.length?`<div class="classifica-card linea" style="border-color:#0284c7" onclick="apriDettaglioGruppoAggregato('collaudo')">
       <div class="classifica-linea-badge" style="background:#e0f2fe;color:#0369a1">🔬 COLLAUDO — media reparto</div>
-      <div class="classifica-nome" style="margin-top:.3rem">${tecnici.length} tecnici</div>
+      <div class="classifica-nome" style="margin-top:.3rem">${tecniciConF70.length} tecnici</div>
       <div class="classifica-metriche">
         <div class="classifica-metrica secondaria">
           <div class="classifica-metrica-val" style="color:${effMediaColl!==null?(effMediaColl>=95?'#059669':effMediaColl>=80?'#d97706':'#dc2626'):'#9ca3af'}">${effMediaColl!==null?fmt(effMediaColl)+'%':'n/d'}</div>
@@ -2763,7 +2767,8 @@ window.apriDettaglioGruppoAggregato=function(tipo){
   let titolo, membri;
   if(tipo==="collaudo"){
     titolo="🔬 COLLAUDO — media reparto";
-    membri=dati.tecnici||[];
+    // Stesso filtro della card: solo chi ha davvero lavorazioni di Fase 70 in questo periodo.
+    membri=(dati.tecnici||[]).filter(t=>(t.totStdF70||0)>0);
   } else if(tipo==="montaggio"){
     titolo="⚙️ MONTAGGIO — media reparto";
     membri=(dati.linee||[]).flatMap(l=>l.membri||[]);
