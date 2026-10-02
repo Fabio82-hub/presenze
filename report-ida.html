@@ -499,6 +499,7 @@ tr:hover td{background:#fafafa}
         <div class="fg"><label class="lbl">Utente Prec. (responsabile)</label><select id="gUtentePrec" style="width:170px"></select></div>
         <div class="fg"><label class="lbl">Modello</label><select id="gModello" style="width:130px"></select></div>
         <div class="fg"><label class="lbl">Matricola</label><select id="gMatricola" style="width:130px"></select></div>
+        <div class="fg"><label class="lbl">Cod. Macro</label><select id="gCodMacro" style="width:120px"></select></div>
       </div>
       <div id="guastiPreview" class="preview-box" style="margin-top:.6rem"></div>
       <button class="btn bp" style="margin-top:.7rem" onclick="confermaGuasti()">✓ Conferma e sostituisci</button>
@@ -1690,6 +1691,7 @@ document.getElementById("fGuasti").addEventListener("change",function(){
     popolaSelect("gUtentePrec",cols,["utente prec"]);
     popolaSelect("gModello",cols,["modello"]);
     popolaSelect("gMatricola",cols,["matricola"]);
+    popolaSelect("gCodMacro",cols,["cod. macro","cod macro"]);
     // "Fase" va scelta DOPO "Fase Prec." per evitare che l'autodetect prenda la colonna sbagliata
     // (entrambe contengono la parola "fase"): se gFase è finita per sbaglio su una colonna che
     // contiene "prec", la sposta sulla prima colonna che la contiene SENZA "prec".
@@ -1714,6 +1716,7 @@ window.confermaGuasti=async function(){
   const colUtentePrec=document.getElementById("gUtentePrec").value;
   const colModello=document.getElementById("gModello").value;
   const colMatricola=document.getElementById("gMatricola").value;
+  const colCodMacro=document.getElementById("gCodMacro").value;
   guasti=rawGuasti.map(r=>({
     id:uid(),
     data:parseData(r[colData]),
@@ -1725,6 +1728,7 @@ window.confermaGuasti=async function(){
     utentePrec:String(r[colUtentePrec]||"").trim(),
     modello:String(r[colModello]||"").trim(),
     matricola:String(r[colMatricola]||"").trim(),
+    codMacro:String(r[colCodMacro]||"").trim().toUpperCase(),
   })).filter(g=>g.data); // scarta righe senza data valida (probabilmente vuote/di servizio)
   await salvaGuastiInMemoria();
   document.getElementById("guastiStatus").innerHTML=`<div class="al a-ok">✅ ${guasti.length} guasti caricati e salvati sul cloud per ${document.getElementById("guastiFiliale").value.toUpperCase()}</div>`;
@@ -1773,6 +1777,7 @@ async function caricaGuastiPerFiliale(filiale, anno, mesi){
     if(snap.exists()){
       (snap.data().guasti||[]).forEach(g=>{
         if(!g.data || !prefissiMese.has(g.data.slice(0,7))) return; // fuori dal periodo selezionato
+        if(g.codMacro!=="DIF") return; // conta solo i Difetti (DIF), non i Guasti (GUA) né altro
         if(g.utentePrec) imputati[g.utentePrec]=(imputati[g.utentePrec]||0)+1;
         if(g.utente) segnalati[g.utente]=(segnalati[g.utente]||0)+1;
       });
@@ -1790,8 +1795,10 @@ function renderGuasti(){
 
   // Percentuale di difettosità per tecnico: guasti imputati (come Utente Prec.) ÷ sue lavorazioni
   // totali nel file Produzione caricato in questa sessione (serve aver caricato anche quello).
+  // Contano SOLO le righe con Cod. Macro = DIF: GUA e tutto il resto sono esclusi dal calcolo
+  // (restano comunque visibili, modificabili, nella tabella sotto).
   const guastiPerUtente={};
-  guasti.forEach(g=>{
+  guasti.filter(g=>g.codMacro==="DIF").forEach(g=>{
     if(!g.utentePrec)return;
     guastiPerUtente[g.utentePrec]=(guastiPerUtente[g.utentePrec]||0)+1;
   });
@@ -1813,8 +1820,9 @@ function renderGuasti(){
   const tecniciNoti=[...new Set([...Object.keys(guastiPerUtente), ...(produzione||[]).map(p=>p.tecnico)])].sort();
 
   const tabellaGuasti=guasti.slice().sort((a,b)=>(b.data||"").localeCompare(a.data||"")).map(g=>`
-    <tr>
+    <tr${g.codMacro&&g.codMacro!=="DIF"?' style="opacity:.55" title="Cod. Macro diverso da DIF: escluso dal calcolo della percentuale"':''}>
       <td style="white-space:nowrap">${g.data||"—"}</td>
+      <td><span class="badge ${g.codMacro==="DIF"?"b-danger":"b-gray"}">${g.codMacro||"n/d"}</span></td>
       <td>${g.modello||"—"}</td>
       <td>${g.matricola||"—"}</td>
       <td style="text-align:center"><span class="fase-badge f${g.fase}">F${g.fase||"?"}</span></td>
@@ -1832,7 +1840,7 @@ function renderGuasti(){
 
   el.innerHTML=`
     <div class="card">
-      <div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">📊 Percentuale di difettosità per tecnico (responsabile = Utente Prec.)</div>
+      <div style="font-size:.82rem;font-weight:800;margin-bottom:.6rem">📊 Percentuale di difettosità per tecnico (responsabile = Utente Prec. · solo righe Cod. Macro = DIF)</div>
       ${!haProduzioneCaricata?'<div class="al a-warn" style="margin-bottom:.75rem">⚠️ Nessun file Produzione caricato in questa sessione: la percentuale richiede di sapere quante lavorazioni ha fatto ciascun tecnico. Vai su "Inserimento Dati" e carica/conferma il file Produzione, poi torna qui.</div>':''}
       <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">${cardsDifettosita}</div>
     </div>
@@ -1843,7 +1851,7 @@ function renderGuasti(){
       <div class="al a-info" style="font-size:.72rem;margin-bottom:.6rem">Clicca su "Descrizione motivo" o sul menu "Responsabile" per correggere una riga — si salva automaticamente sul cloud.</div>
       <div style="overflow-x:auto">
       <table>
-        <thead><tr><th>Data</th><th>Modello</th><th>Matricola</th><th>Fase</th><th>Descrizione motivo</th><th>Segnalato da</th><th>Responsabile (Utente Prec.)</th></tr></thead>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Modello</th><th>Matricola</th><th>Fase</th><th>Descrizione motivo</th><th>Segnalato da</th><th>Responsabile (Utente Prec.)</th></tr></thead>
         <tbody>${tabellaGuasti}</tbody>
       </table>
       </div>
@@ -3419,6 +3427,21 @@ window.apriDettaglioClassifica=async function(nome){
   const lavorazioniDett=t.lavorazioniDettaglio||[];
   ultimoDettaglioLavorazioniExport=lavorazioniDett;
 
+  // ── Guasti di questo tecnico: sia quelli a lui imputati (Utente Prec., il presunto
+  // responsabile) sia quelli da lui segnalati (Utente) — filtrati sullo STESSO periodo del
+  // report corrente, stessa logica già usata per il badge "Difettosità" sulle card.
+  let guastiTecnico=[];
+  try{
+    const snapG=await getDoc(doc(db,"guastiFiliale",dati.filiale));
+    if(snapG.exists()){
+      const prefissiMese=new Set((dati.mesi||[]).map(m=>`${dati.anno}-${String(m+1).padStart(2,"0")}`));
+      guastiTecnico=(snapG.data().guasti||[])
+        .filter(g=>g.data && prefissiMese.has(g.data.slice(0,7)) && g.codMacro==="DIF" && (g.utentePrec===nome || g.utente===nome))
+        .map(g=>({...g, ruolo: g.utentePrec===nome?"Responsabile":"Segnalatore"}))
+        .sort((a,b)=>(b.data||"").localeCompare(a.data||""));
+    }
+  }catch(e){ console.warn("Impossibile leggere i guasti per il dettaglio tecnico:", e); }
+
   let body=`${lineaDiAppartenenza?`<button class="btn bg no-print" style="font-size:.7rem;margin-bottom:.65rem" onclick="apriDettaglioLinea('${lineaDiAppartenenza.linea}')">← Torna alla LINEA ${lineaDiAppartenenza.linea}</button>`:""}<div style="font-size:.75rem;color:var(--text2);margin-bottom:.75rem">Periodo corrente: <b>${dati.periodoLabel}</b> · Filiale: <b>${dati.filiale.toUpperCase()}</b></div>`;
 
   if(isFantasma){
@@ -3438,6 +3461,24 @@ window.apriDettaglioClassifica=async function(nome){
     </tbody></table>`;
   } else {
     body+=`<div class="al a-info" style="margin-bottom:0">Nessun mese ancora salvato nello storico per questo tecnico. Vai su "📈 KPI Produzione" e clicca "💾 Salva mese nello storico" per iniziare a costruire l'andamento.</div>`;
+  }
+
+  // Sezione guasti specifici di questo tecnico (responsabile e/o segnalatore), nel periodo corrente
+  body+=`<div style="font-size:.82rem;font-weight:800;margin:1rem 0 .5rem">⚠️ Guasti rilevati (${guastiTecnico.length})</div>`;
+  if(guastiTecnico.length){
+    body+=`<div style="overflow-x:auto"><table>
+      <thead><tr><th>Data</th><th>Modello</th><th>Matricola</th><th>Fase</th><th>Motivo</th><th>Ruolo</th></tr></thead>
+      <tbody>${guastiTecnico.map(g=>`<tr>
+        <td style="white-space:nowrap">${g.data||"—"}</td>
+        <td>${g.modello||"—"}</td>
+        <td>${g.matricola||"—"}</td>
+        <td style="text-align:center"><span class="fase-badge f${g.fase}">F${g.fase||"?"}</span></td>
+        <td>${g.descMotivo||g.codMotivo||"—"}</td>
+        <td><span class="badge ${g.ruolo==="Responsabile"?"b-danger":"b-info"}">${g.ruolo}</span></td>
+      </tr>`).join("")}</tbody>
+    </table></div>`;
+  } else {
+    body+=`<div class="al a-info" style="margin-bottom:0">Nessun guasto registrato per questo tecnico nel periodo corrente (né come responsabile né come segnalatore). Se pensavi di trovarne, verifica di aver caricato il file guasti in "⚠️ Difettosità" per questa filiale e questo periodo.</div>`;
   }
 
   // Sezione lavorazioni (elenco reale, formato simile al file caricato)
