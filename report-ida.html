@@ -1217,11 +1217,17 @@ async function renderClassificaTeam(dati){
     return;
   }
 
-  // Difettosità per tecnico: guasti imputati (Utente Prec.) ÷ sue lavorazioni in questo periodo —
-  // letta dal cloud, quindi disponibile su qualsiasi PC, non solo in questa sessione.
-  const guastiMap=await caricaGuastiPerFiliale(dati.filiale);
+  // Difettosità per tecnico: guasti imputati (Utente Prec.) ÷ sue lavorazioni, SOLO nello stesso
+  // periodo (anno+mesi) selezionato qui — letta dal cloud, quindi disponibile su qualsiasi PC.
+  // Segnalazioni fatte (campo Utente): quante volte questo tecnico ha segnalato un guasto fatto
+  // da altri, nello stesso periodo — mostra chi fa più controllo qualità, non chi sbaglia di più.
+  const {imputati:guastiMap, segnalati:segnalatiMap}=await caricaGuastiPerFiliale(dati.filiale, dati.anno, dati.mesi);
   function pctDifettosita(nome, lavorazioni){
     const n=guastiMap[nome]||0;
+    return (lavorazioni>0)?{n, pct:(n/lavorazioni)*100}:{n, pct:null};
+  }
+  function datiSegnalazioni(nome, lavorazioni){
+    const n=segnalatiMap[nome]||0;
     return (lavorazioni>0)?{n, pct:(n/lavorazioni)*100}:{n, pct:null};
   }
 
@@ -1276,6 +1282,7 @@ async function renderClassificaTeam(dati){
     const e=t.efficienza, p=t.performance;
     const zero=t.lavorazioniZero||0;
     const dif=pctDifettosita(t.nome, t.lavorazioni);
+    const seg=datiSegnalazioni(t.nome, t.lavorazioni);
     return `<div class="classifica-card ${cls}" onclick="apriDettaglioClassifica('${t.nome.replace(/'/g,"\\'")}')">
       <button class="classifica-escludi" title="Escludi ${t.nome} dall'analisi (es. ruolo diverso, lavorazioni non significative)" onclick="event.stopPropagation();escludiTecnicoManualmente('${t.nome.replace(/'/g,"\\'")}')">✕</button>
       ${isTop3?`<div class="classifica-medaglia">${medaglie[i]}</div>`:""}
@@ -1292,7 +1299,8 @@ async function renderClassificaTeam(dati){
           <div class="classifica-metrica-lbl">Performance</div>
         </div>
       </div>
-      ${dif.n>0?`<div style="font-size:.68rem;color:${dif.pct!==null&&dif.pct>5?'#dc2626':'#92400e'};font-weight:600;margin-bottom:.3rem">⚠️ Difettosità: ${dif.pct!==null?fmt(dif.pct)+'%':'n/d'} (${dif.n} guasti imputati)</div>`:""}
+      ${dif.n>0?`<div style="font-size:.68rem;color:${dif.pct!==null&&dif.pct>5?'#dc2626':'#92400e'};font-weight:600;margin-bottom:.2rem">⚠️ Difettosità: ${dif.pct!==null?fmt(dif.pct)+'%':'n/d'} (${dif.n} guasti imputati)</div>`:""}
+      ${seg.n>0?`<div style="font-size:.68rem;color:#0369a1;font-weight:600;margin-bottom:.3rem">🔍 Segnalazioni fatte: ${seg.n}${seg.pct!==null?` (${fmt(seg.pct)}% delle sue lavorazioni)`:""}</div>`:""}
       <div class="classifica-foot">${t.lavorazioni} lavorazioni${isUltimi&&!isTop3?" · ⚠️ da richiamare/formare":""}</div>
       ${zero>0?`<div class="classifica-zero-badge" title="Periodo di riferimento di questo conteggio: ${dati.periodoLabel}">⏱️ ${zero} lavorazione${zero>1?'i':''} a tempo zero nel periodo ${dati.periodoLabel} (escluse dal calcolo)</div>`:""}
       <div class="classifica-periodo">📅 ${dati.periodoLabel} · clicca per il dettaglio</div>
@@ -1308,6 +1316,7 @@ async function renderClassificaTeam(dati){
     const eff=l.efficienza, perf=l.performance;
     const nGuastiLinea=l.membri.reduce((s,m)=>s+(guastiMap[m.nome]||0),0);
     const pctDifLinea=l.count>0?(nGuastiLinea/l.count)*100:null;
+    const nSegLinea=l.membri.reduce((s,m)=>s+(segnalatiMap[m.nome]||0),0);
     return `<div class="classifica-card linea" onclick="apriDettaglioLinea('${l.linea}')">
       <div class="classifica-linea-badge">🏭 LINEA ${l.linea}</div>
       <div class="classifica-nome" style="margin-top:.3rem">${l.membri.length} tecnici</div>
@@ -1321,7 +1330,8 @@ async function renderClassificaTeam(dati){
           <div class="classifica-metrica-lbl">Performance linea</div>
         </div>
       </div>
-      ${nGuastiLinea>0?`<div style="font-size:.68rem;color:${pctDifLinea!==null&&pctDifLinea>5?'#dc2626':'#92400e'};font-weight:600;margin-bottom:.3rem">⚠️ Difettosità: ${pctDifLinea!==null?fmt(pctDifLinea)+'%':'n/d'} (${nGuastiLinea} guasti imputati)</div>`:""}
+      ${nGuastiLinea>0?`<div style="font-size:.68rem;color:${pctDifLinea!==null&&pctDifLinea>5?'#dc2626':'#92400e'};font-weight:600;margin-bottom:.2rem">⚠️ Difettosità: ${pctDifLinea!==null?fmt(pctDifLinea)+'%':'n/d'} (${nGuastiLinea} guasti imputati)</div>`:""}
+      ${nSegLinea>0?`<div style="font-size:.68rem;color:#0369a1;font-weight:600;margin-bottom:.3rem">🔍 Segnalazioni fatte: ${nSegLinea}</div>`:""}
       <div class="classifica-foot">${l.count} lavorazioni · ${fmt(l.oreStd)}h std / ${fmt(l.oreEff)}h reali</div>
       <div class="classifica-periodo">📅 ${dati.periodoLabel} · clicca per il dettaglio dei membri</div>
     </div>`;
@@ -1409,6 +1419,7 @@ async function renderClassificaTeam(dati){
   const nGuastiColl=tecniciConF70.reduce((s,t)=>s+(guastiMap[t.nome]||0),0);
   const lavColl=tecniciConF70.reduce((s,t)=>s+(t.lavorazioni||0),0);
   const pctDifColl=lavColl>0?(nGuastiColl/lavColl)*100:null;
+  const nSegColl=tecniciConF70.reduce((s,t)=>s+(segnalatiMap[t.nome]||0),0);
   const cardCollaudoMedia=tecniciConF70.length?`<div class="classifica-card linea" style="border-color:#0284c7" onclick="apriDettaglioGruppoAggregato('collaudo')">
       <div class="classifica-linea-badge" style="background:#e0f2fe;color:#0369a1">🔬 COLLAUDO — media reparto</div>
       <div class="classifica-nome" style="margin-top:.3rem">${tecniciConF70.length} tecnici</div>
@@ -1422,7 +1433,8 @@ async function renderClassificaTeam(dati){
           <div class="classifica-metrica-lbl">Performance media</div>
         </div>
       </div>
-      ${nGuastiColl>0?`<div style="font-size:.68rem;color:${pctDifColl!==null&&pctDifColl>5?'#dc2626':'#92400e'};font-weight:600;margin-bottom:.3rem">⚠️ Difettosità: ${pctDifColl!==null?fmt(pctDifColl)+'%':'n/d'} (${nGuastiColl} guasti imputati)</div>`:""}
+      ${nGuastiColl>0?`<div style="font-size:.68rem;color:${pctDifColl!==null&&pctDifColl>5?'#dc2626':'#92400e'};font-weight:600;margin-bottom:.2rem">⚠️ Difettosità: ${pctDifColl!==null?fmt(pctDifColl)+'%':'n/d'} (${nGuastiColl} guasti imputati)</div>`:""}
+      ${nSegColl>0?`<div style="font-size:.68rem;color:#0369a1;font-weight:600;margin-bottom:.3rem">🔍 Segnalazioni fatte: ${nSegColl}</div>`:""}
       <div class="classifica-foot">${tempo70?`Tempo medio Fase 70 (Collaudo): ${fmt(tempo70.media)}h su ${tempo70.n} modelli`:'Tempo medio Fase 70: carica i Tempi Tecnici per vederlo'}</div>
 
       <div class="classifica-periodo">📅 ${dati.periodoLabel} · clicca per il dettaglio dei membri</div>
@@ -1750,18 +1762,23 @@ window.modificaGuastoCampo=async function(id, campo, valore){
 
 // Mappa {nome -> numero di guasti imputati} per una filiale, letta direttamente dal cloud — usata
 // anche da Classifica Team per mostrare la % di difettosità sulle card, non solo dalla tab Difettosità.
-async function caricaGuastiPerFiliale(filiale){
-  const mappa={};
+async function caricaGuastiPerFiliale(filiale, anno, mesi){
+  const imputati={}, segnalati={};
+  // Filtra i guasti sullo STESSO periodo (anno+mesi) selezionato in Classifica Team — altrimenti
+  // mostrerebbe sempre il totale di tutto quello che è stato caricato, indipendentemente dal
+  // filtro scelto dall'utente.
+  const prefissiMese=new Set((mesi||[]).map(m=>`${anno}-${String(m+1).padStart(2,"0")}`));
   try{
     const snap=await getDoc(doc(db,"guastiFiliale",filiale));
     if(snap.exists()){
       (snap.data().guasti||[]).forEach(g=>{
-        if(!g.utentePrec)return;
-        mappa[g.utentePrec]=(mappa[g.utentePrec]||0)+1;
+        if(!g.data || !prefissiMese.has(g.data.slice(0,7))) return; // fuori dal periodo selezionato
+        if(g.utentePrec) imputati[g.utentePrec]=(imputati[g.utentePrec]||0)+1;
+        if(g.utente) segnalati[g.utente]=(segnalati[g.utente]||0)+1;
       });
     }
   }catch(e){ console.warn("Impossibile leggere i guasti per Classifica Team:", e); }
-  return mappa;
+  return {imputati, segnalati};
 }
 
 function renderGuasti(){
