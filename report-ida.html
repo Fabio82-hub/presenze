@@ -2058,22 +2058,15 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
   //   "Montaggio Singolo + Collaudo", mai nella riga generica F70 — stessa popolazione della card
   //   "Collaudo + Montaggio Singolo". Senza questa esclusione, un dual-ruolo verrebbe contato
   //   due volte: una nella riga F70 "pura" e una nel reparto combinato.
+  // Fase 70: TUTTI i collaudatori che l'hanno fatta, nessuna distinzione tra chi fa anche Fase 60
+  // e chi no — conta solo il suo scarto standard/reale su QUESTA fase specifica (non si mescola
+  // mai con le sue ore di Fase 60, che restano in una riga a parte).
   const perFaseFiliale={};
-  const repartoSingoloCollaudo={count:0,oreStd:0,oreEff:0};
   tecnici.forEach(tec=>{
-    const haFase60=!!(tec.perFase["60"] && tec.perFase["60"].count>0);
     Object.values(tec.perFase).forEach(f=>{
       const faseELinea=["61","62","63","64"].includes(f.fase);
       if(faseELinea && !tec.lineaAssegnata) return; // fase di linea fatta da un non-linea: esclusa da questa vista
       if(!faseELinea && tec.lineaAssegnata) return;  // fase 60/70 fatta da chi è assegnato a una linea: idem, esclusa
-
-      if(f.fase==="60"){
-        repartoSingoloCollaudo.count+=f.count; repartoSingoloCollaudo.oreStd+=f.oreStd; repartoSingoloCollaudo.oreEff+=f.oreEff;
-      } else if(f.fase==="70" && haFase60){
-        // Fase 70 di un dual-ruolo: va SOLO nel reparto combinato, mai nella riga generica F70
-        repartoSingoloCollaudo.count+=f.count; repartoSingoloCollaudo.oreStd+=f.oreStd; repartoSingoloCollaudo.oreEff+=f.oreEff;
-        return;
-      }
       if(!perFaseFiliale[f.fase])perFaseFiliale[f.fase]={fase:f.fase,count:0,oreStd:0,oreEff:0};
       perFaseFiliale[f.fase].count+=f.count;
       perFaseFiliale[f.fase].oreStd+=f.oreStd;
@@ -2084,15 +2077,14 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
     .map(f=>({...f, performance: f.oreEff>0&&f.oreStd>0?(f.oreStd/f.oreEff)*100:null}))
     .sort((a,b)=>a.fase.localeCompare(b.fase));
 
-  // Raggruppamento in REPARTI: Fase 61-64 (montaggio linea) da un lato; Fase 60 + la Fase 70 dei
-  // soli dual-ruolo dall'altro (repartoSingoloCollaudo, calcolato sopra DIRETTAMENTE dai dati
-  // grezzi — non si può più derivare sommando le righe fasiFiliale, perché la loro Fase 70 non ci
-  // è più dentro).
+  // Raggruppamento in REPARTI: Fase 61-64 (montaggio linea) da un lato; Fase 60+70 insieme
+  // dall'altro (qui si può di nuovo derivare sommando le righe sopra, dato che F70 non è più
+  // ristretta a un sottoinsieme — contiene già tutti).
   const repartoLinea={count:0,oreStd:0,oreEff:0};
+  const repartoSingoloCollaudo={count:0,oreStd:0,oreEff:0};
   fasiFiliale.forEach(f=>{
-    if(["61","62","63","64"].includes(f.fase)){
-      repartoLinea.count+=f.count; repartoLinea.oreStd+=f.oreStd; repartoLinea.oreEff+=f.oreEff;
-    }
+    const target=(f.fase==="60"||f.fase==="70")?repartoSingoloCollaudo:repartoLinea;
+    target.count+=f.count; target.oreStd+=f.oreStd; target.oreEff+=f.oreEff;
   });
   const repartiFiliale=[
     {nome:"🔧 Reparto Montaggio Linea (F61-F64)", ...repartoLinea, performance:repartoLinea.oreEff>0&&repartoLinea.oreStd>0?(repartoLinea.oreStd/repartoLinea.oreEff)*100:null},
