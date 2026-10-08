@@ -103,6 +103,7 @@ body{font-family:"Inter",sans-serif;background:#f1f5f9;color:var(--txt);min-heig
   <div class="pills" id="pills"></div>
   <div class="tools">
     <button class="btn pri" id="bAdd">➕ Aggiungi riquadro</button>
+    <button class="btn" id="bHidden" style="display:none">👁 Nascosti</button>
     <button class="btn" id="bFit">↔ Adatta</button>
     <button class="btn" id="bZm">−</button><span id="zv">100%</span><button class="btn" id="bZp">+</button>
     <button class="btn" id="bPrint">🖨️ Stampa</button>
@@ -160,7 +161,7 @@ const RESP_DEFAULT={seriate:'Fabio Gamba',orio:'Nicolò Ronzoni'};
 // link si vedeva la versione precedente finché non si premeva F5. All'apertura si legge quindi la versione
 // online (senza cache) e, se è diversa da questa, la pagina si ricarica da sola una volta.
 // → Da cambiare a ogni nuova consegna del file.
-const BUILD_ID='2026-10-08.6';
+const BUILD_ID='2026-10-08.7';
 async function controllaAggiornamento(buildAttuale,leggiPagina,sessione,ricarica){
   try{
     const t=await leggiPagina();
@@ -237,19 +238,25 @@ function costruisci(stato,layout,filiale,oggi){
   const isCoord=d=>/coordinat/i.test(d.mansione||'');
   const repConFigli=new Set();
 
+  // Riquadri che l'utente ha nascosto dall'organigramma (restano nel calendario; si possono ripristinare)
+  const nasc=new Set(layout.nascosti||[]);
+  const nascostiInfo=[];
   dips.forEach(d=>{
     const k=normName(d.nome);
     if(k&&manualNorm.has(k)){N[manualNorm.get(k)].cal={mansione:d.mansione||'',reparto:d.reparto||''};return;}
     const coord=isCoord(d),rep=d.reparto||'';
+    if(nasc.has('d:'+d.id)){nascostiInfo.push({id:'d:'+d.id,nome:d.nome||'',type:coord?'coord':'persona'});return;}
     if(!coord&&rep)repConFigli.add(rep);
     N['d:'+d.id]={id:'d:'+d.id,type:coord?'coord':'persona',nome:d.nome||'',sub:d.mansione||'',rep,manual:false,
                   defParent:(coord||!rep)?respId:'r:'+rep,ord:coord?100:300};
   });
   // Reparti: solo quelli che hanno almeno una persona "di default" (così un reparto formato
   // solo da coordinatori non compare vuoto) + quelli verso cui l'utente ha spostato qualcosa.
-  repConFigli.forEach(rep=>{N['r:'+rep]={id:'r:'+rep,type:'reparto',nome:rep,sub:'',manual:false,defParent:respId,ord:200+repIdx(rep)};});
+  repConFigli.forEach(rep=>{if(nasc.has('r:'+rep)){nascostiInfo.push({id:'r:'+rep,nome:rep,type:'reparto'});return;}N['r:'+rep]={id:'r:'+rep,type:'reparto',nome:rep,sub:'',manual:false,defParent:respId,ord:200+repIdx(rep)};});
   (layout.overrides||[]).forEach(o=>{
-    if(typeof o.parentId==='string'&&o.parentId.startsWith('r:')&&!N[o.parentId]){
+    // Un reparto compare per uno spostamento solo se la persona spostata esiste ancora, il reparto non è
+    // nascosto e non è il reparto "Resp. Filiale" (quello è la cella blu): niente riquadri vuoti rimasti orfani.
+    if(typeof o.parentId==='string'&&o.parentId.startsWith('r:')&&!N[o.parentId]&&N[o.id]&&!nasc.has(o.parentId)&&!isRepartoResp(o.parentId.slice(2))){
       const rep=o.parentId.slice(2);
       if(repList.includes(rep))N[o.parentId]={id:o.parentId,type:'reparto',nome:rep,sub:'',manual:false,defParent:respId,ord:200+repIdx(rep)};
     }
@@ -288,7 +295,7 @@ function costruisci(stato,layout,filiale,oggi){
   const children={};
   Object.values(N).forEach(n=>{if(n.parent)(children[n.parent]=children[n.parent]||[]).push(n.id);});
   Object.keys(children).forEach(k=>children[k].sort((a,b)=>(N[a].ord-N[b].ord)||String(N[a].nome).localeCompare(String(N[b].nome),'it')));
-  return {N,children};
+  return {N,children,nascosti:nascostiInfo};
 }
 
 function discendenti(children,id){
@@ -321,6 +328,7 @@ function assicuraLayout(layout,filiale){
   if(!layout.manual.some(m=>m.id==='root'))layout.manual.unshift({id:'root',nome:ROOT_DEFAULT.nome,ruolo:'',parentId:null,ord:0});
   if(!layout.overrides)layout.overrides=[];
   if(!layout.stili)layout.stili=[];
+  if(!layout.nascosti)layout.nascosti=[];
 }
 function impostaOverride(layout,id,parentId,ord){
   const o=layout.overrides.find(x=>x.id===id);
@@ -363,6 +371,14 @@ function eliminaManuale(layout,filiale,N,id){
   layout.stili=layout.stili.filter(s=>s.id!==id);
   return true;
 }
+function nascondiNodo(layout,filiale,N,id){
+  const n=N[id];
+  if(!n||n.manual||n.type==='resp'||n.type==='root')return false;   // solo riquadri che arrivano dal calendario
+  assicuraLayout(layout,filiale);
+  if(!layout.nascosti.includes(id))layout.nascosti.push(id);
+  return true;
+}
+function mostraNascosti(layout,ids){layout.nascosti=(layout.nascosti||[]).filter(x=>!ids.includes(x));}
 function ripristinaPosizione(layout,id){layout.overrides=(layout.overrides||[]).filter(o=>o.id!==id);}
 
 // ── Viste riepilogative (sola lettura) ──
@@ -426,7 +442,8 @@ function alberoHtml(N,children){return '<div class="tree"><ul>'+liHtml(N,childre
 
 // ── Stato applicazione ──
 const cacheFiliali={};let vistaAgg=false;
-let filiale='seriate',stato=null,layout={manual:[],overrides:[],stili:[]},N={},children={},zoom=1,primoRender=true;
+let nascostiInfo=[];
+let filiale='seriate',stato=null,layout={manual:[],overrides:[],stili:[],nascosti:[]},N={},children={},zoom=1,primoRender=true;
 const $=id=>document.getElementById(id);
 const chart=$('chart'),wrap=$('chartWrap');
 
@@ -435,13 +452,14 @@ function setStatus(t,ok=true){const s=$('saveStatus');s.textContent=t;s.style.co
 async function persisti(){
   setStatus('Salvataggio…');
   try{
-    await setDoc(doc(db,'organigramma',filiale),{filiale,manual:layout.manual,overrides:layout.overrides,stili:layout.stili||[],savedAt:new Date().toISOString()});
+    await setDoc(doc(db,'organigramma',filiale),{filiale,manual:layout.manual,overrides:layout.overrides,stili:layout.stili||[],nascosti:layout.nascosti||[],savedAt:new Date().toISOString()});
     setStatus('✓ Salvato');
   }catch(e){console.warn('Salvataggio organigramma fallito:',e);setStatus('⚠️ Errore di salvataggio',false);}
 }
 
 function modoModifica(on){
   vistaAgg=!on;
+  if(!on)$('bHidden').style.display='none';
   ['bAdd','bReset','newSec'].forEach(i=>$(i).style.display=on?'':'none');
 }
 async function caricaAggregato(modo){
@@ -455,7 +473,7 @@ async function caricaAggregato(modo){
       const [s,l]=await Promise.all([getDoc(doc(db,'stato',f.id)),getDoc(doc(db,'organigramma',f.id))]);
       const sd=s.exists()?s.data():null,ld=l.exists()?l.data():{};
       cacheFiliali[f.id]={stato:sd?{dipendenti:sd.dipendenti||[],reparti:sd.reparti||[]}:null,
-                          layout:{manual:ld.manual||[],overrides:ld.overrides||[],stili:ld.stili||[]}};
+                          layout:{manual:ld.manual||[],overrides:ld.overrides||[],stili:ld.stili||[],nascosti:ld.nascosti||[]}};
     }));
   }catch(e){chart.innerHTML='<div class="msg">Errore nel caricamento: '+esc(e.message)+'</div>';return;}
   ricostruisciAggregato(modo);
@@ -485,7 +503,7 @@ async function carica(fil){
     const [s,l]=await Promise.all([getDoc(doc(db,'stato',fil)),getDoc(doc(db,'organigramma',fil))]);
     stato=s.exists()?s.data():null;
     const ld=l.exists()?l.data():{};
-    layout={manual:ld.manual||[],overrides:ld.overrides||[],stili:ld.stili||[]};
+    layout={manual:ld.manual||[],overrides:ld.overrides||[],stili:ld.stili||[],nascosti:ld.nascosti||[]};
   }catch(e){
     chart.innerHTML='<div class="msg">Errore nel caricamento: '+esc(e.message)+'</div>';
     return;
@@ -494,7 +512,7 @@ async function carica(fil){
 }
 
 function ricostruisci(){
-  ({N,children}=costruisci(stato,layout,filiale,oggiISO()));
+  ({N,children,nascosti:nascostiInfo}=costruisci(stato,layout,filiale,oggiISO()));
   cacheFiliali[filiale]={stato:stato?{dipendenti:stato.dipendenti||[],reparti:stato.reparti||[]}:null,layout};
   const nome=FILIALI.find(f=>f.id===filiale).nome;
   const attivi=((stato&&stato.dipendenti)||[]).filter(d=>attivoOggi(d,oggiISO())).length;
@@ -503,6 +521,7 @@ function ricostruisci(){
     ?`<b>${nome}</b> — ${attivi} persone attive dal calendario presenze, ${nRep} reparti. `
     :`<b>${nome}</b> — nessun dipendente nel calendario presenze di questa filiale: per ora trovi solo il vertice e il responsabile, che puoi modificare. `)+
     (N['resp']&&!N['resp'].manual?`Il responsabile di filiale è preso dal reparto <b>${esc(N['resp'].rep)}</b> del calendario. `:'')+`Personale, reparto e mansione arrivano dal calendario e si aggiornano da soli. <b>Trascina</b> un riquadro sopra un altro per spostarlo (con tutto ciò che ha sotto), oppure usa <b>⋮</b> sul riquadro: da lì puoi anche dare la <b>casella gialla</b> a qualunque persona. Per creare una <b>nuova sezione</b> trascina una persona nella barra gialla tratteggiata qui sopra.`;
+  const bh=$('bHidden');bh.style.display=nascostiInfo.length?'':'none';bh.textContent='👁 Nascosti ('+nascostiInfo.length+')';
   $('printTitle').textContent='Organigramma — '+nome+' — '+new Date().toLocaleDateString('it-IT');
   chart.innerHTML=alberoHtml(N,children);
   applicaZoom(primoRender?adattaValore(.55):zoom);
@@ -612,12 +631,21 @@ function apriModale(id){
   const haOverride=!n.manual&&(layout.overrides||[]).some(o=>o.id===id);
   body+=`<div class="mf">
     ${n.manual&&id!=='root'?'<button class="btn dng" data-m="del">Elimina riquadro</button>':''}
+    ${!n.manual&&(n.type==='persona'||n.type==='coord'||n.type==='reparto')?'<button class="btn dng" data-m="hide">Nascondi</button>':''}
     ${haOverride?'<button class="btn" data-m="auto">Posizione automatica</button>':''}
     <button class="btn" data-m="no">Annulla</button><button class="btn pri" data-m="ok">Salva</button></div>`;
   box.innerHTML=body;modal.classList.add('open');
   box.onclick=async e=>{
     const a=e.target.dataset&&e.target.dataset.m;if(!a)return;
     if(a==='no'){chiudi();return;}
+    if(a==='hide'){
+      const cnt=n.type==='reparto'?contaPersone(N,children,id):0;
+      const q=n.type==='reparto'
+        ?'Nascondere il reparto «'+n.nome+'»? '+(cnt?'Le '+cnt+' persone che ha dentro restano nell\'organigramma, sotto il responsabile (o dove le hai spostate).':'Non ha persone dentro.')
+        :'Nascondere «'+n.nome+'» dall\'organigramma? Resta nel calendario presenze e lo puoi rimettere da "Nascosti".';
+      if(!confirm(q))return;
+      nascondiNodo(layout,filiale,N,id);chiudi();await persisti();ricostruisci();return;
+    }
     if(a==='sez'){
       if(n.manual)modificaManuale(layout,filiale,id,$('fNome').value,$('fRuolo').value);
       const sel=$('fParent'),scelto=sel?sel.value:null;
@@ -662,9 +690,26 @@ $('bAdd').onclick=()=>{
   };
 };
 
+$('bHidden').onclick=()=>{
+  const tipo={reparto:'Reparto',coord:'Coordinatore',persona:'Persona'};
+  box.innerHTML=`<h3>Riquadri nascosti (${nascostiInfo.length})</h3>
+    <div class="hint" style="margin-bottom:.4rem">Sono nel calendario presenze ma non compaiono nell'organigramma. Rimettendoli tornano dove erano.</div>
+    ${nascostiInfo.map(x=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.4rem 0;border-bottom:1px solid var(--bd)">
+      <div><b style="font-size:.78rem">${esc(x.nome||'(senza nome)')}</b><div style="font-size:.64rem;color:var(--mut)">${tipo[x.type]||''}</div></div>
+      <button class="btn" data-r="${esc(x.id)}">Ripristina</button></div>`).join('')}
+    <div class="mf"><button class="btn" data-m="no">Chiudi</button>${nascostiInfo.length>1?'<button class="btn pri" data-m="tutti">Ripristina tutti</button>':''}</div>`;
+  modal.classList.add('open');
+  box.onclick=async e=>{
+    const t=e.target.dataset||{};
+    if(t.m==='no'){chiudi();return;}
+    if(t.m==='tutti'){mostraNascosti(layout,nascostiInfo.map(x=>x.id));chiudi();await persisti();ricostruisci();return;}
+    if(t.r){mostraNascosti(layout,[t.r]);chiudi();await persisti();ricostruisci();}
+  };
+};
+
 $('bReset').onclick=async()=>{
   if(!confirm('Ripristinare l\'organigramma automatico di questa filiale? Gli spostamenti e i riquadri aggiunti a mano andranno persi.'))return;
-  layout={manual:[],overrides:[],stili:[]};
+  layout={manual:[],overrides:[],stili:[],nascosti:[]};
   await persisti();ricostruisci();
 };
 
