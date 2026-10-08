@@ -26,6 +26,8 @@ body{font-family:"Inter",sans-serif;background:#f1f5f9;color:var(--txt);min-heig
 .info{margin:.8rem 1.2rem 0;padding:.6rem .85rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;font-size:.74rem;color:#3730a3;line-height:1.5}
 .legend{display:flex;gap:.9rem;flex-wrap:wrap;margin:.6rem 1.2rem 0;font-size:.68rem;color:var(--mut)}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:.3rem;vertical-align:-2px;border:1.5px solid}
+.newsec{margin:.8rem 1.2rem 0;padding:.55rem .9rem;border:2px dashed #f59e0b;border-radius:10px;background:#fffbeb;color:#92400e;font-size:.74rem;font-weight:600;text-align:center;transition:background .12s}
+.newsec.drop-ok{background:#fef3c7;border-color:#d97706;outline:3px solid #22c55e;outline-offset:2px}
 .chartwrap{margin:.8rem 1.2rem 2rem;background:#fff;border:1px solid var(--bd);border-radius:12px;overflow:auto;min-height:260px;padding:.5rem}
 .msg{padding:2rem;text-align:center;color:var(--mut);font-size:.82rem}
 .print-title{display:none}
@@ -110,11 +112,13 @@ body{font-family:"Inter",sans-serif;background:#f1f5f9;color:var(--txt);min-heig
 <div class="legend noprint">
   <span><i style="background:#1e1b4b;border-color:#1e1b4b"></i>Vertice</span>
   <span><i style="background:#4f46e5;border-color:#4f46e5"></i>Responsabile di filiale</span>
-  <span><i style="background:#fffbeb;border-color:#f59e0b"></i>Coordinatore</span>
+  <span><i style="background:#fffbeb;border-color:#f59e0b"></i>Coordinatore / casella gialla</span>
   <span><i style="background:#ecfeff;border-color:#0891b2"></i>Reparto</span>
   <span><i style="background:#fff;border-color:#d1d5db"></i>Personale</span>
   <span><i style="background:#f5f3ff;border-color:#818cf8;border-style:dashed"></i>Riquadro aggiunto a mano</span>
 </div>
+
+<div class="newsec noprint" id="newSec">⬇ Trascina qui una persona per creare una <b>nuova sezione</b>: esce dal suo gruppo e diventa una casella gialla sotto il responsabile, pronta per il suo personale</div>
 
 <div class="chartwrap" id="chartWrap">
   <div class="print-title" id="printTitle"></div>
@@ -228,6 +232,17 @@ function costruisci(stato,layout,filiale,oggi){
     if(ciclo)n.parent='root';
   });
 
+  // Casella gialla: automatica per i coordinatori del calendario, ma l'utente può darla a chiunque
+  // (o toglierla a un coordinatore). Cambia solo l'aspetto, non la posizione.
+  const stl=new Map((layout.stili||[]).map(s=>[s.id,s.stile]));
+  Object.values(N).forEach(n=>{
+    if(n.type==='persona'||n.type==='coord'||n.type==='manuale'){
+      const s=stl.get(n.id)||'';
+      n.stile=s;
+      n.giallo=(s==='giallo')||(s!=='normale'&&n.type==='coord');
+    }
+  });
+
   const children={};
   Object.values(N).forEach(n=>{if(n.parent)(children[n.parent]=children[n.parent]||[]).push(n.id);});
   Object.keys(children).forEach(k=>children[k].sort((a,b)=>(N[a].ord-N[b].ord)||String(N[a].nome).localeCompare(String(N[b].nome),'it')));
@@ -263,6 +278,7 @@ function assicuraLayout(layout,filiale){
   if(!layout.manual||!layout.manual.length)layout.manual=manualeDefault(filiale);
   if(!layout.manual.some(m=>m.id==='root'))layout.manual.unshift({id:'root',nome:ROOT_DEFAULT.nome,ruolo:'',parentId:null,ord:0});
   if(!layout.overrides)layout.overrides=[];
+  if(!layout.stili)layout.stili=[];
 }
 function impostaOverride(layout,id,parentId,ord){
   const o=layout.overrides.find(x=>x.id===id);
@@ -273,6 +289,17 @@ function spostaNodo(layout,filiale,N,children,id,target){
   const ord=prossimoOrd(N,children,target);
   if(N[id].manual){const m=layout.manual.find(x=>x.id===id);if(m){m.parentId=target;m.ord=ord;}}
   else impostaOverride(layout,id,target,ord);
+}
+function impostaStile(layout,filiale,id,stile){
+  assicuraLayout(layout,filiale);
+  layout.stili=layout.stili.filter(s=>s.id!==id);
+  if(stile)layout.stili.push({id,stile});
+}
+// Nuova sezione: la persona esce dal suo gruppo e diventa responsabile di un ramo a sé (casella gialla),
+// pronta ad accogliere personale. Se è già sotto la destinazione cambia solo il colore.
+function creaSezione(layout,filiale,N,children,id,target){
+  if(puoSpostare(N,children,id,target))spostaNodo(layout,filiale,N,children,id,target);
+  impostaStile(layout,filiale,id,'giallo');
 }
 function modificaManuale(layout,filiale,id,nome,ruolo){
   assicuraLayout(layout,filiale);
@@ -291,18 +318,23 @@ function eliminaManuale(layout,filiale,N,id){
   layout.manual.forEach(x=>{if(x.parentId===id)x.parentId=nuovoPadre;});
   layout.overrides=layout.overrides.filter(o=>o.parentId!==id&&o.id!==id);
   layout.manual=layout.manual.filter(x=>x.id!==id);
+  layout.stili=layout.stili.filter(s=>s.id!==id);
   return true;
 }
 function ripristinaPosizione(layout,id){layout.overrides=(layout.overrides||[]).filter(o=>o.id!==id);}
 
 // ── HTML dell'albero ──
+function cssTipo(n){
+  if(n.type==='persona'||n.type==='coord'||n.type==='manuale')return n.giallo?'coord':(n.type==='coord'?'persona':n.type);
+  return n.type;
+}
 function cardHtml(N,children,n,inStack){
   const cnt=n.type==='reparto'?contaPersone(N,children,n.id):0;
   const sub=n.type==='reparto'?(cnt+(cnt===1?' persona':' persone')):(n.sub||(n.cal&&n.cal.mansione)||'');
   const vuoto=!n.nome;
   const nome=vuoto?(n.type==='resp'?'Responsabile da assegnare':'(senza nome)'):n.nome;
   const tip=n.cal?('Dal calendario: '+(n.cal.mansione||'—')+' · '+(n.cal.reparto||'—')):(n.rep?'Reparto: '+n.rep:'');
-  return '<div class="node t-'+n.type+(vuoto?' placeholder':'')+(inStack?' in-stack':'')+'" draggable="'+(n.id!=='root')+
+  return '<div class="node t-'+cssTipo(n)+(vuoto?' placeholder':'')+(inStack?' in-stack':'')+'" draggable="'+(n.id!=='root')+
     '" data-id="'+esc(n.id)+'" data-stack="'+(inStack?1:0)+'" title="'+esc(tip)+'">'+
     '<div class="n-name">'+esc(nome)+'</div>'+(sub?'<div class="n-sub">'+esc(sub)+'</div>':'')+
     '<button class="n-edit" data-act="edit" title="Modifica / sposta">⋮</button></div>';
@@ -323,7 +355,7 @@ function alberoHtml(N,children){return '<div class="tree"><ul>'+liHtml(N,childre
 // ==== FINE LOGICA PURA ====
 
 // ── Stato applicazione ──
-let filiale='seriate',stato=null,layout={manual:[],overrides:[]},N={},children={},zoom=1,primoRender=true;
+let filiale='seriate',stato=null,layout={manual:[],overrides:[],stili:[]},N={},children={},zoom=1,primoRender=true;
 const $=id=>document.getElementById(id);
 const chart=$('chart'),wrap=$('chartWrap');
 
@@ -332,7 +364,7 @@ function setStatus(t,ok=true){const s=$('saveStatus');s.textContent=t;s.style.co
 async function persisti(){
   setStatus('Salvataggio…');
   try{
-    await setDoc(doc(db,'organigramma',filiale),{filiale,manual:layout.manual,overrides:layout.overrides,savedAt:new Date().toISOString()});
+    await setDoc(doc(db,'organigramma',filiale),{filiale,manual:layout.manual,overrides:layout.overrides,stili:layout.stili||[],savedAt:new Date().toISOString()});
     setStatus('✓ Salvato');
   }catch(e){console.warn('Salvataggio organigramma fallito:',e);setStatus('⚠️ Errore di salvataggio',false);}
 }
@@ -346,7 +378,7 @@ async function carica(fil){
     const [s,l]=await Promise.all([getDoc(doc(db,'stato',fil)),getDoc(doc(db,'organigramma',fil))]);
     stato=s.exists()?s.data():null;
     const ld=l.exists()?l.data():{};
-    layout={manual:ld.manual||[],overrides:ld.overrides||[]};
+    layout={manual:ld.manual||[],overrides:ld.overrides||[],stili:ld.stili||[]};
   }catch(e){
     chart.innerHTML='<div class="msg">Errore nel caricamento: '+esc(e.message)+'</div>';
     return;
@@ -362,7 +394,7 @@ function ricostruisci(){
   $('info').innerHTML=(stato&&attivi
     ?`<b>${nome}</b> — ${attivi} persone attive dal calendario presenze, ${nRep} reparti. `
     :`<b>${nome}</b> — nessun dipendente nel calendario presenze di questa filiale: per ora trovi solo il vertice e il responsabile, che puoi modificare. `)+
-    `Personale, reparto e mansione arrivano dal calendario e si aggiornano da soli. <b>Trascina</b> un riquadro sopra un altro per spostarlo (con tutto ciò che ha sotto), oppure usa <b>⋮</b> sul riquadro.`;
+    `Personale, reparto e mansione arrivano dal calendario e si aggiornano da soli. <b>Trascina</b> un riquadro sopra un altro per spostarlo (con tutto ciò che ha sotto), oppure usa <b>⋮</b> sul riquadro: da lì puoi anche dare la <b>casella gialla</b> a qualunque persona. Per creare una <b>nuova sezione</b> trascina una persona nella barra gialla tratteggiata qui sopra.`;
   $('printTitle').textContent='Organigramma — '+nome+' — '+new Date().toLocaleDateString('it-IT');
   chart.innerHTML=alberoHtml(N,children);
   applicaZoom(primoRender?adattaValore(true):zoom);
@@ -398,7 +430,7 @@ chart.addEventListener('dragstart',e=>{
   dragId=nd.dataset.id;e.dataTransfer.setData('text/plain',dragId);e.dataTransfer.effectAllowed='move';
   setTimeout(()=>nd.classList.add('dragging'),0);
 });
-chart.addEventListener('dragend',()=>{dragId=null;setHover(null);chart.querySelectorAll('.dragging').forEach(x=>x.classList.remove('dragging'));});
+chart.addEventListener('dragend',()=>{dragId=null;setHover(null);$('newSec').classList.remove('drop-ok');chart.querySelectorAll('.dragging').forEach(x=>x.classList.remove('dragging'));});
 chart.addEventListener('dragover',e=>{
   if(!dragId)return;
   const nd=e.target.closest&&e.target.closest('.node'),t=nd?targetOf(nd):null;
@@ -414,6 +446,19 @@ chart.addEventListener('drop',async e=>{
   if(!t||!puoSpostare(N,children,dragId,t))return;
   spostaNodo(layout,filiale,N,children,dragId,t);
   dragId=null;
+  await persisti();ricostruisci();
+});
+
+// Barra "nuova sezione": accetta persone e riquadri manuali (non reparti, che sono già sezioni)
+const newSec=$('newSec');
+const tipoSezioneOk=id=>{const n=N[id];return !!n&&(n.type==='persona'||n.type==='coord'||n.type==='manuale');};
+newSec.addEventListener('dragover',e=>{if(dragId&&tipoSezioneOk(dragId)){e.preventDefault();e.dataTransfer.dropEffect='move';newSec.classList.add('drop-ok');}});
+newSec.addEventListener('dragleave',()=>newSec.classList.remove('drop-ok'));
+newSec.addEventListener('drop',async e=>{
+  e.preventDefault();newSec.classList.remove('drop-ok');
+  if(!dragId||!tipoSezioneOk(dragId))return;
+  const id=dragId;dragId=null;
+  creaSezione(layout,filiale,N,children,id,N['resp']?'resp':'root');
   await persisti();ricostruisci();
 });
 
@@ -442,9 +487,19 @@ function apriModale(id){
   }else{
     body+=`<div class="hint">${n.type==='reparto'?'Reparto preso dal calendario presenze.':'Mansione: <b>'+esc(n.sub||'—')+'</b> · Reparto: <b>'+esc(n.rep||'—')+'</b>.'}<br>Questi dati arrivano dal calendario presenze e si modificano da lì: qui decidi solo dove collocarlo nell'organigramma.</div>`;
   }
+  if(n.type==='persona'||n.type==='coord'||n.type==='manuale'){
+    const opt=n.manual
+      ?[['','Normale (tratteggiata)'],['giallo','Gialla (coordinatore)']]
+      :[['','Automatica (gialla solo se è Coordinatore nel calendario)'],['giallo','Gialla (coordinatore)'],['normale','Normale']];
+    body+=`<label>Casella</label><select id="fStile">${opt.map(([v,t])=>`<option value="${v}" ${v===(n.stile||'')?'selected':''}>${t}</option>`).join('')}</select>`;
+  }
   if(id!=='root'){
     const vietati=discendenti(children,id);vietati.add(id);
     body+=`<label>Sposta sotto</label><select id="fParent">${opzioniNodi(vietati,n.parent)}</select>`;
+  }
+  if(n.type==='persona'||n.type==='coord'||n.type==='manuale'){
+    body+=`<div class="hint" style="margin-top:.9rem"><b>Responsabile di un gruppo?</b><br>La porta fuori dal suo gruppo, con la casella gialla, sotto il responsabile (o sotto la voce scelta in “Sposta sotto”). Poi trascina il personale sopra di lei.
+      <button class="btn" data-m="sez" style="display:block;margin-top:.5rem">⬆ Crea nuova sezione con questa persona</button></div>`;
   }
   const haOverride=!n.manual&&(layout.overrides||[]).some(o=>o.id===id);
   body+=`<div class="mf">
@@ -455,6 +510,13 @@ function apriModale(id){
   box.onclick=async e=>{
     const a=e.target.dataset&&e.target.dataset.m;if(!a)return;
     if(a==='no'){chiudi();return;}
+    if(a==='sez'){
+      if(n.manual)modificaManuale(layout,filiale,id,$('fNome').value,$('fRuolo').value);
+      const sel=$('fParent'),scelto=sel?sel.value:null;
+      const dest=(scelto&&scelto!==n.parent)?scelto:(N['resp']?'resp':'root');
+      creaSezione(layout,filiale,N,children,id,dest);
+      chiudi();await persisti();ricostruisci();return;
+    }
     if(a==='auto'){ripristinaPosizione(layout,id);chiudi();await persisti();ricostruisci();return;}
     if(a==='del'){
       if(!confirm('Eliminare il riquadro "'+(n.nome||'senza nome')+'"? Chi sta sotto di lui risale di un livello.'))return;
@@ -462,6 +524,8 @@ function apriModale(id){
     }
     if(a==='ok'){
       if(n.manual)modificaManuale(layout,filiale,id,$('fNome').value,$('fRuolo').value);
+      const st=$('fStile');
+      if(st&&st.value!==(n.stile||''))impostaStile(layout,filiale,id,st.value);
       const sel=$('fParent');
       if(sel&&sel.value!==n.parent&&puoSpostare(N,children,id,sel.value))spostaNodo(layout,filiale,N,children,id,sel.value);
       chiudi();await persisti();ricostruisci();
@@ -492,7 +556,7 @@ $('bAdd').onclick=()=>{
 
 $('bReset').onclick=async()=>{
   if(!confirm('Ripristinare l\'organigramma automatico di questa filiale? Gli spostamenti e i riquadri aggiunti a mano andranno persi.'))return;
-  layout={manual:[],overrides:[]};
+  layout={manual:[],overrides:[],stili:[]};
   await persisti();ricostruisci();
 };
 
