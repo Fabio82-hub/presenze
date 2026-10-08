@@ -155,6 +155,24 @@ const ROOT_DEFAULT={nome:'Alessandro Stefanelli',ruolo:''};
 // Responsabili di filiale noti. Le altre filiali partono con un riquadro "da assegnare".
 const RESP_DEFAULT={seriate:'Fabio Gamba',orio:'Nicolò Ronzoni'};
 
+// ── Aggiornamento automatico ──
+// Il browser (e GitHub Pages) può tenere per qualche minuto una copia vecchia della pagina: aprendola dal
+// link si vedeva la versione precedente finché non si premeva F5. All'apertura si legge quindi la versione
+// online (senza cache) e, se è diversa da questa, la pagina si ricarica da sola una volta.
+// → Da cambiare a ogni nuova consegna del file.
+const BUILD_ID='2026-10-08.6';
+async function controllaAggiornamento(buildAttuale,leggiPagina,sessione,ricarica){
+  try{
+    const t=await leggiPagina();
+    const m=/BUILD_ID='([\d.\-]+)'/.exec(t);
+    if(!m||m[1]===buildAttuale)return false;
+    const chiave='orgAgg_'+m[1];
+    if(sessione.getItem(chiave))return false;   // già tentato: niente cicli di ricarica
+    sessione.setItem(chiave,'1');
+    ricarica();return true;
+  }catch(e){return false;}
+}
+
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 // Confronto nomi indipendente da accenti, maiuscole e ordine (COGNOME NOME / Nome Cognome)
@@ -166,6 +184,13 @@ function oggiISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMon
 // Un cessato conta fino al giorno di cessazione compreso (stessa regola del calendario presenze)
 function attivoOggi(d,oggi){return !d.cessato||(!!d.cessatoData&&oggi<=d.cessatoData);}
 
+// Reparto del calendario che indica il responsabile di filiale ("RESP. FILIALE", "RESPONSABILE DI FILIALE",
+// anche con la città davanti): chi ci sta dentro occupa la cella blu sotto il vertice. Riconoscimento per
+// parola chiave, non per nome esatto, perché ogni filiale può averlo scritto in modo diverso.
+function isRepartoResp(rep){
+  const t=String(rep||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ');
+  return /\bRESP\w*(\s+DI)?\s+FILIALE\b/.test(t);
+}
 function manualeDefault(filiale){
   return [
     {id:'root',nome:ROOT_DEFAULT.nome,ruolo:'',parentId:null,ord:0},
@@ -185,14 +210,28 @@ function costruisci(stato,layout,filiale,oggi){
              manual:true,defParent:m.id==='root'?null:(m.parentId||'root'),ord:(typeof m.ord==='number')?m.ord:0};
   });
   const ovr=new Map((layout.overrides||[]).map(o=>[o.id,o]));
+  // Responsabile dal calendario: se c'è almeno una persona attiva nel reparto "Resp. Filiale", il suo nome
+  // prende la cella blu (al posto di quello inserito a mano). Se sono più persone, la prima per nome
+  // tiene i sottoposti e le altre sono celle blu affiancate. Senza nessuno, vale il responsabile manuale.
+  const dipsAll=((stato&&stato.dipendenti)||[]).filter(d=>attivoOggi(d,oggi));
+  const respDips=dipsAll.filter(d=>isRepartoResp(d.reparto)).sort((a,b)=>String(a.nome).localeCompare(String(b.nome),'it'));
+  const respCal=respDips.length>0;
+  if(respCal){
+    const mr=manual.find(m=>m.id==='resp');
+    respDips.forEach((d,i)=>{
+      const id=i===0?'resp':'d:'+d.id;
+      N[id]={id,type:'resp',nome:d.nome||'',sub:(mr&&mr.ruolo)||'Responsabile di filiale',rep:d.reparto||'',
+             manual:false,defParent:'root',ord:(i===0&&mr&&typeof mr.ord==='number')?mr.ord:i};
+    });
+  }
   const respId=N['resp']?'resp':'root';
 
   // Chi è già presente come riquadro manuale (es. il responsabile che è anche nel calendario)
   // non va duplicato: il riquadro manuale ne mostra anche i dati del calendario.
   const manualNorm=new Map();
-  manual.forEach(m=>{const k=normName(m.nome);if(k&&!manualNorm.has(k))manualNorm.set(k,m.id);});
+  manual.forEach(m=>{if(respCal&&m.id==='resp')return;const k=normName(m.nome);if(k&&!manualNorm.has(k))manualNorm.set(k,m.id);});
 
-  const dips=((stato&&stato.dipendenti)||[]).filter(d=>attivoOggi(d,oggi));
+  const dips=dipsAll.filter(d=>!isRepartoResp(d.reparto));
   const repList=(stato&&stato.reparti)||[];
   const repIdx=r=>{const i=repList.indexOf(r);return i<0?999:i;};
   const isCoord=d=>/coordinat/i.test(d.mansione||'');
@@ -428,7 +467,7 @@ function ricostruisciAggregato(modo){
   const nCoord=Object.values(N).filter(n=>n.giallo).length;
   $('info').innerHTML=vertici
     ?`<b>Responsabili di filiale e coordinatori</b> — ${nResp} responsabili assegnati su ${FILIALI.length} filiali, ${nCoord} coordinatori (comprese le persone con la casella gialla). Vista riepilogativa in <b>sola lettura</b>, costruita dagli organigrammi delle singole filiali: per modificare qualcosa apri la filiale interessata.`
-    :`<b>Tutte le filiali</b> — vista riepilogativa in <b>sola lettura</b>, costruita dagli organigrammi delle singole filiali (${Object.values(N).filter(n=>n.type==='persona'||n.type==='coord'||n.cal).length} persone in totale). Per modificare qualcosa apri la filiale interessata. Usa <b>Adatta</b> e lo zoom per muoverti in un grafico così largo.`;
+    :`<b>Tutte le filiali</b> — vista riepilogativa in <b>sola lettura</b>, costruita dagli organigrammi delle singole filiali (${Object.values(N).filter(n=>n.type==='persona'||n.type==='coord'||n.cal||(n.type==='resp'&&!n.manual)).length} persone in totale). Per modificare qualcosa apri la filiale interessata. Usa <b>Adatta</b> e lo zoom per muoverti in un grafico così largo.`;
   $('printTitle').textContent='Organigramma — '+(vertici?'RESPONSABILI E COORDINATORI':'TUTTE LE FILIALI')+' — '+new Date().toLocaleDateString('it-IT');
   chart.innerHTML=alberoHtml(N,children);
   applicaZoom(primoRender?adattaValore(vertici?.55:.25):zoom);
@@ -463,7 +502,7 @@ function ricostruisci(){
   $('info').innerHTML=(stato&&attivi
     ?`<b>${nome}</b> — ${attivi} persone attive dal calendario presenze, ${nRep} reparti. `
     :`<b>${nome}</b> — nessun dipendente nel calendario presenze di questa filiale: per ora trovi solo il vertice e il responsabile, che puoi modificare. `)+
-    `Personale, reparto e mansione arrivano dal calendario e si aggiornano da soli. <b>Trascina</b> un riquadro sopra un altro per spostarlo (con tutto ciò che ha sotto), oppure usa <b>⋮</b> sul riquadro: da lì puoi anche dare la <b>casella gialla</b> a qualunque persona. Per creare una <b>nuova sezione</b> trascina una persona nella barra gialla tratteggiata qui sopra.`;
+    (N['resp']&&!N['resp'].manual?`Il responsabile di filiale è preso dal reparto <b>${esc(N['resp'].rep)}</b> del calendario. `:'')+`Personale, reparto e mansione arrivano dal calendario e si aggiornano da soli. <b>Trascina</b> un riquadro sopra un altro per spostarlo (con tutto ciò che ha sotto), oppure usa <b>⋮</b> sul riquadro: da lì puoi anche dare la <b>casella gialla</b> a qualunque persona. Per creare una <b>nuova sezione</b> trascina una persona nella barra gialla tratteggiata qui sopra.`;
   $('printTitle').textContent='Organigramma — '+nome+' — '+new Date().toLocaleDateString('it-IT');
   chart.innerHTML=alberoHtml(N,children);
   applicaZoom(primoRender?adattaValore(.55):zoom);
@@ -554,7 +593,7 @@ function apriModale(id){
            <label>Ruolo / mansione</label><input id="fRuolo" value="${esc(n.sub)}" placeholder="es. Responsabile di filiale">`;
     if(n.cal)body+=`<div class="hint" style="margin-top:.7rem">Presente anche nel calendario presenze: ${esc(n.cal.mansione||'—')} · ${esc(n.cal.reparto||'—')}</div>`;
   }else{
-    body+=`<div class="hint">${n.type==='reparto'?'Reparto preso dal calendario presenze.':'Mansione: <b>'+esc(n.sub||'—')+'</b> · Reparto: <b>'+esc(n.rep||'—')+'</b>.'}<br>Questi dati arrivano dal calendario presenze e si modificano da lì: qui decidi solo dove collocarlo nell'organigramma.</div>`;
+    body+=`<div class="hint">${n.type==='reparto'?'Reparto preso dal calendario presenze.':n.type==='resp'?'Responsabile di filiale preso dal calendario presenze (reparto <b>'+esc(n.rep||'—')+'</b>).':'Mansione: <b>'+esc(n.sub||'—')+'</b> · Reparto: <b>'+esc(n.rep||'—')+'</b>.'}<br>Questi dati arrivano dal calendario presenze e si modificano da lì: qui decidi solo dove collocarlo nell'organigramma.</div>`;
   }
   if(n.type==='persona'||n.type==='coord'||n.type==='manuale'){
     const opt=n.manual
@@ -630,6 +669,11 @@ $('bReset').onclick=async()=>{
 };
 
 // ── Avvio ──
+controllaAggiornamento(BUILD_ID,async()=>{
+  const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});
+  if(!r.ok)throw new Error('http '+r.status);
+  return r.text();
+},sessionStorage,()=>location.reload());
 $('pills').innerHTML=FILIALI.map(f=>`<button class="pill" data-f="${f.id}">${f.nome}</button>`).join('')+
   '<span class="pillsep"></span><button class="pill spec" data-f="totale">🌐 TUTTE LE FILIALI</button><button class="pill spec" data-f="vertici">👔 RESPONSABILI + COORDINATORI</button>';
 $('pills').addEventListener('click',e=>{const p=e.target.closest('.pill');if(p)carica(p.dataset.f);});
