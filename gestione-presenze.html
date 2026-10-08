@@ -101,35 +101,47 @@ const FILIALI=[
   {id:'elmas',   nome:'ELMAS',   file:'elmas.html',   doc:'elmas',   lat:39.264, lng:9.048,  citta:'Elmas (CA)'},
 ];
 
-const ESCLUSI=['AREA SERIATE S.ITALIA',"SERIATE REPARTO CONTROLLO QUALITA'",'SERIATE REPARTO LABORATORIO','SERIATE REPARTO MAGAZZINO','SERIATE REPARTO FRIGORISTA','SERIATE REPARTO BRANDIZZAZIONE','BRANDIZZAZIONE'];
 
 function isoD(y,m,d){return y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
 function localDateStr(dt){return isoD(dt.getFullYear(),dt.getMonth(),dt.getDate());}
 
+// Stessa logica dell'Efficienza nel calendario di ogni filiale, così il numero in mappa e quello
+// nel calendario dicono sempre la stessa cosa. I reparti si riconoscono per PAROLA CHIAVE
+// ("MONTAGGIO", "COLLAUDI", "1°FASE") e non per nome esatto: ogni filiale può averli chiamati in
+// modo diverso (con o senza prefisso città), e prima questo funzionava solo per Seriate.
+function trovaRepartoPerChiave(reparti,chiave){
+  return (reparti||[]).find(r=>(r||'').toUpperCase().includes(chiave.toUpperCase()))||null;
+}
 function calcolaEfficienza(s){
   if(!s||!s.dipendenti||!s.tempistiche)return null;
   const oggi=new Date(),anno=oggi.getFullYear(),mese=oggi.getMonth();
-  const attivi=s.dipendenti.filter(d=>!d.cessato&&!ESCLUSI.includes(d.reparto));
-  const reps=['SERIATE REPARTO 1°FASE','SERIATE REPARTO MONTAGGIO','SERIATE REPARTO COLLAUDI'];
   const prod=s.produzione||{},ents=s.entries||[],temp=s.tempistiche||{};
+  const elencoReparti=(s.reparti&&s.reparti.length)?s.reparti:[...new Set(s.dipendenti.map(d=>d.reparto).filter(Boolean))];
+  const defs=['1°FASE','MONTAGGIO','COLLAUDI'].map(chiave=>({chiave,rep:trovaRepartoPerChiave(elencoReparti,chiave)}));
+  // Attivo in una data: un cessato conta fino al giorno della cessazione compreso
+  const attivoInData=(d,ds)=>!d.cessato||(d.cessatoData&&ds<=d.cessatoData);
+  // Reparto effettivo in una data: tiene conto di un eventuale cambio mansione temporaneo
+  const repEff=(d,ds)=>{const c=ents.find(e=>e.dipId===d.id&&e.data===ds&&e.tipo==='cambio_reparto');return c?c.repartoTemp:d.reparto;};
   let totR=0,totT=0;
   let cur=new Date(anno,mese,1);
   while(cur<=new Date(anno,mese+1,0)){
     const ds=localDateStr(cur),wd=cur.getDay();
     if(wd!==0&&wd!==6){
       const p=prod[ds];
-      reps.forEach(rep=>{
-        const dr=attivi.filter(d=>d.reparto===rep);
+      defs.forEach(({chiave,rep})=>{
+        if(!rep)return;
         const t=parseFloat(temp[rep])||0;
-        if(!dr.length||!t)return;
+        if(!t)return;
+        const dr=s.dipendenti.filter(d=>attivoInData(d,ds)&&repEff(d,ds)===rep);
+        if(!dr.length)return;
         let ore=dr.length*8;
         const eg=ents.filter(e=>e.data===ds&&dr.some(d=>d.id===e.dipId));
-        ore=Math.max(0,ore-eg.filter(e=>['ferie','rol','t104','lavorazione_extra','ferie_prev','rol_prev'].includes(e.tipo)).reduce((a,e)=>a+(parseFloat(e.ore)||0),0)-eg.filter(e=>e.tipo==='malattia').length*8);
+        ore=Math.max(0,ore-eg.filter(e=>['ferie','rol','t104','lavorazione_extra','assenza_extra'].includes(e.tipo)).reduce((a,e)=>a+(parseFloat(e.ore)||0),0)-eg.filter(e=>e.tipo==='malattia').length*8);
         let daR=null;
         if(p){
-          if(rep==='SERIATE REPARTO 1°FASE')daR=((parseInt(p.smontati)||0)+(parseInt(p.carrelli)||0)+(parseInt(p.verniciati)||0))/3;
-          else if(rep==='SERIATE REPARTO MONTAGGIO')daR=parseInt(p.linee)||0;
-          else if(rep==='SERIATE REPARTO COLLAUDI')daR=parseInt(p.evase)||0;
+          if(chiave==='1°FASE')daR=((parseInt(p.smontati)||0)+(parseInt(p.carrelli)||0)+(parseInt(p.verniciati)||0))/3;
+          else if(chiave==='MONTAGGIO')daR=parseInt(p.linee)||0;
+          else if(chiave==='COLLAUDI')daR=parseInt(p.evase)||0;
         }
         if(daR!==null&&daR>0&&t>0){totR+=daR;totT+=ore/t;}
       });
