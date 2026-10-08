@@ -19,6 +19,8 @@ body{font-family:"Inter",sans-serif;background:#f1f5f9;color:var(--txt);min-heig
 .pills{display:flex;gap:.35rem;flex-wrap:wrap}
 .pill{font-family:inherit;font-size:.74rem;font-weight:700;padding:.38rem .8rem;border-radius:20px;border:1.5px solid var(--bd);background:#fff;color:var(--mut);cursor:pointer}
 .pill:hover{border-color:var(--ind);color:var(--ind)}
+.pill.spec{border-style:dashed}
+.pillsep{width:1px;background:var(--bd);margin:0 .25rem}
 .pill.on{background:var(--ind);border-color:var(--ind);color:#fff}
 .tools{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}
 #zv{font-size:.72rem;font-weight:700;color:var(--mut);min-width:2.6rem;text-align:center}
@@ -55,6 +57,7 @@ body{font-family:"Inter",sans-serif;background:#f1f5f9;color:var(--txt);min-heig
 .node.dragging{opacity:.35}
 .node.drop-ok{outline:3px solid #22c55e;outline-offset:2px}
 .n-name{font-size:.74rem;font-weight:700;line-height:1.25;word-break:break-word}
+.n-tag{font-size:.56rem;font-weight:800;letter-spacing:.9px;text-transform:uppercase;opacity:.8;margin-bottom:.15rem}
 .n-sub{font-size:.62rem;color:var(--mut);margin-top:.12rem;line-height:1.3}
 .n-edit{position:absolute;top:3px;right:3px;border:none;background:transparent;font-size:.95rem;cursor:pointer;color:inherit;opacity:.55;border-radius:6px;width:21px;height:21px;line-height:1}
 .n-edit:hover{opacity:1;background:rgba(0,0,0,.1)}
@@ -323,6 +326,32 @@ function eliminaManuale(layout,filiale,N,id){
 }
 function ripristinaPosizione(layout,id){layout.overrides=(layout.overrides||[]).filter(o=>o.id!==id);}
 
+// ── Viste riepilogative (sola lettura) ──
+// Costruite dagli organigrammi delle singole filiali, così restano sempre allineate: niente copie da
+// aggiornare. 'totale' = tutto; 'vertici' = solo responsabili di filiale e coordinatori (chi ha la casella
+// gialla conta come coordinatore). Nel modo 'vertici' chi viene saltato (reparti, personale) non crea buchi:
+// ogni coordinatore sale al primo antenato rimasto nel grafico.
+function aggregaFiliali(dati,elenco,oggi,soloVertici){
+  const N={root:{id:'root',type:'root',nome:ROOT_DEFAULT.nome,sub:'',manual:true,ro:true,parent:null,ord:0}};
+  elenco.forEach((f,idx)=>{
+    const d=dati[f.id]||{};
+    const r=costruisci(d.stato||null,d.layout||{manual:[],overrides:[],stili:[]},f.id,oggi);
+    const incluso=n=>n.id==='root'||n.type==='resp'||n.giallo===true;
+    Object.values(r.N).forEach(n=>{
+      if(n.id==='root')return;
+      if(soloVertici&&!incluso(n))return;
+      let p=n.parent;
+      if(soloVertici){while(p!=='root'&&!incluso(r.N[p]))p=r.N[p].parent;}
+      const id=f.id+'|'+n.id,inCima=(p==='root');
+      N[id]={...n,id,ro:true,parent:inCima?'root':f.id+'|'+p,ord:(inCima?idx*1000:0)+(n.ord||0),tag:inCima?f.nome:null};
+    });
+  });
+  const children={};
+  Object.values(N).forEach(n=>{if(n.parent)(children[n.parent]=children[n.parent]||[]).push(n.id);});
+  Object.keys(children).forEach(k=>children[k].sort((a,b)=>(N[a].ord-N[b].ord)||String(N[a].nome).localeCompare(String(N[b].nome),'it')));
+  return {N,children};
+}
+
 // ── HTML dell'albero ──
 function cssTipo(n){
   if(n.type==='persona'||n.type==='coord'||n.type==='manuale')return n.giallo?'coord':(n.type==='coord'?'persona':n.type);
@@ -334,10 +363,12 @@ function cardHtml(N,children,n,inStack){
   const vuoto=!n.nome;
   const nome=vuoto?(n.type==='resp'?'Responsabile da assegnare':'(senza nome)'):n.nome;
   const tip=n.cal?('Dal calendario: '+(n.cal.mansione||'—')+' · '+(n.cal.reparto||'—')):(n.rep?'Reparto: '+n.rep:'');
-  return '<div class="node t-'+cssTipo(n)+(vuoto?' placeholder':'')+(inStack?' in-stack':'')+'" draggable="'+(n.id!=='root')+
+  const ro=!!n.ro;
+  return '<div class="node t-'+cssTipo(n)+(vuoto?' placeholder':'')+(inStack?' in-stack':'')+'" draggable="'+(!ro&&n.id!=='root')+
     '" data-id="'+esc(n.id)+'" data-stack="'+(inStack?1:0)+'" title="'+esc(tip)+'">'+
+    (n.tag?'<div class="n-tag">'+esc(n.tag)+'</div>':'')+
     '<div class="n-name">'+esc(nome)+'</div>'+(sub?'<div class="n-sub">'+esc(sub)+'</div>':'')+
-    '<button class="n-edit" data-act="edit" title="Modifica / sposta">⋮</button></div>';
+    (ro?'':'<button class="n-edit" data-act="edit" title="Modifica / sposta">⋮</button>')+'</div>';
 }
 function liHtml(N,children,id){
   const n=N[id],kids=children[id]||[];
@@ -355,6 +386,7 @@ function alberoHtml(N,children){return '<div class="tree"><ul>'+liHtml(N,childre
 // ==== FINE LOGICA PURA ====
 
 // ── Stato applicazione ──
+const cacheFiliali={};let vistaAgg=false;
 let filiale='seriate',stato=null,layout={manual:[],overrides:[],stili:[]},N={},children={},zoom=1,primoRender=true;
 const $=id=>document.getElementById(id);
 const chart=$('chart'),wrap=$('chartWrap');
@@ -369,7 +401,43 @@ async function persisti(){
   }catch(e){console.warn('Salvataggio organigramma fallito:',e);setStatus('⚠️ Errore di salvataggio',false);}
 }
 
+function modoModifica(on){
+  vistaAgg=!on;
+  ['bAdd','bReset','newSec'].forEach(i=>$(i).style.display=on?'':'none');
+}
+async function caricaAggregato(modo){
+  filiale=modo;primoRender=true;modoModifica(false);
+  try{history.replaceState(null,'','?filiale='+modo);}catch(e){}
+  document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on',p.dataset.f===modo));
+  chart.innerHTML='<div class="msg">Caricamento di tutte le filiali…</div>';
+  try{
+    await Promise.all(FILIALI.map(async f=>{
+      if(cacheFiliali[f.id])return;
+      const [s,l]=await Promise.all([getDoc(doc(db,'stato',f.id)),getDoc(doc(db,'organigramma',f.id))]);
+      const sd=s.exists()?s.data():null,ld=l.exists()?l.data():{};
+      cacheFiliali[f.id]={stato:sd?{dipendenti:sd.dipendenti||[],reparti:sd.reparti||[]}:null,
+                          layout:{manual:ld.manual||[],overrides:ld.overrides||[],stili:ld.stili||[]}};
+    }));
+  }catch(e){chart.innerHTML='<div class="msg">Errore nel caricamento: '+esc(e.message)+'</div>';return;}
+  ricostruisciAggregato(modo);
+}
+function ricostruisciAggregato(modo){
+  const vertici=(modo==='vertici');
+  ({N,children}=aggregaFiliali(cacheFiliali,FILIALI,oggiISO(),vertici));
+  const nResp=Object.values(N).filter(n=>n.type==='resp'&&n.nome).length;
+  const nCoord=Object.values(N).filter(n=>n.giallo).length;
+  $('info').innerHTML=vertici
+    ?`<b>Responsabili di filiale e coordinatori</b> — ${nResp} responsabili assegnati su ${FILIALI.length} filiali, ${nCoord} coordinatori (comprese le persone con la casella gialla). Vista riepilogativa in <b>sola lettura</b>, costruita dagli organigrammi delle singole filiali: per modificare qualcosa apri la filiale interessata.`
+    :`<b>Tutte le filiali</b> — vista riepilogativa in <b>sola lettura</b>, costruita dagli organigrammi delle singole filiali (${Object.values(N).filter(n=>n.type==='persona'||n.type==='coord'||n.cal).length} persone in totale). Per modificare qualcosa apri la filiale interessata. Usa <b>Adatta</b> e lo zoom per muoverti in un grafico così largo.`;
+  $('printTitle').textContent='Organigramma — '+(vertici?'RESPONSABILI E COORDINATORI':'TUTTE LE FILIALI')+' — '+new Date().toLocaleDateString('it-IT');
+  chart.innerHTML=alberoHtml(N,children);
+  applicaZoom(primoRender?adattaValore(vertici?.55:.25):zoom);
+  primoRender=false;
+}
+
 async function carica(fil){
+  if(fil==='totale'||fil==='vertici')return caricaAggregato(fil);
+  modoModifica(true);
   filiale=fil;primoRender=true;
   try{history.replaceState(null,'','?filiale='+fil);}catch(e){/* aperto da file locale: l'indirizzo non si aggiorna, nessun problema */}
   document.querySelectorAll('.pill').forEach(p=>p.classList.toggle('on',p.dataset.f===fil));
@@ -388,6 +456,7 @@ async function carica(fil){
 
 function ricostruisci(){
   ({N,children}=costruisci(stato,layout,filiale,oggiISO()));
+  cacheFiliali[filiale]={stato:stato?{dipendenti:stato.dipendenti||[],reparti:stato.reparti||[]}:null,layout};
   const nome=FILIALI.find(f=>f.id===filiale).nome;
   const attivi=((stato&&stato.dipendenti)||[]).filter(d=>attivoOggi(d,oggiISO())).length;
   const nRep=Object.values(N).filter(n=>n.type==='reparto').length;
@@ -397,20 +466,20 @@ function ricostruisci(){
     `Personale, reparto e mansione arrivano dal calendario e si aggiornano da soli. <b>Trascina</b> un riquadro sopra un altro per spostarlo (con tutto ciò che ha sotto), oppure usa <b>⋮</b> sul riquadro: da lì puoi anche dare la <b>casella gialla</b> a qualunque persona. Per creare una <b>nuova sezione</b> trascina una persona nella barra gialla tratteggiata qui sopra.`;
   $('printTitle').textContent='Organigramma — '+nome+' — '+new Date().toLocaleDateString('it-IT');
   chart.innerHTML=alberoHtml(N,children);
-  applicaZoom(primoRender?adattaValore(true):zoom);
+  applicaZoom(primoRender?adattaValore(.55):zoom);
   primoRender=false;
 }
 
 // ── Zoom ──
 const zoomOk=(window.CSS&&CSS.supports&&CSS.supports('zoom','1'));
-function applicaZoom(z){zoom=Math.max(.3,Math.min(1.6,z));if(zoomOk)chart.style.zoom=zoom;$('zv').textContent=Math.round(zoom*100)+'%';}
+function applicaZoom(z){zoom=Math.max(.15,Math.min(1.6,z));if(zoomOk)chart.style.zoom=zoom;$('zv').textContent=Math.round(zoom*100)+'%';}
 function adattaValore(minimo){
   if(!zoomOk)return 1;
   chart.style.zoom=1;
   const tree=chart.querySelector('.tree'),w=tree?tree.scrollWidth:0;
   if(!w)return 1;
   const z=(wrap.clientWidth-24)/w;
-  return minimo?Math.max(.55,Math.min(1,z)):Math.min(1,z);
+  return minimo?Math.max(minimo,Math.min(1,z)):Math.min(1,z);
 }
 if(!zoomOk){['bFit','bZm','bZp','zv'].forEach(i=>$(i).style.display='none');}
 $('bFit').onclick=()=>applicaZoom(adattaValore(false));
@@ -426,7 +495,7 @@ function targetOf(nd){return nd.dataset.stack==='1'?(N[nd.dataset.id]?N[nd.datas
 function elDi(id){return chart.querySelector('.node[data-id="'+CSS.escape(id)+'"]');}
 chart.addEventListener('dragstart',e=>{
   const nd=e.target.closest&&e.target.closest('.node');
-  if(!nd||nd.dataset.id==='root'){e.preventDefault();return;}
+  if(vistaAgg||!nd||nd.dataset.id==='root'){e.preventDefault();return;}
   dragId=nd.dataset.id;e.dataTransfer.setData('text/plain',dragId);e.dataTransfer.effectAllowed='move';
   setTimeout(()=>nd.classList.add('dragging'),0);
 });
@@ -561,10 +630,11 @@ $('bReset').onclick=async()=>{
 };
 
 // ── Avvio ──
-$('pills').innerHTML=FILIALI.map(f=>`<button class="pill" data-f="${f.id}">${f.nome}</button>`).join('');
+$('pills').innerHTML=FILIALI.map(f=>`<button class="pill" data-f="${f.id}">${f.nome}</button>`).join('')+
+  '<span class="pillsep"></span><button class="pill spec" data-f="totale">🌐 TUTTE LE FILIALI</button><button class="pill spec" data-f="vertici">👔 RESPONSABILI + COORDINATORI</button>';
 $('pills').addEventListener('click',e=>{const p=e.target.closest('.pill');if(p)carica(p.dataset.f);});
 const richiesta=new URLSearchParams(location.search).get('filiale');
-carica(FILIALI.some(f=>f.id===richiesta)?richiesta:'seriate');
+carica((FILIALI.some(f=>f.id===richiesta)||richiesta==='totale'||richiesta==='vertici')?richiesta:'seriate');
 </script>
 </body>
 </html>
