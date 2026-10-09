@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--line:#cbd5e1;--ind:#4f46e5;--txt:#1f2937;--mut:#6b7280;--bd:#e5e7eb}
+:root{--line:#c4cdea;--ind:#4f46e5;--txt:#1f2937;--mut:#6b7280;--bd:#e5e7eb}
 body{font-family:"Inter",sans-serif;background:#f1f5f9;color:var(--txt);min-height:100vh}
 .top{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap;padding:.8rem 1.2rem;background:#fff;border-bottom:1px solid var(--bd)}
 .brand{font-size:1rem;font-weight:800}.brand span{font-weight:600;color:var(--mut)}
@@ -27,10 +27,10 @@ body{font-family:"Inter",sans-serif;background:#f1f5f9;color:var(--txt);min-heig
 #saveStatus{font-size:.72rem;font-weight:600;color:#059669;min-width:7rem}
 .info{margin:.8rem 1.2rem 0;padding:.6rem .85rem;background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;font-size:.74rem;color:#3730a3;line-height:1.5}
 .legend{display:flex;gap:.9rem;flex-wrap:wrap;margin:.6rem 1.2rem 0;font-size:.68rem;color:var(--mut)}
-.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:.3rem;vertical-align:-2px;border:1.5px solid}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:.3rem;vertical-align:-2px;border:1.5px solid}
 .newsec{margin:.8rem 1.2rem 0;padding:.55rem .9rem;border:2px dashed #f59e0b;border-radius:10px;background:#fffbeb;color:#92400e;font-size:.74rem;font-weight:600;text-align:center;transition:background .12s}
 .newsec.drop-ok{background:#fef3c7;border-color:#d97706;outline:3px solid #22c55e;outline-offset:2px}
-.chartwrap{margin:.8rem 1.2rem 2rem;background:#fff;border:1px solid var(--bd);border-radius:12px;overflow:auto;min-height:260px;padding:.5rem}
+.chartwrap{margin:.8rem 1.2rem 2rem;background:radial-gradient(circle at 1px 1px,#dbe2ef 1px,transparent 0) 0 0/22px 22px,linear-gradient(#f8fafc,#f1f5f9);border:1px solid var(--bd);border-radius:14px;overflow:auto;min-height:260px;padding:.5rem}
 .msg{padding:2rem;text-align:center;color:var(--mut);font-size:.82rem}
 .print-title{display:none}
 
@@ -49,33 +49,60 @@ body{font-family:"Inter",sans-serif;background:#f1f5f9;color:var(--txt);min-heig
 .tree>ul{padding-top:0}
 .tree>ul>li{padding-top:0}
 .tree>ul>li::before,.tree>ul>li::after{display:none}
-.stack{display:flex;flex-direction:column;gap:5px;margin-top:14px;position:relative;align-items:stretch}
-.stack::before{content:'';position:absolute;top:-14px;left:50%;border-left:2px solid var(--line);height:14px}
+.stack{display:flex;flex-direction:column;margin-top:15px;position:relative;align-items:stretch;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:4px;box-shadow:0 2px 8px rgba(15,23,42,.06)}
+.stack::before{content:'';position:absolute;top:-16px;left:50%;border-left:2px solid var(--line);height:15px}
 
-.node{position:relative;width:176px;padding:.5rem 1.6rem .5rem .7rem;border-radius:10px;background:#fff;border:1.5px solid #d1d5db;text-align:left;cursor:grab;box-shadow:0 1px 2px rgba(0,0,0,.05);transition:box-shadow .12s,opacity .12s}
-.node:hover{box-shadow:0 4px 12px rgba(0,0,0,.13)}
+/* riquadro: avatar + testo */
+.node{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;gap:.35rem;width:152px;padding:.85rem .6rem .65rem;border-radius:16px;background:#fff;border:1.5px solid #e2e8f0;box-shadow:0 2px 8px rgba(15,23,42,.07);cursor:grab;transition:box-shadow .15s,transform .15s}
+.node:hover{box-shadow:0 8px 22px rgba(15,23,42,.16);transform:translateY(-2px)}
 .node.dragging{opacity:.35}
-.node.drop-ok{outline:3px solid #22c55e;outline-offset:2px}
-.n-name{font-size:.74rem;font-weight:700;line-height:1.25;word-break:break-word}
+.node.drop-ok{outline:3px solid #22c55e;outline-offset:3px}
+.av{flex:none;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:50%;border:2px solid rgba(255,255,255,.6);color:#fff;font-weight:800;width:48px;height:48px;font-size:.9rem;box-shadow:0 2px 6px rgba(15,23,42,.25)}
+.av svg{display:block;width:100%;height:100%}
+.n-txt{min-width:0}
+.n-name{font-size:.76rem;font-weight:700;line-height:1.25;word-break:break-word}
+.n-sub{font-size:.62rem;color:var(--mut);margin-top:.12rem;line-height:1.3}
+.n-tag{display:inline-block;font-size:.55rem;font-weight:800;letter-spacing:.9px;text-transform:uppercase;padding:.12rem .55rem;border-radius:20px;background:rgba(255,255,255,.22);margin-bottom:.1rem}
+.t-coord .n-tag,.t-persona .n-tag{background:rgba(15,23,42,.07)}
+.n-edit{position:absolute;top:5px;right:5px;border:none;background:rgba(15,23,42,.07);font-size:.9rem;cursor:pointer;color:inherit;opacity:0;border-radius:7px;width:22px;height:22px;line-height:1;transition:opacity .12s}
+.node:hover .n-edit{opacity:.85}.n-edit:hover{opacity:1;background:rgba(15,23,42,.16)}
+@media (hover:none){.n-edit{opacity:.65}}
+
+.t-root{width:196px;padding-top:1rem;background:linear-gradient(135deg,#1e1b4b,#312e81);border-color:#1e1b4b;color:#fff}
+.t-root .av{width:68px;height:68px;background:linear-gradient(135deg,#f59e0b,#d97706)}
+.t-root .n-sub{color:#c7d2fe}
+.t-resp{width:176px;background:linear-gradient(135deg,#4f46e5,#6366f1);border-color:#4f46e5;color:#fff}
+.t-resp .av{width:58px;height:58px;background:linear-gradient(135deg,#818cf8,#6366f1)}
+.t-resp .n-sub{color:#e0e7ff}
+.t-coord{background:linear-gradient(#fffbeb,#fff);border-color:#fbbf24}
+.t-coord .av{background:linear-gradient(135deg,#f59e0b,#f97316)}
+.t-coord .n-sub{color:#b45309;font-weight:700}
+.t-reparto{background:linear-gradient(#ecfeff,#fff);border-color:#67e8f9}
+.t-reparto .av{width:46px;height:46px;font-size:1.1rem;border-radius:14px;background:linear-gradient(135deg,#0891b2,#06b6d4)}
+.t-reparto .n-name{color:#0e7490;text-transform:uppercase;font-size:.68rem;letter-spacing:.3px}
+.t-manuale{background:#faf5ff;border:1.5px dashed #a78bfa}
+.t-manuale .av{background:linear-gradient(135deg,#8b5cf6,#a855f7)}
+.t-staff{width:150px;background:linear-gradient(#f0fdf4,#fff);border-color:#4ade80}
+.t-staff .av{background:linear-gradient(135deg,#16a34a,#22c55e)}
+.t-staff .n-sub{color:#15803d;font-weight:700}
+.node.placeholder .n-name{font-style:italic;opacity:.85}
+.node.placeholder .av{background:#94a3b8}
+
+/* righe compatte negli elenchi verticali */
+.node.in-stack{flex-direction:row;text-align:left;gap:.55rem;width:100%;min-width:196px;padding:.32rem 1.7rem .32rem .35rem;border:none;border-radius:10px;background:transparent;box-shadow:none}
+.node.in-stack:hover{background:#f1f5f9;transform:none;box-shadow:none}
+.node.in-stack .av{width:30px;height:30px;font-size:.62rem}
+.node.in-stack .n-edit{top:50%;transform:translateY(-50%);right:4px}
+.node.in-stack.t-coord{background:#fffbeb}
+.node.in-stack.t-manuale{background:#faf5ff}
+.node.in-stack.t-reparto{background:#ecfeff}
+
+/* vertice con staff ai lati */
 .rootrow{display:grid;grid-template-columns:1fr auto 1fr;align-items:center}
 .sidecell{display:flex;align-items:center}
 .sidecell.sx{justify-content:flex-end}.sidecell.dx{justify-content:flex-start}
-.staffcol{display:flex;flex-direction:column;gap:6px}
+.staffcol{display:flex;flex-direction:column;gap:8px}
 .sline{width:34px;border-top:2px dashed #86efac}
-.t-staff{background:#f0fdf4;border-color:#16a34a}.t-staff .n-sub{color:#15803d;font-weight:700}
-.n-tag{font-size:.56rem;font-weight:800;letter-spacing:.9px;text-transform:uppercase;opacity:.8;margin-bottom:.15rem}
-.n-sub{font-size:.62rem;color:var(--mut);margin-top:.12rem;line-height:1.3}
-.n-edit{position:absolute;top:3px;right:3px;border:none;background:transparent;font-size:.95rem;cursor:pointer;color:inherit;opacity:.55;border-radius:6px;width:21px;height:21px;line-height:1}
-.n-edit:hover{opacity:1;background:rgba(0,0,0,.1)}
-.t-root{background:#1e1b4b;border-color:#1e1b4b;color:#fff;width:210px}.t-root .n-sub{color:#c7d2fe}
-.t-resp{background:var(--ind);border-color:var(--ind);color:#fff;width:200px}.t-resp .n-sub{color:#e0e7ff}
-.t-coord{background:#fffbeb;border-color:#f59e0b}.t-coord .n-sub{color:#b45309;font-weight:600}
-.t-reparto{background:#ecfeff;border-color:#0891b2;border-width:2px}
-.t-reparto .n-name{color:#0e7490;text-transform:uppercase;font-size:.68rem;letter-spacing:.2px}
-.t-persona{background:#fff}
-.t-manuale{background:#f5f3ff;border-color:#818cf8;border-style:dashed}
-.node.placeholder .n-name{font-style:italic;opacity:.8}
-.node.in-stack{width:100%;min-width:176px}
 
 /* ── modale ── */
 .mo{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:50;align-items:center;justify-content:center;padding:1rem}
@@ -99,6 +126,7 @@ body{font-family:"Inter",sans-serif;background:#f1f5f9;color:var(--txt);min-heig
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="bm" viewBox="0 0 64 64"><path d="M5 64 C5 50 15 44 26 42 L38 42 C49 44 59 50 59 64 Z" fill="#fff"/><path d="M26 42 L32 52.5 L38 42 Z" fill="#0f172a" fill-opacity=".2"/><rect x="27.5" y="33" width="9" height="11" rx="3" fill="#fff"/><ellipse cx="32" cy="23.5" rx="9.5" ry="11" fill="#fff"/><path d="M21.6 23.5 C20.4 12.5 26.5 9.2 32 9.2 C37.5 9.2 43.6 12.5 42.4 23.5 C41.6 19 39 16.6 35.5 15.6 C32 16.8 27 16.6 24.4 19 C22.6 20.2 22 21.6 21.6 23.5 Z" fill="#0f172a" fill-opacity=".62"/></symbol><symbol id="bf" viewBox="0 0 64 64"><path d="M20 26 C19 12 26 8.5 32 8.5 C38 8.5 45 12 44 26 C43.5 34 45.5 39 49 44 C42 41.5 22 41.5 15 44 C18.5 39 20.5 34 20 26 Z" fill="#0f172a" fill-opacity=".55"/><path d="M8 64 C8 51 17 45.5 27 43.5 L37 43.5 C47 45.5 56 51 56 64 Z" fill="#fff"/><rect x="28" y="34" width="8" height="11" rx="3" fill="#fff"/><ellipse cx="32" cy="24" rx="9" ry="10.5" fill="#fff"/><path d="M23 22.5 C24 14.5 31 13.5 35 14 C40 14.5 41.5 18 41 22.5 C38.5 18.5 33 17.5 28.5 19 C26 19.8 24.2 21 23 22.5 Z" fill="#0f172a" fill-opacity=".55"/></symbol><symbol id="bn" viewBox="0 0 64 64"><path d="M7 64 C7 50 17 44.5 27 42.5 L37 42.5 C47 44.5 57 50 57 64 Z" fill="#fff"/><rect x="27.5" y="33" width="9" height="11" rx="3" fill="#fff"/><ellipse cx="32" cy="23.5" rx="9.2" ry="10.8" fill="#fff"/></symbol></svg>
 
 <div class="top noprint">
   <div class="brand">🏭 SITALIA <span>/ Organigramma</span></div>
@@ -113,6 +141,8 @@ body{font-family:"Inter",sans-serif;background:#f1f5f9;color:var(--txt);min-heig
     <button class="btn" id="bFit">↔ Adatta</button>
     <button class="btn" id="bZm">−</button><span id="zv">100%</span><button class="btn" id="bZp">+</button>
     <button class="btn" id="bPrint">🖨️ Stampa</button>
+    <button class="btn" id="bPdf" title="Scarica l'organigramma che stai vedendo in PDF">📄 PDF</button>
+    <button class="btn" id="bXls" title="Scarica l'organigramma che stai vedendo in Excel">📊 Excel</button>
     <button class="btn dng" id="bReset">↺ Ripristina automatico</button>
     <span id="saveStatus"></span>
   </div>
@@ -176,7 +206,7 @@ const RESP_DEFAULT={seriate:'Fabio Gamba',orio:'Nicolò Ronzoni'};
 // link si vedeva la versione precedente finché non si premeva F5. All'apertura si legge quindi la versione
 // online (senza cache) e, se è diversa da questa, la pagina si ricarica da sola una volta.
 // → Da cambiare a ogni nuova consegna del file.
-const BUILD_ID='2026-10-08.9';
+const BUILD_ID='2026-10-09.3';
 async function controllaAggiornamento(buildAttuale,leggiPagina,sessione,ricarica){
   try{
     const t=await leggiPagina();
@@ -313,6 +343,17 @@ function costruisci(stato,layout,filiale,oggi){
   const children={};
   Object.values(N).forEach(n=>{if(n.parent)(children[n.parent]=children[n.parent]||[]).push(n.id);});
   Object.keys(children).forEach(k=>children[k].sort((a,b)=>(N[a].ord-N[b].ord)||String(N[a].nome).localeCompare(String(N[b].nome),'it')));
+  // Figura di ogni riquadro-persona: scelta manuale se c'è, altrimenti dedotta dal nome
+  const ordine=inferisciOrdine(dipsAll.map(d=>d.nome));
+  const gen=new Map((layout.generi||[]).map(g=>[g.id,g.g]));
+  Object.values(N).forEach(n=>{
+    if(n.type==='reparto')return;
+    const daCalendario=!n.manual&&n.type!=='staff';
+    n.genereAuto=genereDaNome(n.nome,daCalendario?ordine:'nome-cognome');
+    const ov=gen.get(n.id);
+    n.genereManuale=(ov==='M'||ov==='F'||ov==='N');
+    n.genere=n.genereManuale?ov:n.genereAuto;
+  });
   return {N,children,nascosti:nascostiInfo};
 }
 
@@ -348,6 +389,7 @@ function assicuraLayout(layout,filiale){
   if(!layout.overrides)layout.overrides=[];
   if(!layout.stili)layout.stili=[];
   if(!layout.nascosti)layout.nascosti=[];
+  if(!layout.generi)layout.generi=[];
 }
 function assicuraStaff(layout){if(!Array.isArray(layout.staff))layout.staff=DEFAULT_STAFF.map(s=>({...s}));}
 function modificaStaff(layout,id,nome,ruolo,lato){
@@ -399,7 +441,13 @@ function eliminaManuale(layout,filiale,N,id){
   layout.overrides=layout.overrides.filter(o=>o.parentId!==id&&o.id!==id);
   layout.manual=layout.manual.filter(x=>x.id!==id);
   layout.stili=layout.stili.filter(s=>s.id!==id);
+  layout.generi=layout.generi.filter(x=>x.id!==id);
   return true;
+}
+function impostaGenere(layout,filiale,id,g){
+  assicuraLayout(layout,filiale);
+  layout.generi=layout.generi.filter(x=>x.id!==id);
+  if(g==='M'||g==='F'||g==='N')layout.generi.push({id,g});
 }
 function nascondiNodo(layout,filiale,N,id){
   const n=N[id];
@@ -436,7 +484,9 @@ function aggregaFiliali(dati,elenco,oggi,soloVertici){
   elenco.forEach(f=>{staffDi((dati[f.id]||{}).layout).forEach(s=>{
     const chiave=normName(s.nome);if(!chiave||visti.has(chiave))return;visti.add(chiave);
     const id='staff|'+chiave;
-    N[id]={id,type:'staff',nome:s.nome||'',sub:s.ruolo||'',lato:s.lato==='dx'?'dx':'sx',manual:true,ro:true,parent:null,ord:kk++};
+    const ov=((dati[f.id]||{}).layout&&(dati[f.id].layout.generi||[]).find(x=>x.id===s.id));
+    N[id]={id,type:'staff',nome:s.nome||'',sub:s.ruolo||'',lato:s.lato==='dx'?'dx':'sx',manual:true,ro:true,parent:null,ord:kk++,
+           genere:(ov&&['M','F','N'].includes(ov.g))?ov.g:genereDaNome(s.nome,'nome-cognome')};
   });});
   const children={};
   Object.values(N).forEach(n=>{if(n.parent)(children[n.parent]=children[n.parent]||[]).push(n.id);});
@@ -449,19 +499,78 @@ function cssTipo(n){
   if(n.type==='persona'||n.type==='coord'||n.type==='manuale')return n.giallo?'coord':(n.type==='coord'?'persona':n.type);
   return n.type;
 }
+// ── Figura (busto uomo / donna) dal nome di battesimo ──
+// Il calendario scrive i nomi in ordine diverso da filiale a filiale ("ROSSI MARIO" a Seriate, "Nicolò Ronzoni" a Orio):
+// l'ordine si ricava dai nomi stessi di quella filiale. Dove il riconoscimento non è sicuro si mostra la figura
+// neutra, e dalla finestra ⋮ si può scegliere a mano Uomo / Donna / Neutra.
+const NOMI_M=new Set("ALESSANDRO ALESSIO ALBERTO ALDO ALFONSO ALFREDO ANDREA ANGELO ANNIBALE ANSELMO ANTONINO ANTONIO ARMANDO ARTURO ATTILIO AUGUSTO BALDASSARRE BARTOLOMEO BENEDETTO BENIAMINO BENITO BERNARDO BRUNO CALOGERO CARLO CARMELO CARMINE CESARE CIRO CLAUDIO COSIMO COSTANTINO CRISTIAN CRISTIANO DAMIANO DANIELE DANILO DANTE DARIO DAVIDE DEMETRIO DENIS DIEGO DOMENICO DONATO EDOARDO EGIDIO ELIA EMANUELE EMILIO ENNIO ENRICO ENZO ERCOLE ERMANNO ETTORE EUGENIO FABIANO FABIO FABRIZIO FAUSTO FEDERICO FELICE FERDINANDO FERNANDO FILIPPO FIORENZO FLAVIO FRANCESCO FRANCO FULVIO GABRIELE GAETANO GASPARE GENNARO GERARDO GERMANO GIACOMO GIAMPAOLO GIAMPIERO GIAN GIANCARLO GIANFRANCO GIANLUCA GIANMARCO GIANNI GIANPAOLO GINO GIORGIO GIOVAN GIOVANNI GIULIANO GIULIO GIUSEPPE GIUSTINO GRAZIANO GREGORIO GUGLIELMO GUIDO IGNAZIO IGOR ILARIO IVAN IVANO JACOPO LAMBERTO LEONARDO LEONE LEOPOLDO LORENZO LUCA LUCIANO LUIGI MANUEL MANUELE MARCELLO MARCO MARIANO MARINO MARIO MARTINO MASSIMILIANO MASSIMO MATTEO MATTIA MAURIZIO MAURO MICHELE MIRKO MODESTO MORENO NAZARIO NICOLA NICOLAS NICOLO NUNZIO OLIVIERO OMAR ONOFRIO ORAZIO ORLANDO OSCAR OTTAVIO PAOLO PASQUALE PATRIZIO PIER PIERANGELO PIERLUIGI PIERO PIETRO PIERPAOLO PLACIDO RAFFAELE RAIMONDO REMO RENATO RENZO RICCARDO ROBERTO ROCCO RODOLFO ROLANDO ROMANO ROMEO ROSARIO RUGGERO SALVATORE SAMUELE SANDRO SANTO SAVERIO SEBASTIANO SERGIO SILVANO SILVIO SIMONE STEFANO TEODORO TIZIANO TOMMASO TONINO UBALDO UGO UMBERTO VALENTINO VALERIO VINCENZO VIRGILIO VITO VITTORIO WALTER YURI ZENO ALEX ALEXANDER CHRISTIAN KEVIN MICHAEL DAVID DANIEL JOHN PETER JOSE JUAN LUIS PEDRO MIGUEL JORGE MOHAMED MOHAMMED MUHAMMAD AHMED AHMAD ALI HASSAN HUSSEIN YOUSSEF YOUSSOUF KARIM SAID RACHID IBRAHIM ABDEL ABDELKADER ABDELLAH MUSTAPHA MOUSTAPHA HAMZA ISMAIL ANIS BILAL FAYCAL FOUAD HICHAM JAMAL KHALID MEHDI NABIL NASSER SAMIR SOFIANE TAREK YASSINE ZAKARIA MIHAI IONUT MARIUS FLORIN CATALIN BOGDAN COSMIN ANDREI VASILE GHEORGHE DUMITRU NICOLAE RADU ADRIAN SORIN DMYTRO OLEKSANDR OLEKSII ANDRIY TARAS SERHII VLADIMIR VOLODYMYR PAVLO MYKOLA MYKHAILO OLEH VIKTOR YURIY BOHDAN DENYS MAKSYM ARTEM IHOR".split(' '));
+const NOMI_F=new Set("ADELE ADRIANA AGATA AGNESE ALBA ALESSANDRA ALESSIA ALICE ALMA AMALIA AMELIA ANGELA ANGELICA ANNA ANNALISA ANNAMARIA ANTONELLA ANTONIETTA ARIANNA ASSUNTA AURORA BARBARA BEATRICE BENEDETTA BIANCA BRUNA CAMILLA CARLA CARMELA CARMEN CAROLINA CATERINA CECILIA CHIARA CINZIA CLARA CLAUDIA CLELIA COSTANZA CRISTINA DAMIANA DANIELA DEBORA DENISE DIANA DILETTA DOMENICA DONATELLA DORIANA DORIS EDITH ELEONORA ELENA ELISA ELISABETTA ELVIRA EMANUELA EMILIA EMMA ENRICA ERIKA ESTER EUGENIA EVA FABIANA FABIOLA FEDERICA FIORELLA FLAVIA FLORA FRANCA FRANCESCA GABRIELLA GAIA GIADA GINEVRA GIORGIA GIOVANNA GIULIA GIULIANA GIUSEPPINA GIUSY GRAZIA GRAZIELLA GRETA ILARIA ILENIA IMMACOLATA INES IRENE IRIS ISABELLA IVANA JESSICA LAURA LAURETTA LEA LETIZIA LIA LIDIA LILIANA LINDA LISA LORELLA LORENA LOREDANA LUCIA LUCIANA LUCREZIA LUDOVICA LUISA MADDALENA MARA MARCELLA MARGHERITA MARIA MARIANNA MARIELLA MARINA MARISA MARTA MARTINA MATILDE MAURA MELISSA MICHELA MIRELLA MIRIAM MONICA MORENA NADIA NATALIA NATASCIA NICOLETTA NICOLE NOEMI NORMA OLGA OLIVIA ORNELLA PAMELA PAOLA PATRIZIA PAULA PIA PIERA RAFFAELLA REBECCA RENATA RITA ROBERTA ROMINA ROSA ROSALIA ROSANNA ROSARIA ROSELLA ROSSELLA SABRINA SALVATRICE SAMANTHA SANDRA SARA SARAH SERENA SILVIA SIMONA SOFIA SONIA STEFANIA STELLA TANIA TERESA TIZIANA UMBERTA VALENTINA VALERIA VANESSA VERA VERONICA VIOLA VIRGINIA VITTORIA VIVIANA YLENIA ZAIRA ALEXANDRA KATERYNA KATERINA KATIA OKSANA NATALYA SVITLANA IRYNA IRINA TETIANA TATIANA YULIA YULIIA YULIYA LIUDMYLA LYUDMYLA MARIIA MARIJA HALYNA HANNA ANASTASIIA ANASTASIA NINA LUDMILA LARYSA INNA VIKTORIIA VIKTORIYA DARYNA DARIA DASHA IOANA MIHAELA ANDREEA ALINA ELISABETA GABRIELA FATIMA KHADIJA AMINA AYA HANANE LEILA YASMINE SAMIRA SALMA ZINEB SANAA NAJAT LAMIA MERYEM MARYAM SOUAD HAFSA IMANE KENZA".split(' '));
+function normToken(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z]/g,'');}
+function genereToken(tok,grezzo){
+  if(tok==='NICOLE'&&/[èéÈÉ'’]$/.test(String(grezzo||'')))return 'M';   // "Nicolè" (maschile), non "Nicole"
+  return NOMI_M.has(tok)?'M':(NOMI_F.has(tok)?'F':null);
+}
+function inferisciOrdine(nomi){
+  let nc=0,cn=0;
+  (nomi||[]).forEach(nome=>{
+    const t=String(nome||'').trim().split(/\s+/).filter(Boolean);
+    if(t.length<2)return;
+    const a=genereToken(normToken(t[0]),t[0]),b=genereToken(normToken(t[t.length-1]),t[t.length-1]);
+    if(a&&!b)nc++;else if(b&&!a)cn++;
+  });
+  return nc>cn?'nome-cognome':(cn>nc?'cognome-nome':null);
+}
+function genereDaNome(nome,ordine){
+  const raw=String(nome||'').trim().split(/\s+/).filter(Boolean);
+  const t=raw.map(normToken);
+  const n=t.length;
+  if(!n||!t.some(Boolean))return 'N';
+  let sM=0,sF=0;
+  t.forEach((tok,i)=>{
+    const g=tok?genereToken(tok,raw[i]):null;
+    if(!g)return;
+    // il nome di battesimo pesa di più: all'inizio o in fondo a seconda dell'ordine
+    const w=ordine==='nome-cognome'?(i===0?3:(i===1?1.5:.5)):ordine==='cognome-nome'?(i===n-1?3:(i===n-2?1.5:.5)):((i===0||i===n-1)?1:.5);
+    if(g==='M')sM+=w;else sF+=w;
+  });
+  if(sM!==sF)return sM>sF?'M':'F';
+  const presunto=t[ordine==='cognome-nome'?n-1:0]||'';   // nome non in elenco: si prova con la desinenza
+  const ult=presunto.slice(-1);
+  return ult==='A'?'F':(ult==='O'?'M':'N');
+}
+
+// ── Avatar ──
+// Nomi in maiuscolo del calendario → "Cognome Nome" leggibile (solo per la visualizzazione, i dati non cambiano)
+function bella(nome){
+  return String(nome||'').toLocaleLowerCase('it').replace(/(^|[\s'’\-])(\p{L})/gu,(m,a,b)=>a+b.toLocaleUpperCase('it'));
+}
+const PALETTE=[['#6366f1','#8b5cf6'],['#0ea5e9','#06b6d4'],['#10b981','#14b8a6'],['#f43f5e','#fb7185'],
+               ['#f97316','#fb923c'],['#a855f7','#d946ef'],['#3b82f6','#6366f1'],['#65a30d','#22c55e']];
+// Colore stabile per persona (non dipende dall'ordine cognome/nome né dalla posizione nell'albero)
+function coloreAvatar(nome){
+  let h=0;const k=normName(nome);
+  for(let i=0;i<k.length;i++)h=(h*31+k.charCodeAt(i))>>>0;
+  return PALETTE[h%PALETTE.length];
+}
 function cardHtml(N,children,n,inStack){
   const cnt=n.type==='reparto'?contaPersone(N,children,n.id):0;
-  const sub=n.type==='reparto'?(cnt+(cnt===1?' persona':' persone')):(n.sub||(n.cal&&n.cal.mansione)||'');
+  const css=cssTipo(n);
+  const sub=n.type==='reparto'?(cnt===1?'persona':'persone'):(n.sub||(n.cal&&n.cal.mansione)||'');
   const vuoto=!n.nome;
-  const nome=vuoto?(n.type==='resp'?'Responsabile da assegnare':'(senza nome)'):n.nome;
+  const nome=vuoto?(n.type==='resp'?'Responsabile da assegnare':'(senza nome)'):(n.type==='reparto'?n.nome:bella(n.nome));
   const tip=n.cal?('Dal calendario: '+(n.cal.mansione||'—')+' · '+(n.cal.reparto||'—')):(n.rep?'Reparto: '+n.rep:'');
   const ro=!!n.ro;
-  return '<div class="node t-'+cssTipo(n)+(vuoto?' placeholder':'')+(inStack?' in-stack':'')+'" draggable="'+(!ro&&n.id!=='root'&&n.type!=='staff')+
+  const bust=vuoto?'bn':(n.genere==='F'?'bf':(n.genere==='M'?'bm':'bn'));
+  const avDentro=n.type==='reparto'?String(cnt):'<svg viewBox="0 0 64 64"><use href="#'+bust+'"/></svg>';
+  const avStile=(css==='persona'&&!vuoto)?' style="background:linear-gradient(135deg,'+coloreAvatar(n.nome).join(',')+')"':'';
+  return '<div class="node t-'+css+(vuoto?' placeholder':'')+(inStack?' in-stack':'')+'" draggable="'+(!ro&&n.id!=='root'&&n.type!=='staff')+
     '" data-id="'+esc(n.id)+'" data-stack="'+(inStack?1:0)+'" title="'+esc(tip)+'">'+
     (n.tag?'<div class="n-tag">'+esc(n.tag)+'</div>':'')+
-    '<div class="n-name">'+esc(nome)+'</div>'+(sub?'<div class="n-sub">'+esc(sub)+'</div>':'')+
+    '<div class="av"'+avStile+'>'+avDentro+'</div>'+
+    '<div class="n-txt"><div class="n-name">'+esc(nome)+'</div>'+(sub?'<div class="n-sub">'+esc(sub)+'</div>':'')+'</div>'+
     (ro?'':'<button class="n-edit" data-act="edit" title="Modifica / sposta">⋮</button>')+'</div>';
 }
+
 function rootRowHtml(N,children,n){
   const staff=Object.values(N).filter(x=>x.type==='staff').sort((a,b)=>a.ord-b.ord);
   if(!staff.length)return cardHtml(N,children,n,false);
@@ -484,12 +593,530 @@ function liHtml(N,children,id){
   return '<li>'+inner+'</li>';
 }
 function alberoHtml(N,children){return '<div class="tree"><ul>'+liHtml(N,children,'root')+'</ul></div>';}
+
+// ── Esportazione: PDF vettoriale e Excel ──
+// PDF: disegnato con jsPDF partendo dalla stessa struttura mostrata a schermo (non è uno "screenshot": testi e figure
+// restano nitidi a qualsiasi ingrandimento). Excel: elenco piatto filtrabile + struttura ad albero.
+const PD={root:{w:158,h:90,av:44},resp:{w:142,h:90,av:38},top:{w:126,h:82,av:34},rep:{w:126,h:78,av:30},staff:{w:122,h:82,av:34},
+          row:{w:164,h:26,av:18},pad:4,hgap:16,vgap:32,stackGap:12,sideLine:30,sideGap:8};
+function dimNodo(n,inStack){
+  if(inStack)return PD.row;
+  const b=n.type==='root'?PD.root:n.type==='resp'?PD.resp:n.type==='reparto'?PD.rep:n.type==='staff'?PD.staff:PD.top;
+  return n.tag?{...b,h:b.h+12}:b;       // la sigla della filiale (viste riepilogative) occupa una riga in più
+}
+const PDF_DARK=[15,23,42];
+const PDF_STILE={
+  root:{bg:[30,27,75],bd:[30,27,75],tx:[255,255,255],sub:[199,210,254],av:[217,119,6]},
+  resp:{bg:[79,70,229],bd:[79,70,229],tx:[255,255,255],sub:[224,231,255],av:[99,102,241]},
+  coord:{bg:[255,251,235],bd:[251,191,36],tx:[15,23,42],sub:[180,83,9],av:[245,158,11]},
+  reparto:{bg:[236,254,255],bd:[103,232,249],tx:[14,116,144],sub:[100,116,139],av:[8,145,178]},
+  persona:{bg:[255,255,255],bd:[226,232,240],tx:[15,23,42],sub:[107,114,128],av:null},
+  manuale:{bg:[250,245,255],bd:[167,139,250],tx:[15,23,42],sub:[107,114,128],av:[139,92,246],dash:true},
+  staff:{bg:[240,253,244],bd:[74,222,128],tx:[15,23,42],sub:[21,128,61],av:[22,163,74]}
+};
+// Il PDF usa i caratteri standard (Latin-1): le lettere fuori da quel set perdono l'accento invece di rompersi
+function pdfSafe(s){
+  return String(s==null?'':s).replace(/[—–]/g,'-').replace(/[’‘]/g,"'").replace(/[“”]/g,'"').replace(/…/g,'...')
+    .split('').map(ch=>{
+      if(ch.charCodeAt(0)<=255)return ch;
+      const d=ch.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      return (d&&d.charCodeAt(0)<=255)?d:'?';
+    }).join('');
+}
+function hexRgb(h){const m=/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(h||'');return m?[parseInt(m[1],16),parseInt(m[2],16),parseInt(m[3],16)]:[0,0,0];}
+function mixRgb(a,b,t){return [0,1,2].map(i=>Math.round(a[i]*(1-t)+b[i]*t));}
+
+// Posizioni di ogni riquadro (stessa logica dell'albero a schermo: riga orizzontale, elenchi verticali per le foglie,
+// staff ai lati del vertice). Solo geometria: nessuna libreria.
+function layoutPdf(N,children){
+  const boxes=[],linee=[],pannelli=[],memo={};
+  const impila=id=>{const n=N[id],k=children[id]||[];return k.length>0&&n.type!=='root'&&n.type!=='resp'&&k.every(x=>!(children[x]||[]).length);};
+  const staff=Object.values(N).filter(x=>x.type==='staff').sort((a,b)=>a.ord-b.ord);
+  const sx=staff.filter(s=>s.lato!=='dx'),dx=staff.filter(s=>s.lato==='dx');
+  function larg(id){
+    if(memo[id]!=null)return memo[id];
+    const n=N[id],d=dimNodo(n,false),k=children[id]||[];
+    let w=d.w;
+    if(id==='root'&&staff.length){
+      const lato=Math.max(sx.length?PD.staff.w+PD.sideLine:0,dx.length?PD.staff.w+PD.sideLine:0);
+      w=d.w+2*lato;
+    }
+    if(k.length){
+      if(impila(id))w=Math.max(w,PD.row.w+2*PD.pad);
+      else w=Math.max(w,k.reduce((s,x)=>s+larg(x),0)+PD.hgap*(k.length-1));
+    }
+    return memo[id]=w;
+  }
+  let maxY=0;
+  function posa(id,x0,y){
+    const n=N[id],d=dimNodo(n,false),W=larg(id),cx=x0+W/2,kids=children[id]||[];
+    boxes.push({id,kind:'card',x:cx-d.w/2,y,w:d.w,h:d.h});
+    maxY=Math.max(maxY,y+d.h);
+    if(id==='root'&&staff.length){
+      const cy=y+d.h/2;
+      [[sx,-1],[dx,1]].forEach(([lista,dir])=>{
+        if(!lista.length)return;
+        const sh=PD.staff.h,tot=lista.length*sh+(lista.length-1)*PD.sideGap;
+        const bordoRoot=dir<0?cx-d.w/2:cx+d.w/2;
+        const bordoStaff=bordoRoot+dir*PD.sideLine;
+        const xs=dir<0?bordoStaff-PD.staff.w:bordoStaff;
+        let yy=cy-tot/2;const centri=[];
+        lista.forEach(s=>{
+          boxes.push({id:s.id,kind:'card',x:xs,y:yy,w:PD.staff.w,h:sh});
+          centri.push(yy+sh/2);maxY=Math.max(maxY,yy+sh);
+          linee.push({x1:bordoStaff,y1:yy+sh/2,x2:bordoStaff-dir*PD.sideLine/2,y2:yy+sh/2,dash:true});
+          yy+=sh+PD.sideGap;
+        });
+        const coll=bordoStaff-dir*PD.sideLine/2;
+        if(centri.length>1)linee.push({x1:coll,y1:centri[0],x2:coll,y2:centri[centri.length-1],dash:true});
+        linee.push({x1:coll,y1:cy,x2:bordoRoot,y2:cy,dash:true});
+        if(centri.length===1&&Math.abs(centri[0]-cy)>0.01)linee.push({x1:coll,y1:Math.min(cy,centri[0]),x2:coll,y2:Math.max(cy,centri[0]),dash:true});
+      });
+    }
+    const bottom=y+d.h;
+    if(!kids.length)return;
+    if(impila(id)){
+      const py=bottom+PD.stackGap,ph=kids.length*PD.row.h+2*PD.pad,pw=PD.row.w+2*PD.pad;
+      pannelli.push({x:cx-pw/2,y:py,w:pw,h:ph});
+      linee.push({x1:cx,y1:bottom,x2:cx,y2:py});
+      kids.forEach((k,i)=>boxes.push({id:k,kind:'row',x:cx-PD.row.w/2,y:py+PD.pad+i*PD.row.h,w:PD.row.w,h:PD.row.h}));
+      maxY=Math.max(maxY,py+ph);
+    }else{
+      const cy2=bottom+PD.vgap,bus=bottom+PD.vgap/2;
+      const tot=kids.reduce((s,k)=>s+larg(k),0)+PD.hgap*(kids.length-1);
+      let x=x0+(W-tot)/2;const centri=[];
+      kids.forEach(k=>{const w=larg(k);centri.push(x+w/2);posa(k,x,cy2);x+=w+PD.hgap;});
+      linee.push({x1:cx,y1:bottom,x2:cx,y2:bus});
+      if(kids.length>1)linee.push({x1:centri[0],y1:bus,x2:centri[centri.length-1],y2:bus});
+      centri.forEach(c=>linee.push({x1:c,y1:bus,x2:c,y2:cy2}));
+    }
+  }
+  posa('root',0,0);
+  return {boxes,linee,pannelli,width:larg('root'),height:maxY};
+}
+
+// ── Busto (stesse forme del disegno a schermo) ritagliato nel cerchio, senza operatori di ritaglio ──
+const BUSTI_PDF={
+  M:[{k:'b',p:'M5 64 C5 50 15 44 26 42 L38 42 C49 44 59 50 59 64 Z'},{k:'b',r:[27.5,33,9,11]},{k:'b',e:[32,23.5,9.5,11]},
+     {k:'cb',a:.2,p:'M26 42 L32 52.5 L38 42 Z'},
+     {k:'cb',a:.62,p:'M21.6 23.5 C20.4 12.5 26.5 9.2 32 9.2 C37.5 9.2 43.6 12.5 42.4 23.5 C41.6 19 39 16.6 35.5 15.6 C32 16.8 27 16.6 24.4 19 C22.6 20.2 22 21.6 21.6 23.5 Z'}],
+  F:[{k:'cf',a:.55,p:'M20 26 C19 12 26 8.5 32 8.5 C38 8.5 45 12 44 26 C43.5 34 45.5 39 49 44 C42 41.5 22 41.5 15 44 C18.5 39 20.5 34 20 26 Z'},
+     {k:'b',p:'M8 64 C8 51 17 45.5 27 43.5 L37 43.5 C47 45.5 56 51 56 64 Z'},{k:'b',r:[28,34,8,11]},{k:'b',e:[32,24,9,10.5]},
+     {k:'cb',a:.55,p:'M23 22.5 C24 14.5 31 13.5 35 14 C40 14.5 41.5 18 41 22.5 C38.5 18.5 33 17.5 28.5 19 C26 19.8 24.2 21 23 22.5 Z'}],
+  N:[{k:'b',p:'M7 64 C7 50 17 44.5 27 42.5 L37 42.5 C47 44.5 57 50 57 64 Z'},{k:'b',r:[27.5,33,9,11]},{k:'b',e:[32,23.5,9.2,10.8]}]
+};
+function percorsoPoli(d){
+  const t=d.match(/[MLCZ]|-?\d*\.?\d+/g)||[];let i=0,cmd='',cur=[0,0];const pts=[];
+  while(i<t.length){
+    if(/[MLCZ]/.test(t[i])){cmd=t[i++];if(cmd==='Z')continue;}
+    if(cmd==='M'||cmd==='L'){cur=[+t[i],+t[i+1]];i+=2;pts.push(cur);}
+    else if(cmd==='C'){
+      const p1=cur,p2=[+t[i],+t[i+1]],p3=[+t[i+2],+t[i+3]],p4=[+t[i+4],+t[i+5]];i+=6;
+      for(let s=1;s<=10;s++){const u=s/10,v=1-u;
+        pts.push([v*v*v*p1[0]+3*v*v*u*p2[0]+3*v*u*u*p3[0]+u*u*u*p4[0],v*v*v*p1[1]+3*v*v*u*p2[1]+3*v*u*u*p3[1]+u*u*u*p4[1]]);}
+      cur=p4;
+    }else break;
+  }
+  return pts;
+}
+// Sutherland–Hodgman: ritaglia un poligono con un poligono convesso (qui un cerchio a 48 lati)
+function tagliaConvesso(soggetto,clip){
+  let out=soggetto;
+  for(let i=0;i<clip.length&&out.length;i++){
+    const a=clip[i],b=clip[(i+1)%clip.length],inp=out;out=[];
+    const dentro=p=>(b[0]-a[0])*(p[1]-a[1])-(b[1]-a[1])*(p[0]-a[0])>=0;
+    const inter=(p,q)=>{
+      const den=(p[0]-q[0])*(a[1]-b[1])-(p[1]-q[1])*(a[0]-b[0])||1e-9;
+      const t=((p[0]-a[0])*(a[1]-b[1])-(p[1]-a[1])*(a[0]-b[0]))/den;
+      return [p[0]+t*(q[0]-p[0]),p[1]+t*(q[1]-p[1])];
+    };
+    for(let j=0;j<inp.length;j++){
+      const p=inp[j],q=inp[(j+1)%inp.length],dp=dentro(p),dq=dentro(q);
+      if(dp){out.push(p);if(!dq)out.push(inter(p,q));}else if(dq)out.push(inter(p,q));
+    }
+  }
+  return out;
+}
+function disegnaAvatar(doc,cx,cy,r,genere,fondo){
+  doc.setFillColor(fondo[0],fondo[1],fondo[2]);doc.circle(cx,cy,r,'F');
+  const s=(2*r)/64,ox=cx-r,oy=cy-r;
+  const cerchio=Array.from({length:48},(_,i)=>{const a=i/48*2*Math.PI;return [32+31*Math.cos(a),32+31*Math.sin(a)];});
+  (BUSTI_PDF[genere]||BUSTI_PDF.N).forEach(f=>{
+    const pts=f.p?percorsoPoli(f.p):f.r?[[f.r[0],f.r[1]],[f.r[0]+f.r[2],f.r[1]],[f.r[0]+f.r[2],f.r[1]+f.r[3]],[f.r[0],f.r[1]+f.r[3]]]
+      :Array.from({length:28},(_,i)=>{const a=i/28*2*Math.PI;return [f.e[0]+f.e[2]*Math.cos(a),f.e[1]+f.e[3]*Math.sin(a)];});
+    const c=tagliaConvesso(pts,cerchio);
+    if(c.length<3)return;
+    const col=f.k==='b'?[255,255,255]:f.k==='cb'?mixRgb([255,255,255],PDF_DARK,f.a):mixRgb(fondo,PDF_DARK,f.a);
+    doc.setFillColor(col[0],col[1],col[2]);
+    const segs=[];for(let i=1;i<c.length;i++)segs.push([(c[i][0]-c[i-1][0])*s,(c[i][1]-c[i-1][1])*s]);
+    doc.lines(segs,ox+c[0][0]*s,oy+c[0][1]*s,[1,1],'F',true);
+  });
+  const anello=mixRgb(fondo,[255,255,255],.35);doc.setDrawColor(anello[0],anello[1],anello[2]);doc.setLineWidth(Math.max(.8,r*.07));doc.circle(cx,cy,r,'S');
+}
+
+function troncaTesto(doc,txt,maxW){
+  if(doc.getTextWidth(txt)<=maxW)return txt;
+  let t=txt;while(t.length>1&&doc.getTextWidth(t+'...')>maxW)t=t.slice(0,-1);
+  return t.replace(/\s+$/,'')+'...';
+}
+function righeTesto(doc,txt,maxW,maxRighe){
+  let r=doc.splitTextToSize(txt,maxW);
+  if(r.length>maxRighe){const c=r.slice(0,maxRighe);c[maxRighe-1]=r.slice(maxRighe-1).join(' ');r=c;}
+  return r.map(x=>troncaTesto(doc,x,maxW));
+}
+
+function coloreFondoAvatar(n,stile){
+  if(stile.av)return stile.av;
+  const [a,b]=coloreAvatar(n.nome).map(hexRgb);return mixRgb(a,b,.5);
+}
+function disegnaRiquadro(doc,N,children,b){
+  const n=N[b.id],css=cssTipo(n),st=PDF_STILE[css]||PDF_STILE.persona;
+  const vuoto=!n.nome,persona=n.type!=='reparto';
+  const nome=pdfSafe(vuoto?(n.type==='resp'?'Responsabile da assegnare':'(senza nome)'):(persona?bella(n.nome):String(n.nome).toUpperCase()));
+  const sub=pdfSafe(n.type==='reparto'?(()=>{const c=contaPersone(N,children,n.id);return c+(c===1?' persona':' persone');})():(n.sub||(n.cal&&n.cal.mansione)||''));
+  const fondo=vuoto?[148,163,184]:coloreFondoAvatar(n,st);
+  const genere=vuoto?'N':(n.genere||'N');
+  if(b.kind==='row'){
+    if(css==='coord'||css==='manuale'||css==='reparto'){doc.setFillColor(st.bg[0],st.bg[1],st.bg[2]);doc.roundedRect(b.x,b.y+1,b.w,b.h-2,6,6,'F');}
+    const r=PD.row.av/2,ax=b.x+6+r,ay=b.y+b.h/2;
+    if(n.type==='reparto'){doc.setFillColor(fondo[0],fondo[1],fondo[2]);doc.roundedRect(ax-r,ay-r,2*r,2*r,r*.6,r*.6,'F');
+      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(255,255,255);doc.text(String(contaPersone(N,children,n.id)),ax,ay+2.8,{align:'center'});}
+    else disegnaAvatar(doc,ax,ay,r,genere,fondo);
+    const tx=b.x+6+2*r+7,mw=b.w-(tx-b.x)-4;
+    doc.setFont('helvetica','bold');doc.setFontSize(7.2);doc.setTextColor(st.tx[0],st.tx[1],st.tx[2]);
+    if(sub){doc.text(troncaTesto(doc,nome,mw),tx,b.y+11.2);
+      doc.setFont('helvetica','normal');doc.setFontSize(5.8);doc.setTextColor(st.sub[0],st.sub[1],st.sub[2]);doc.text(troncaTesto(doc,sub,mw),tx,b.y+19.6);}
+    else doc.text(troncaTesto(doc,nome,mw),tx,b.y+b.h/2+2.5);
+    return;
+  }
+  doc.setFillColor(st.bg[0],st.bg[1],st.bg[2]);doc.setDrawColor(st.bd[0],st.bd[1],st.bd[2]);doc.setLineWidth(1.1);
+  if(st.dash)doc.setLineDashPattern([3,2],0);
+  doc.roundedRect(b.x,b.y,b.w,b.h,9,9,'FD');
+  if(st.dash)doc.setLineDashPattern([],0);
+  const cx=b.x+b.w/2,dim=n.type==='root'?PD.root:n.type==='resp'?PD.resp:n.type==='reparto'?PD.rep:n.type==='staff'?PD.staff:PD.top;
+  let y=b.y+9;
+  if(n.tag){doc.setFont('helvetica','bold');doc.setFontSize(6);doc.setTextColor(st.sub[0],st.sub[1],st.sub[2]);doc.text(pdfSafe(n.tag),cx,y+2,{align:'center'});y+=12;}
+  const r=dim.av/2,ay=y+r;
+  if(n.type==='reparto'){
+    doc.setFillColor(fondo[0],fondo[1],fondo[2]);doc.roundedRect(cx-r,y,2*r,2*r,r*.6,r*.6,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(255,255,255);doc.text(String(contaPersone(N,children,n.id)),cx,ay+4.2,{align:'center'});
+  }else disegnaAvatar(doc,cx,ay,r,genere,fondo);
+  const mw=b.w-14;
+  doc.setFont('helvetica',vuoto?'italic':'bold');doc.setFontSize(n.type==='root'?9:8);doc.setTextColor(st.tx[0],st.tx[1],st.tx[2]);
+  let ty=y+2*r+11;
+  righeTesto(doc,nome,mw,2).forEach(l=>{doc.text(l,cx,ty,{align:'center'});ty+=9.6;});
+  if(sub){doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(st.sub[0],st.sub[1],st.sub[2]);doc.text(troncaTesto(doc,sub,mw),cx,ty+1,{align:'center'});}
+}
+
+function creaPdf(jsPDF,N,children,titolo,dataTxt){
+  const L=layoutPdf(N,children);
+  const M=36,TH=50,LH=36;
+  const W=Math.max(L.width+2*M,560),H=L.height+2*M+TH+LH;
+  const doc=new jsPDF({orientation:W>=H?'landscape':'portrait',unit:'pt',format:[W,H]});
+  const ox=(W-L.width)/2,oy=M+TH;
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(30,27,75);doc.text(pdfSafe('Organigramma - '+titolo),M,M+14);
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(107,114,128);doc.text(pdfSafe(dataTxt),M,M+30);
+  // collegamenti
+  doc.setLineWidth(1.4);
+  L.linee.forEach(l=>{
+    if(l.dash){doc.setDrawColor(74,222,128);doc.setLineDashPattern([4,3],0);}else{doc.setDrawColor(196,205,234);doc.setLineDashPattern([],0);}
+    doc.line(ox+l.x1,oy+l.y1,ox+l.x2,oy+l.y2);
+  });
+  doc.setLineDashPattern([],0);
+  // pannelli degli elenchi verticali
+  doc.setFillColor(255,255,255);doc.setDrawColor(226,232,240);doc.setLineWidth(.8);
+  L.pannelli.forEach(p=>doc.roundedRect(ox+p.x,oy+p.y,p.w,p.h,9,9,'FD'));
+  // riquadri (le righe degli elenchi sopra i pannelli)
+  const sposta=b=>({...b,x:ox+b.x,y:oy+b.y});
+  L.boxes.filter(b=>b.kind==='card').forEach(b=>disegnaRiquadro(doc,N,children,sposta(b)));
+  L.boxes.filter(b=>b.kind==='row').forEach(b=>disegnaRiquadro(doc,N,children,sposta(b)));
+  // legenda
+  const leg=[['Vertice',PDF_STILE.root.bg],['Responsabile di filiale',PDF_STILE.resp.bg],['Coordinatore',PDF_STILE.coord.bd],['Reparto',PDF_STILE.reparto.av],['Personale',[99,102,241]],['Staff a fianco del vertice',PDF_STILE.staff.av]];
+  let lx=M;const ly=H-M+4;
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);
+  leg.forEach(([t,c])=>{doc.setFillColor(c[0],c[1],c[2]);doc.circle(lx+4,ly-2.4,4,'F');doc.setTextColor(71,85,105);doc.text(t,lx+12,ly);lx+=12+doc.getTextWidth(t)+22;});
+  return doc;
+}
+
+// ── Excel ──
+function tipoEtichetta(n){
+  if(n.type==='root')return 'Vertice';
+  if(n.type==='resp')return 'Responsabile di filiale';
+  if(n.type==='reparto')return 'Reparto';
+  if(n.type==='staff')return 'Staff (a fianco del vertice)';
+  if(n.giallo)return 'Coordinatore';
+  return n.type==='manuale'?'Riquadro aggiunto a mano':'Personale';
+}
+function nomeVisibile(n){return n.type==='reparto'?n.nome:(n.nome?bella(n.nome):(n.type==='resp'?'Responsabile da assegnare':'(senza nome)'));}
+// etichetta = nome della filiale quando si guarda una sola filiale; null nelle viste riepilogative (la sigla è sui rami)
+function righeExcel(N,children,etichetta){
+  const elenco=[['Filiale','Livello','Tipo','Nome','Ruolo / mansione','Reparto (calendario)','Riporta a','Note']];
+  const alb=[];let maxL=0;
+  const ruolo=n=>n.type==='reparto'?'':(n.sub||(n.cal&&n.cal.mansione)||'');
+  const rep=n=>n.type==='reparto'?'':(n.rep||(n.cal&&n.cal.reparto)||'');
+  function aggiungi(n,livello,fil,riportaA,note){
+    elenco.push([fil||'',livello,tipoEtichetta(n),nomeVisibile(n),ruolo(n),rep(n),riportaA||'',note||'']);
+    alb.push({livello,fil:fil||'',nome:nomeVisibile(n),ruolo:ruolo(n)});
+    if(livello>maxL)maxL=livello;
+  }
+  const nota=n=>n.type==='reparto'?(()=>{const c=contaPersone(N,children,n.id);return c+(c===1?' persona':' persone');})():((n.type==='persona'||n.type==='manuale')&&n.giallo?'Casella gialla (coordinatore)':'');
+  aggiungi(N.root,0,etichetta,'','');
+  Object.values(N).filter(x=>x.type==='staff').sort((a,b)=>a.ord-b.ord)
+    .forEach(s=>aggiungi(s,0,etichetta,'Vertice (a fianco)',s.lato==='dx'?'A destra del vertice':'A sinistra del vertice'));
+  (function walk(id,livello,fil){
+    (children[id]||[]).forEach(k=>{
+      const f=(id==='root')?(etichetta||N[k].tag||''):fil;
+      aggiungi(N[k],livello,f,nomeVisibile(N[id]),nota(N[k]));
+      walk(k,livello+1,f);
+    });
+  })('root',1,etichetta);
+  const colLiv=maxL+1;
+  const struttura=[['Filiale'].concat(Array.from({length:colLiv},(_,i)=>'Livello '+(i+1)),['Ruolo / mansione'])];
+  alb.forEach(r=>{const riga=[r.fil];for(let i=0;i<colLiv;i++)riga.push(i===r.livello?r.nome:'');riga.push(r.ruolo);struttura.push(riga);});
+  return {elenco,struttura,livelli:colLiv};
+}
+
+// ── Excel con il disegno dell'organigramma (ExcelJS: colori, bordi, celle unite, immagini) ──
+// Stessa struttura del PDF, ma "disegnata" dentro le celle: ogni colonna è larga 10 px e ogni riga 20 px; i riquadri sono
+// blocchi di celle colorate con bordo, i collegamenti sono bordi di cella. Tutte le misure sono PARI, così i centri
+// cadono sempre su un bordo di colonna e le linee risultano centrate.
+const XD={root:{w:20,h:8},resp:{w:18,h:7},top:{w:16,h:7},rep:{w:16,h:6},staff:{w:16,h:8},row:{w:18,h:2},pad:1,hgap:2,sideLine:4,sideGap:1};
+function dimXls(n,inStack){
+  if(inStack)return XD.row;
+  return n.type==='root'?XD.root:n.type==='resp'?XD.resp:n.type==='reparto'?XD.rep:n.type==='staff'?XD.staff:XD.top;
+}
+function layoutXls(N,children){
+  const boxes=[],vl=[],hl=[],pannelli=[],memo={};
+  const impila=id=>{const n=N[id],k=children[id]||[];return k.length>0&&n.type!=='root'&&n.type!=='resp'&&k.every(x=>!(children[x]||[]).length);};
+  const staff=Object.values(N).filter(x=>x.type==='staff').sort((a,b)=>a.ord-b.ord);
+  const sx=staff.filter(s=>s.lato!=='dx'),dx=staff.filter(s=>s.lato==='dx');
+  function larg(id){
+    if(memo[id]!=null)return memo[id];
+    const n=N[id],d=dimXls(n,false),k=children[id]||[];
+    let w=d.w;
+    if(id==='root'&&staff.length){const lato=Math.max(sx.length?XD.staff.w+XD.sideLine:0,dx.length?XD.staff.w+XD.sideLine:0);w=d.w+2*lato;}
+    if(k.length){
+      if(impila(id))w=Math.max(w,XD.row.w+2*XD.pad);
+      else w=Math.max(w,k.reduce((s,x)=>s+larg(x),0)+XD.hgap*(k.length-1));
+    }
+    return memo[id]=w;
+  }
+  let maxY=0;
+  function posa(id,x0,y){
+    const n=N[id],d=dimXls(n,false),W=larg(id),cx=x0+W/2,kids=children[id]||[];
+    boxes.push({id,kind:'card',x:cx-d.w/2,y,w:d.w,h:d.h});
+    maxY=Math.max(maxY,y+d.h);
+    if(id==='root'&&staff.length){
+      const cy=y+d.h/2;
+      [[sx,-1],[dx,1]].forEach(([lista,dir])=>{
+        if(!lista.length)return;
+        const sh=XD.staff.h,tot=lista.length*sh+(lista.length-1)*XD.sideGap;
+        const bordoRoot=dir<0?cx-d.w/2:cx+d.w/2,bordoStaff=bordoRoot+dir*XD.sideLine;
+        const xs=dir<0?bordoStaff-XD.staff.w:bordoStaff,coll=bordoStaff-dir*XD.sideLine/2;
+        let yy=cy-tot/2;const centri=[];
+        lista.forEach(s=>{
+          boxes.push({id:s.id,kind:'card',x:xs,y:yy,w:XD.staff.w,h:sh});
+          centri.push(yy+sh/2);maxY=Math.max(maxY,yy+sh);
+          hl.push({r:yy+sh/2,c1:Math.min(bordoStaff,coll),c2:Math.max(bordoStaff,coll),dash:true});
+          yy+=sh+XD.sideGap;
+        });
+        if(centri.length>1)vl.push({c:coll,r1:centri[0],r2:centri[centri.length-1],dash:true});
+        hl.push({r:cy,c1:Math.min(coll,bordoRoot),c2:Math.max(coll,bordoRoot),dash:true});
+        if(centri.length===1&&centri[0]!==cy)vl.push({c:coll,r1:Math.min(cy,centri[0]),r2:Math.max(cy,centri[0]),dash:true});
+      });
+    }
+    const b=y+d.h;
+    if(!kids.length)return;
+    if(impila(id)){
+      const py=b+2,ph=kids.length*XD.row.h,pw=XD.row.w+2*XD.pad;
+      pannelli.push({x:cx-pw/2,y:py,w:pw,h:ph});
+      vl.push({c:cx,r1:b,r2:py});
+      kids.forEach((k,i)=>boxes.push({id:k,kind:'row',x:cx-pw/2+XD.pad,y:py+i*XD.row.h,w:XD.row.w,h:XD.row.h}));
+      maxY=Math.max(maxY,py+ph);
+    }else{
+      const cy2=b+4,tot=kids.reduce((s,k)=>s+larg(k),0)+XD.hgap*(kids.length-1);
+      let x=x0+(W-tot)/2;const centri=[];
+      kids.forEach(k=>{const w=larg(k);centri.push(x+w/2);posa(k,x,cy2);x+=w+XD.hgap;});
+      vl.push({c:cx,r1:b,r2:b+2});
+      if(kids.length>1)hl.push({r:b+2,c1:centri[0],c2:centri[centri.length-1]});
+      centri.forEach(c=>vl.push({c,r1:b+2,r2:b+4}));
+    }
+  }
+  posa('root',0,0);
+  return {boxes,vl,hl,pannelli,width:larg('root'),height:maxY};
+}
+
+// ── Busto in PNG (senza canvas: piccolo rasterizzatore + codifica PNG), così l'immagine è identica al PDF ──
+function riempiPoligono(buf,n,pts,col){
+  if(pts.length<3)return;
+  let y0=Infinity,y1=-Infinity;pts.forEach(p=>{if(p[1]<y0)y0=p[1];if(p[1]>y1)y1=p[1];});
+  for(let y=Math.max(0,Math.floor(y0));y<=Math.min(n-1,Math.ceil(y1));y++){
+    const yc=y+.5,xs=[];
+    for(let i=0;i<pts.length;i++){
+      const p=pts[i],q=pts[(i+1)%pts.length];
+      if((p[1]<=yc&&q[1]>yc)||(q[1]<=yc&&p[1]>yc))xs.push(p[0]+(yc-p[1])*(q[0]-p[0])/(q[1]-p[1]));
+    }
+    xs.sort((a,b)=>a-b);
+    for(let i=0;i+1<xs.length;i+=2){
+      const a=Math.max(0,Math.ceil(xs[i]-.5)),b=Math.min(n-1,Math.ceil(xs[i+1]-.5)-1);
+      for(let x=a;x<=b;x++){const o=(y*n+x)*4;buf[o]=col[0];buf[o+1]=col[1];buf[o+2]=col[2];buf[o+3]=255;}
+    }
+  }
+}
+function crc32(u8){
+  if(!crc32.t){crc32.t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;crc32.t[n]=c>>>0;}}
+  let c=0xFFFFFFFF;for(let i=0;i<u8.length;i++)c=crc32.t[(c^u8[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;
+}
+function pngRgba(w,h,rgba){
+  const riga=w*4+1,raw=new Uint8Array(riga*h);
+  for(let y=0;y<h;y++){raw[y*riga]=0;raw.set(rgba.subarray(y*w*4,(y+1)*w*4),y*riga+1);}
+  // zlib con blocchi "stored" (nessuna compressione: ci pensa lo zip dell'xlsx)
+  const nb=Math.ceil(raw.length/65535),z=new Uint8Array(2+raw.length+nb*5+4);let p=0;z[p++]=0x78;z[p++]=0x01;
+  for(let i=0;i<nb;i++){const s=i*65535,len=Math.min(65535,raw.length-s);z[p++]=(i===nb-1)?1:0;z[p++]=len&255;z[p++]=len>>8;z[p++]=(~len)&255;z[p++]=((~len)>>8)&255;z.set(raw.subarray(s,s+len),p);p+=len;}
+  let a=1,b=0;for(let i=0;i<raw.length;i++){a=(a+raw[i])%65521;b=(b+a)%65521;}
+  const ad=((b<<16)|a)>>>0;z[p++]=ad>>>24;z[p++]=(ad>>>16)&255;z[p++]=(ad>>>8)&255;z[p++]=ad&255;
+  const chunk=(tipo,dati)=>{const o=new Uint8Array(12+dati.length),dv=new DataView(o.buffer);dv.setUint32(0,dati.length);for(let i=0;i<4;i++)o[4+i]=tipo.charCodeAt(i);o.set(dati,8);dv.setUint32(8+dati.length,crc32(o.subarray(4,8+dati.length)));return o;};
+  const ihdr=new Uint8Array(13),dv=new DataView(ihdr.buffer);dv.setUint32(0,w);dv.setUint32(4,h);ihdr[8]=8;ihdr[9]=6;
+  const parti=[Uint8Array.from([137,80,78,71,13,10,26,10]),chunk('IHDR',ihdr),chunk('IDAT',z.subarray(0,p)),chunk('IEND',new Uint8Array(0))];
+  const tot=parti.reduce((s,x)=>s+x.length,0),out=new Uint8Array(tot);let q=0;parti.forEach(x=>{out.set(x,q);q+=x.length;});return out;
+}
+function bytesToBase64(u8){let s='';for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));return btoa(s);}
+function bustoPng(genere,fondo,px){
+  const S=4,n=px*S,k=n/64,buf=new Uint8ClampedArray(n*n*4);
+  const cerchio=r=>Array.from({length:64},(_,i)=>{const a=i/64*2*Math.PI;return [(32+r*Math.cos(a))*k,(32+r*Math.sin(a))*k];});
+  riempiPoligono(buf,n,cerchio(32),mixRgb(fondo,[255,255,255],.35));   // bordo: tinta più chiara del fondo (visibile anche su riquadri bianchi)
+  riempiPoligono(buf,n,cerchio(29.6),fondo);                   // sfondo colorato
+  const clip=cerchio(29.6);
+  (BUSTI_PDF[genere]||BUSTI_PDF.N).forEach(f=>{
+    const pts=(f.p?percorsoPoli(f.p):f.r?[[f.r[0],f.r[1]],[f.r[0]+f.r[2],f.r[1]],[f.r[0]+f.r[2],f.r[1]+f.r[3]],[f.r[0],f.r[1]+f.r[3]]]
+      :Array.from({length:28},(_,i)=>{const a=i/28*2*Math.PI;return [f.e[0]+f.e[2]*Math.cos(a),f.e[1]+f.e[3]*Math.sin(a)];})).map(p=>[p[0]*k,p[1]*k]);
+    const c=tagliaConvesso(pts,clip);
+    const col=f.k==='b'?[255,255,255]:f.k==='cb'?mixRgb([255,255,255],PDF_DARK,f.a):mixRgb(fondo,PDF_DARK,f.a);
+    riempiPoligono(buf,n,c,col);
+  });
+  const out=new Uint8Array(px*px*4);                           // riduzione S×S con media pesata sulla trasparenza
+  for(let y=0;y<px;y++)for(let x=0;x<px;x++){
+    let r=0,g=0,b=0,a=0;
+    for(let dy=0;dy<S;dy++)for(let dx=0;dx<S;dx++){const o=((y*S+dy)*n+(x*S+dx))*4,al=buf[o+3];if(al){r+=buf[o];g+=buf[o+1];b+=buf[o+2];a++;}}
+    const o=(y*px+x)*4;if(a){out[o]=Math.round(r/a);out[o+1]=Math.round(g/a);out[o+2]=Math.round(b/a);out[o+3]=Math.round(255*a/(S*S));}
+  }
+  return pngRgba(px,px,out);
+}
+
+const argb=c=>'FF'+c.map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+function creaExcel(ExcelJS,N,children,etichetta,titolo,dataTxt){
+  const wb=new ExcelJS.Workbook();
+  wb.creator='SITALIA';wb.created=new Date();
+  const ws=wb.addWorksheet('Organigramma',{views:[{showGridLines:false}]});
+  const L=layoutXls(N,children),OC=2,OR=4,PXC=10,PXR=20;
+  const cella=(r,c)=>ws.getCell(OR+r+1,OC+c+1);
+  const totCol=L.width+2*OC+2;
+  for(let i=1;i<=totCol;i++)ws.getColumn(i).width=PXC/7;     // 10 px per colonna
+  ws.properties.defaultRowHeight=15;                           // 20 px per riga
+  for(let i=3;i<=OR+L.height+6;i++)ws.getRow(i).height=15;      // altezza fissa: niente adattamento automatico che sposterebbe le immagini
+  // titolo
+  const t=ws.getCell(1,OC+1);t.value='Organigramma - '+titolo;t.font={name:'Calibri',size:18,bold:true,color:{argb:'FF1E1B4B'}};
+  const d=ws.getCell(2,OC+1);d.value=dataTxt;d.font={name:'Calibri',size:9,color:{argb:'FF6B7280'}};
+  ws.getRow(1).height=26;
+  // celle: riempimenti e bordi raccolti prima, applicati una volta sola
+  const fill={},bordi={};
+  const setF=(r,c,col)=>{fill[r+','+c]=col;};
+  const setB=(r,c,lato,stile,col)=>{const k=r+','+c;(bordi[k]=bordi[k]||{})[lato]={style:stile,color:{argb:argb(col)}};};
+  const LINEA=[196,205,234],VERDE=[74,222,128];
+  L.vl.forEach(l=>{for(let r=l.r1;r<l.r2;r++)setB(r,l.c,'left',l.dash?'dashed':'thin',l.dash?VERDE:LINEA);});
+  L.hl.forEach(l=>{for(let c=l.c1;c<l.c2;c++)setB(l.r,c,'top',l.dash?'dashed':'thin',l.dash?VERDE:LINEA);});
+  const riquadro=(x,y,w,h,bg,bd,stile)=>{
+    for(let r=y;r<y+h;r++)for(let c=x;c<x+w;c++){
+      setF(r,c,bg);
+      if(r===y)setB(r,c,'top',stile,bd);if(r===y+h-1)setB(r,c,'bottom',stile,bd);
+      if(c===x)setB(r,c,'left',stile,bd);if(c===x+w-1)setB(r,c,'right',stile,bd);
+    }
+  };
+  const blocchi=[];
+  const blocco=(c1,r1,c2,r2,val,font,al)=>{blocchi.push({c1,r1,c2,r2,val,font,al});};   // c2/r2 esclusi
+  const imgCache={};
+  const imm=(genere,fondo)=>{const k=genere+argb(fondo);return imgCache[k]||(imgCache[k]=wb.addImage({base64:'data:image/png;base64,'+bytesToBase64(bustoPng(genere,fondo,72)),extension:'png'}));};
+  const avatar=(genere,fondo,col,row,px)=>ws.addImage(imm(genere,fondo),{tl:{col:OC+col,row:OR+row},ext:{width:px,height:px},editAs:'oneCell'});
+
+  L.pannelli.forEach(p=>riquadro(p.x,p.y,p.w,p.h,[255,255,255],[226,232,240],'thin'));
+  L.boxes.forEach(b=>{
+    const n=N[b.id],css=cssTipo(n),st=PDF_STILE[css]||PDF_STILE.persona;
+    const vuoto=!n.nome,persona=n.type!=='reparto';
+    const nome=vuoto?(n.type==='resp'?'Responsabile da assegnare':'(senza nome)'):(persona?bella(n.nome):String(n.nome).toUpperCase());
+    const cnt=n.type==='reparto'?contaPersone(N,children,n.id):0;
+    const sub=n.type==='reparto'?cnt+(cnt===1?' persona':' persone'):(n.sub||(n.cal&&n.cal.mansione)||'');
+    const fondo=vuoto?[148,163,184]:coloreFondoAvatar(n,st),genere=vuoto?'N':(n.genere||'N');
+    const tx={color:{argb:argb(st.tx)}},sb={color:{argb:argb(st.sub)}};
+    if(b.kind==='row'){
+      if(css==='coord'||css==='manuale'||css==='reparto')for(let r=b.y;r<b.y+b.h;r++)for(let c=b.x;c<b.x+b.w;c++)setF(r,c,st.bg);
+      if(n.type==='reparto'){
+        for(let r=b.y;r<b.y+2;r++)for(let c=b.x+1;c<b.x+4;c++)setF(r,c,fondo);
+        blocco(b.x+1,b.y,b.x+4,b.y+2,cnt,{size:11,bold:true,color:{argb:'FFFFFFFF'}},{shrinkToFit:false});
+      }else avatar(genere,fondo,b.x+0.5,b.y+0.35,26);
+      blocco(b.x+4,b.y,b.x+b.w,b.y+1,nome,Object.assign({size:9,bold:true},tx),{horizontal:'left'});
+      if(sub)blocco(b.x+4,b.y+1,b.x+b.w,b.y+2,sub,Object.assign({size:7,italic:false},sb),{horizontal:'left'});
+      return;
+    }
+    riquadro(b.x,b.y,b.w,b.h,st.bg,st.bd,st.dash?'dashed':'thin');
+    const cxl=b.x+b.w/2;
+    if(n.tag)blocco(b.x+1,b.y,b.x+b.w-1,b.y+1,n.tag,Object.assign({size:7,bold:true},sb));
+    if(n.type==='root'){
+      avatar(genere,fondo,cxl-2.7,b.y+1.15,54);
+      blocco(b.x+1,b.y+4,b.x+b.w-1,b.y+6,nome,Object.assign({size:12,bold:true},tx),{wrapText:true,shrinkToFit:false});
+      if(sub)blocco(b.x+1,b.y+6,b.x+b.w-1,b.y+7,sub,Object.assign({size:8},sb));
+    }else if(n.type==='reparto'){
+      for(let r=b.y+1;r<b.y+3;r++)for(let c=cxl-2;c<cxl+2;c++)setF(r,c,fondo);
+      blocco(cxl-2,b.y+1,cxl+2,b.y+3,cnt,{size:14,bold:true,color:{argb:'FFFFFFFF'}},{shrinkToFit:false});
+      blocco(b.x+1,b.y+3,b.x+b.w-1,b.y+5,nome,Object.assign({size:9,bold:true},tx),{wrapText:true,shrinkToFit:false});
+      blocco(b.x+1,b.y+5,b.x+b.w-1,b.y+6,sub,Object.assign({size:8},sb));
+    }else{
+      avatar(genere,fondo,cxl-1.8,b.y+1.1,36);
+      blocco(b.x+1,b.y+3,b.x+b.w-1,b.y+5,nome,Object.assign({size:10,bold:true,italic:vuoto},tx),{wrapText:true,shrinkToFit:false});
+      if(sub)blocco(b.x+1,b.y+5,b.x+b.w-1,b.y+6,sub,Object.assign({size:8},sb));
+    }
+  });
+  // applico riempimenti e bordi
+  Object.keys(fill).forEach(k=>{const [r,c]=k.split(',').map(Number);cella(r,c).fill={type:'pattern',pattern:'solid',fgColor:{argb:argb(fill[k])}};});
+  Object.keys(bordi).forEach(k=>{const [r,c]=k.split(',').map(Number);cella(r,c).border=bordi[k];});
+  // celle unite e testo, per ultimi (lo stile delle celle è già a posto)
+  blocchi.forEach(b=>{
+    if(b.c2-b.c1>1||b.r2-b.r1>1)ws.mergeCells(OR+b.r1+1,OC+b.c1+1,OR+b.r2,OC+b.c2);
+    const a=ws.getCell(OR+b.r1+1,OC+b.c1+1);
+    a.value=b.val;a.font=Object.assign({name:'Calibri'},b.font);
+    a.alignment=Object.assign({horizontal:'center',vertical:'middle',shrinkToFit:true},b.al||{});
+  });
+  // legenda
+  let lx=0;const lr=L.height+2;
+  const leg=[['Vertice',PDF_STILE.root.bg],['Responsabile di filiale',PDF_STILE.resp.bg],['Coordinatore',PDF_STILE.coord.bd],['Reparto',PDF_STILE.reparto.av],['Personale',[99,102,241]],['Staff a fianco del vertice',PDF_STILE.staff.av]];
+  leg.forEach(([tt,col])=>{
+    const a=cella(lr,lx),f={type:'pattern',pattern:'solid',fgColor:{argb:argb(col)}};
+    a.fill=f;cella(lr,lx+1).fill=f;ws.mergeCells(OR+lr+1,OC+lx+1,OR+lr+1,OC+lx+2);
+    const lab=cella(lr,lx+3);lab.value=tt;lab.font={name:'Calibri',size:8,color:{argb:'FF475569'}};lab.alignment={horizontal:'left',vertical:'middle'};
+    lx+=3+Math.ceil(tt.length*0.55)+2;
+  });
+  ws.pageSetup={orientation:'landscape',paperSize:8,fitToPage:true,fitToWidth:1,fitToHeight:1,margins:{left:.3,right:.3,top:.4,bottom:.4,header:.2,footer:.2}};
+
+  // ── foglio 2: elenco piatto filtrabile ──
+  const r=righeExcel(N,children,etichetta);
+  const w2=wb.addWorksheet('Elenco',{views:[{state:'frozen',ySplit:1,showGridLines:true}]});
+  [16,8,28,32,26,28,32,28].forEach((w,i)=>{w2.getColumn(i+1).width=w;});
+  r.elenco.forEach((riga,i)=>{
+    riga.forEach((v,j)=>{
+      const c=w2.getCell(i+1,j+1);c.value=v;
+      if(i===0){c.font={name:'Calibri',size:10,bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF4F46E5'}};c.alignment={vertical:'middle'};}
+      else{c.font={name:'Calibri',size:10};if(j===1)c.alignment={horizontal:'center'};}
+    });
+  });
+  w2.autoFilter='A1:H'+r.elenco.length;
+  return wb;
+}
+
 // ==== FINE LOGICA PURA ====
 
 // ── Stato applicazione ──
 const cacheFiliali={};let vistaAgg=false;
 let nascostiInfo=[];
-let filiale='seriate',stato=null,layout={manual:[],overrides:[],stili:[],nascosti:[]},N={},children={},zoom=1,primoRender=true;
+let filiale='seriate',stato=null,layout={manual:[],overrides:[],stili:[],nascosti:[],generi:[]},N={},children={},zoom=1,primoRender=true;
 const $=id=>document.getElementById(id);
 const chart=$('chart'),wrap=$('chartWrap');
 
@@ -498,7 +1125,7 @@ function setStatus(t,ok=true){const s=$('saveStatus');s.textContent=t;s.style.co
 async function persisti(){
   setStatus('Salvataggio…');
   try{
-    await setDoc(doc(db,'organigramma',filiale),{filiale,manual:layout.manual,overrides:layout.overrides,stili:layout.stili||[],nascosti:layout.nascosti||[],...(Array.isArray(layout.staff)?{staff:layout.staff}:{}),savedAt:new Date().toISOString()});
+    await setDoc(doc(db,'organigramma',filiale),{filiale,manual:layout.manual,overrides:layout.overrides,stili:layout.stili||[],nascosti:layout.nascosti||[],generi:layout.generi||[],...(Array.isArray(layout.staff)?{staff:layout.staff}:{}),savedAt:new Date().toISOString()});
     setStatus('✓ Salvato');
   }catch(e){console.warn('Salvataggio organigramma fallito:',e);setStatus('⚠️ Errore di salvataggio',false);}
 }
@@ -519,7 +1146,7 @@ async function caricaAggregato(modo){
       const [s,l]=await Promise.all([getDoc(doc(db,'stato',f.id)),getDoc(doc(db,'organigramma',f.id))]);
       const sd=s.exists()?s.data():null,ld=l.exists()?l.data():{};
       cacheFiliali[f.id]={stato:sd?{dipendenti:sd.dipendenti||[],reparti:sd.reparti||[]}:null,
-                          layout:{manual:ld.manual||[],overrides:ld.overrides||[],stili:ld.stili||[],nascosti:ld.nascosti||[],staff:Array.isArray(ld.staff)?ld.staff:undefined}};
+                          layout:{manual:ld.manual||[],overrides:ld.overrides||[],stili:ld.stili||[],nascosti:ld.nascosti||[],generi:ld.generi||[],staff:Array.isArray(ld.staff)?ld.staff:undefined}};
     }));
   }catch(e){chart.innerHTML='<div class="msg">Errore nel caricamento: '+esc(e.message)+'</div>';return;}
   ricostruisciAggregato(modo);
@@ -550,7 +1177,7 @@ async function carica(fil){
     const [s,l]=await Promise.all([getDoc(doc(db,'stato',fil)),getDoc(doc(db,'organigramma',fil))]);
     stato=s.exists()?s.data():null;
     const ld=l.exists()?l.data():{};
-    layout={manual:ld.manual||[],overrides:ld.overrides||[],stili:ld.stili||[],nascosti:ld.nascosti||[],staff:Array.isArray(ld.staff)?ld.staff:undefined};
+    layout={manual:ld.manual||[],overrides:ld.overrides||[],stili:ld.stili||[],nascosti:ld.nascosti||[],generi:ld.generi||[],staff:Array.isArray(ld.staff)?ld.staff:undefined};
   }catch(e){
     chart.innerHTML='<div class="msg">Errore nel caricamento: '+esc(e.message)+'</div>';
     return;
@@ -591,6 +1218,62 @@ $('bFit').onclick=()=>applicaZoom(adattaValore(false));
 $('bZm').onclick=()=>applicaZoom(zoom-.1);
 $('bZp').onclick=()=>applicaZoom(zoom+.1);
 $('bPrint').onclick=()=>window.print();
+
+// ── Esportazione PDF / Excel (di ciò che stai vedendo: filiale, vista totale o responsabili+coordinatori) ──
+const URLS_JSPDF=['https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js','https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js'];
+const URLS_EXCELJS=['https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js','https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js'];
+const libCaricate={};
+// Le librerie si scaricano solo al primo uso (la pagina resta leggera); se la prima fonte non risponde si prova la seconda
+function caricaLib(urls,globale){
+  if(window[globale])return Promise.resolve(window[globale]);
+  if(!libCaricate[globale])libCaricate[globale]=(async()=>{
+    let ultimo=null;
+    for(const url of urls){
+      try{
+        await new Promise((ok,ko)=>{const s=document.createElement('script');s.src=url;s.onload=ok;s.onerror=()=>{s.remove();ko(new Error('download non riuscito'));};document.head.appendChild(s);});
+        if(window[globale])return window[globale];
+      }catch(e){ultimo=e;}
+    }
+    delete libCaricate[globale];
+    throw ultimo||new Error('libreria non disponibile');
+  })();
+  return libCaricate[globale];
+}
+function scaricaBlob(blob,nome){
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nome;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+function titoloVista(){
+  if(filiale==='totale')return 'TUTTE LE FILIALI';
+  if(filiale==='vertici')return 'RESPONSABILI E COORDINATORI';
+  return (FILIALI.find(f=>f.id===filiale)||{nome:filiale}).nome;
+}
+function nomeFileExport(est){return 'Organigramma_'+titoloVista().replace(/[^A-Za-z0-9]+/g,'_')+'_'+oggiISO()+'.'+est;}
+async function esporta(tipo){
+  if(!N||!N.root){return;}
+  const btn=$(tipo==='pdf'?'bPdf':'bXls');btn.disabled=true;
+  setStatus(tipo==='pdf'?'Preparo il PDF…':'Preparo l\'Excel…');
+  try{
+    if(tipo==='pdf'){
+      await caricaLib(URLS_JSPDF,'jspdf');
+      const doc=creaPdf(window.jspdf.jsPDF,N,children,titoloVista(),'Aggiornato il '+new Date().toLocaleDateString('it-IT'));
+      doc.save(nomeFileExport('pdf'));
+    }else{
+      await caricaLib(URLS_EXCELJS,'ExcelJS');
+      const aggregata=(filiale==='totale'||filiale==='vertici');
+      const wb=creaExcel(window.ExcelJS,N,children,aggregata?null:titoloVista(),titoloVista(),'Aggiornato il '+new Date().toLocaleDateString('it-IT'));
+      const buf=await wb.xlsx.writeBuffer();
+      scaricaBlob(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),nomeFileExport('xlsx'));
+    }
+    setStatus('✓ '+(tipo==='pdf'?'PDF':'Excel')+' scaricato');
+  }catch(e){
+    console.warn('Esportazione fallita:',e);
+    setStatus('⚠️ Esportazione non riuscita',false);
+    alert('Non sono riuscito a creare il file '+(tipo==='pdf'?'PDF':'Excel')+' ('+e.message+').\nControlla la connessione a internet: gli strumenti di esportazione si scaricano la prima volta che li usi.');
+  }finally{btn.disabled=false;}
+}
+$('bPdf').onclick=()=>esporta('pdf');
+$('bXls').onclick=()=>esporta('xlsx');
 
 // ── Trascinamento ──
 let dragId=null,hoverEl=null;
@@ -662,6 +1345,10 @@ function apriModale(id){
   }else{
     body+=`<div class="hint">${n.type==='reparto'?'Reparto preso dal calendario presenze.':n.type==='resp'?'Responsabile di filiale preso dal calendario presenze (reparto <b>'+esc(n.rep||'—')+'</b>).':'Mansione: <b>'+esc(n.sub||'—')+'</b> · Reparto: <b>'+esc(n.rep||'—')+'</b>.'}<br>Questi dati arrivano dal calendario presenze e si modificano da lì: qui decidi solo dove collocarlo nell'organigramma.</div>`;
   }
+  if(n.type!=='reparto'){
+    const auto={M:'uomo',F:'donna',N:'neutra'}[n.genereAuto]||'neutra',cur=n.genereManuale?n.genere:'';
+    body+=`<label>Figura</label><select id="fGenere">${[['','Automatica ('+auto+')'],['M','Uomo'],['F','Donna'],['N','Neutra']].map(([v,t])=>`<option value="${v}" ${v===cur?'selected':''}>${t}</option>`).join('')}</select>`;
+  }
   if(n.type==='persona'||n.type==='coord'||n.type==='manuale'){
     const opt=n.manual
       ?[['','Normale (tratteggiata)'],['giallo','Gialla (coordinatore)']]
@@ -715,6 +1402,8 @@ function apriModale(id){
       else if(n.manual)modificaManuale(layout,filiale,id,$('fNome').value,$('fRuolo').value);
       const st=$('fStile');
       if(st&&st.value!==(n.stile||''))impostaStile(layout,filiale,id,st.value);
+      const fg=$('fGenere');
+      if(fg&&fg.value!==(n.genereManuale?n.genere:''))impostaGenere(layout,filiale,id,fg.value);
       const sel=$('fParent');
       if(sel&&sel.value!==n.parent&&puoSpostare(N,children,id,sel.value))spostaNodo(layout,filiale,N,children,id,sel.value);
       chiudi();await persisti();ricostruisci();
@@ -766,7 +1455,7 @@ $('bHidden').onclick=()=>{
 
 $('bReset').onclick=async()=>{
   if(!confirm('Ripristinare l\'organigramma automatico di questa filiale? Gli spostamenti e i riquadri aggiunti a mano andranno persi.'))return;
-  layout={manual:[],overrides:[],stili:[],nascosti:[]};
+  layout={manual:[],overrides:[],stili:[],nascosti:[],generi:[]};
   await persisti();ricostruisci();
 };
 
