@@ -2153,7 +2153,11 @@ function calcolaKPIPeriodo(filiale,anno,mesiArr,dipsAll,entries,tempiIdx){
       });
       const orePerse=entsT.filter(e=>["ferie","rol","t104","assenza_extra","lavorazione_extra","ferie_prev","rol_prev"].includes(e.tipo))
         .reduce((s,e)=>s+(parseFloat(e.ore)||0),0)+entsT.filter(e=>e.tipo==="malattia").length*8;
-      tec.oreDisp=giorniLav.length*8;
+      // Straordinario del sabato (calendario presenze): ore di lavoro in più, che vanno al denominatore perché
+      // la produzione bippata di quel sabato è già tra le lavorazioni del periodo
+      const oreStraord=entries.filter(e=>e.dipId===dipMatch.id&&e.tipo==="straordinario"&&e.data&&e.data>=primoG&&e.data<=ultimoG)
+        .reduce((s,e)=>s+(parseFloat(e.ore)||0),0);
+      tec.oreDisp=giorniLav.length*8+oreStraord;
       tec.oreEff=Math.max(0,tec.oreDisp-orePerse);
       tec.dipMatch=dipMatch.nome;
       tec.escluso=false;

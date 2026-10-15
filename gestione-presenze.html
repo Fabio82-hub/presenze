@@ -126,17 +126,20 @@ function calcolaEfficienza(s){
   let cur=new Date(anno,mese,1);
   while(cur<=new Date(anno,mese+1,0)){
     const ds=localDateStr(cur),wd=cur.getDay();
-    if(wd!==0&&wd!==6){
+    // Sabato con straordinario: conta solo chi ha la voce, con le sue ore (come nel calendario)
+    const sabStr=(wd===6)&&ents.some(e=>e.data===ds&&e.tipo==='straordinario');
+    if((wd!==0&&wd!==6)||sabStr){
       const p=prod[ds];
       defs.forEach(({chiave,rep})=>{
         if(!rep)return;
         const t=parseFloat(temp[rep])||0;
         if(!t)return;
-        const dr=s.dipendenti.filter(d=>attivoInData(d,ds)&&repEff(d,ds)===rep);
+        let dr=s.dipendenti.filter(d=>attivoInData(d,ds)&&repEff(d,ds)===rep);
+        if(sabStr)dr=dr.filter(d=>ents.some(e=>e.dipId===d.id&&e.data===ds&&e.tipo==='straordinario'));
         if(!dr.length)return;
-        let ore=dr.length*8;
+        let ore=sabStr?ents.filter(e=>e.data===ds&&e.tipo==='straordinario'&&dr.some(d=>d.id===e.dipId)).reduce((a,e)=>a+(parseFloat(e.ore)||0),0):dr.length*8;
         const eg=ents.filter(e=>e.data===ds&&dr.some(d=>d.id===e.dipId));
-        ore=Math.max(0,ore-eg.filter(e=>['ferie','rol','t104','lavorazione_extra','assenza_extra'].includes(e.tipo)).reduce((a,e)=>a+(parseFloat(e.ore)||0),0)-eg.filter(e=>e.tipo==='malattia').length*8);
+        if(!sabStr)ore=Math.max(0,ore-eg.filter(e=>['ferie','rol','t104','lavorazione_extra','assenza_extra'].includes(e.tipo)).reduce((a,e)=>a+(parseFloat(e.ore)||0),0)-eg.filter(e=>e.tipo==='malattia').length*8);
         let daR=null;
         if(p){
           if(chiave==='1°FASE')daR=((parseInt(p.smontati)||0)+(parseInt(p.carrelli)||0)+(parseInt(p.verniciati)||0))/3;

@@ -253,6 +253,11 @@ tr:hover td{background:var(--accent-light)}
 .xtab .td-cell.ferie_prev{background:#fce7f3;color:#be185d;border:2px dashed #f9a8d4}
 .xtab .td-cell.rol_prev{background:#e0f2fe;color:#0369a1;border:2px dashed #7dd3fc}
 .xtab .td-cell.cambio_reparto{background:#4338ca;color:#fff}
+.xtab .td-cell.straordinario{background:#0891b2;color:#fff}
+.xtab .td-cell.we.sab-click{cursor:pointer}
+.xtab .td-cell.we.sab-click:hover{background:#cffafe;filter:none;box-shadow:inset 0 0 0 1px #67e8f9}
+.cal-pill.straordinario{background:#cffafe;color:#0e7490}
+.xtab .tf-straord{background:#a5f3fc;color:#164e63}
 .xtab .td-cell.cessato-cell{background:#e5e7eb;color:#9ca3af;cursor:not-allowed}
 .xtab .td-cell.multi{background:#7c3aed;color:#fff}
 .xtab .td-cell.empty{background:#fff}
@@ -380,6 +385,7 @@ tr:hover td{background:var(--accent-light)}
           <option value="assenza_extra">Assenza Extra</option>
           <option value="ferie_prev">Ferie Previsionali</option>
           <option value="rol_prev">ROL Previsionali</option>
+          <option value="straordinario">Straordinario sabato</option>
         </select>
       </div>
     </div>
@@ -474,6 +480,7 @@ tr:hover td{background:var(--accent-light)}
         <span class="chip" onclick="fReg(this,'lavorazione_extra')">Lav. Extra</span>
         <span class="chip" onclick="fReg(this,'ferie_prev')">Ferie Prev.</span>
         <span class="chip" onclick="fReg(this,'rol_prev')">ROL Prev.</span>
+        <span class="chip" onclick="fReg(this,'straordinario')">Straord.</span>
       </div>
       <button class="btn bp sm" style="margin-left:auto" onclick="openM('mEntry')">+ Inserisci</button>
     </div>
@@ -838,6 +845,7 @@ tr:hover td{background:var(--accent-light)}
           <option value="ferie_prev">🌸 Ferie Previsionali</option>
           <option value="rol_prev">🔵 ROL Previsionali</option>
           <option value="cambio_reparto">🔄 Cambio Mansione Temporanea</option>
+          <option value="straordinario">⏰ Straordinario sabato</option>
         </select>
       </div>
     </div>
@@ -1533,6 +1541,18 @@ function repartoEffettivoInData(dip, ds){
   return cambio ? cambio.repartoTemp : dip.reparto;
 }
 
+// ── STRAORDINARIO DEL SABATO ──
+// Di sabato si lavora solo chi ha una voce "straordinario": quel giorno entra nel calcolo dell'efficienza
+// contando SOLO queste persone e le LORO ore di straordinario (non le solite 8h), poi si inserisce la
+// produzione nelle righe in fondo come per un giorno normale.
+function oreStraordinarioDip(dipId, ds){
+  return S.entries.filter(e=>e.dipId===dipId && e.data===ds && e.tipo==='straordinario')
+    .reduce((s,e)=>s+(parseFloat(e.ore)||0),0);
+}
+function haStraordinarioSabato(ds){
+  return new Date(ds+'T00:00:00').getDay()===6 && S.entries.some(e=>e.data===ds && e.tipo==='straordinario');
+}
+
 // ════════════════════════════════════════════════════
 //  FESTIVITÀ ITALIANE (fisse + Pasqua/Pasquetta calcolate)
 // ════════════════════════════════════════════════════
@@ -1733,7 +1753,8 @@ function buildCalTabella(){
           continue;
         }
         if(isWe&&!es.length){
-          cells+=`<td class="td-cell we"></td>`;
+          if(wd===6) cells+=`<td class="td-cell we sab-click" onclick="openStraordinario('${ds}','${d.id}')" title="Sabato — clic per inserire lo straordinario"></td>`;
+          else cells+=`<td class="td-cell we"></td>`;
         } else if(!es.length){
           cells+=`<td class="td-cell empty${isFest?' festivo-empty':''}" onclick="openGiornoTabella('${ds}','${d.id}')" title="${isFest?'Festività':''}"></td>`;
         } else if(es.length===1){
@@ -1793,19 +1814,22 @@ function buildCalTabella(){
     {key:'rol',     label:'PERMESSI',   cls:'tf-perm'},
     {key:'ferie',   label:'FERIE',      cls:'tf-ferie'},
     {key:'t104',    label:'104',        cls:'tf-104'},
+    {key:'straordinario', label:'STRAORD.', cls:'tf-straord'},
   ];
   let footerRows='';
-  footerLabels.forEach(({key,label,cls})=>{
+  // La riga dello straordinario compare solo nei mesi in cui ce n'è almeno uno
+  const haStrMese=Object.values(dayMap).some(m=>Object.values(m).some(es=>es.some(e=>e.tipo==='straordinario')));
+  footerLabels.filter(f=>f.key!=='straordinario'||haStrMese).forEach(({key,label,cls})=>{
     let cells='';
     for(let day=1;day<=dim;day++){
       const wd=new Date(calY,calM,day).getDay();
       const isWe=wd===0||wd===6;
-      if(isWe){cells+=`<td class="td-cell we"></td>`;continue;}
+      if(isWe && key!=='straordinario'){cells+=`<td class="td-cell we"></td>`;continue;}
       let count=0;
       if(key==='assenti'){
         // tutti i tipi tranne mancata
         const dips2=Object.keys(dayMap[day]).filter(dipId=>
-          dayMap[day][dipId].some(e=>e.tipo!=='mancata')
+          dayMap[day][dipId].some(e=>e.tipo!=='mancata' && e.tipo!=='straordinario')
         );
         count=dips2.length;
       } else {
@@ -1878,23 +1902,26 @@ function buildCalTabella(){
         const wd=new Date(calY,calM,day).getDay();
         const isLav = wd!==0 && wd!==6 && !isFestivo(ds);
 
-        if(!isLav){ cellsEff+=`<td class="tr-eff"></td>`; continue; }
+        // Sabato con straordinario: giornata "lavorativa" solo per chi ha la voce, con le sue ore
+        const sabStr = !isLav && haStraordinarioSabato(ds);
+        if(!isLav && !sabStr){ cellsEff+=`<td class="tr-eff"></td>`; continue; }
 
         // Chi conta per QUESTO reparto OGGI: attivo in questa data (un cessato a metà mese
         // esce dal conteggio dal giorno dopo la cessazione) e il cui reparto EFFETTIVO oggi
         // (tenendo conto di un eventuale cambio mansione temporaneo) è questo reparto.
-        const dipsRep=dipsPerf.filter(d=>attivoInData(d,ds) && repartoEffettivoInData(d,ds)===rep);
+        let dipsRep=dipsPerf.filter(d=>attivoInData(d,ds) && repartoEffettivoInData(d,ds)===rep);
+        if(sabStr) dipsRep=dipsRep.filter(d=>oreStraordinarioDip(d.id,ds)>0);
 
         if(!dipsRep.length || !tempistica){
           cellsEff+=`<td class="tr-eff tr-eff-na" title="${!tempistica?'Imposta la tempistica in Performance Reparto':'Nessun dipendente nel reparto'}">—</td>`;
           continue;
         }
 
-        let oreEff=dipsRep.length*8;
+        let oreEff=sabStr ? dipsRep.reduce((s,d)=>s+oreStraordinarioDip(d.id,ds),0) : dipsRep.length*8;
         const entsGiorno=S.entries.filter(e=>e.data===ds && dipsRep.some(d=>d.id===e.dipId));
         const perse = entsGiorno.filter(e=>e.tipo==='ferie'||e.tipo==='rol'||e.tipo==='t104'||e.tipo==='lavorazione_extra'||e.tipo==='assenza_extra').reduce((s,e)=>s+(parseFloat(e.ore)||0),0)
                     + entsGiorno.filter(e=>e.tipo==='malattia').length*8;
-        oreEff=Math.max(0,oreEff-perse);
+        if(!sabStr) oreEff=Math.max(0,oreEff-perse);
 
         const daTeoriche=oreEff/tempistica;
         const daReali=getProduzioneRepartoGiorno(rep,ds)||0;
@@ -1932,7 +1959,7 @@ function buildCalTabella(){
       const ds=isoD(calY,calM,day);
       const wd=new Date(calY,calM,day).getDay();
       const isLav = wd!==0 && wd!==6 && !isFestivo(ds);
-      if(!isLav){ cellsTot+=`<td class="tr-eff"></td>`; continue; }
+      if(!isLav && !haStraordinarioSabato(ds)){ cellsTot+=`<td class="tr-eff"></td>`; continue; }
       const g=totGiorno[ds];
       if(!g || g.daTeoricheTot===0){
         cellsTot+=`<td class="tr-eff tr-eff-na">—</td>`;
@@ -1976,7 +2003,8 @@ function buildCalTabella(){
     <span style="background:#16a34a;color:#fff;padding:.15rem .4rem;border-radius:3px;font-weight:700">1</span> L.104 &nbsp;
     <span style="background:#eab308;color:#000;padding:.15rem .4rem;border-radius:3px;font-weight:700">1</span> Manc.Timb. &nbsp;
     <span style="background:#7c3aed;color:#fff;padding:.15rem .4rem;border-radius:3px;font-weight:700">2+</span> Più tipi &nbsp;
-    <span style="background:#f3e8ff;color:#6b21a8;padding:.15rem .4rem;border-radius:3px;font-weight:700">✱</span> Lav. Extra
+    <span style="background:#f3e8ff;color:#6b21a8;padding:.15rem .4rem;border-radius:3px;font-weight:700">✱</span> Lav. Extra &nbsp;
+    <span style="background:#0891b2;color:#fff;padding:.15rem .4rem;border-radius:3px;font-weight:700">1</span> Straordinario sabato
   </div>`;
 
   // Intestazione colonne saldi (in fondo all'header)
@@ -2064,6 +2092,19 @@ function openGiornoTabella(ds, dipId){
   },40);
 }
 
+// Sabato: clic sulla casella di una persona → inserimento dello straordinario (precompilato: sabato, 4 ore)
+function openStraordinario(ds, dipId){
+  openM('mEntry');
+  setTimeout(()=>{
+    setModalMode('singolo');
+    document.getElementById('eTipo').value='straordinario';
+    document.getElementById('eData').value=ds;
+    document.getElementById('eDip').value=dipId;
+    document.getElementById('eOre').value=4;
+    updERes();
+  },40);
+}
+
 // Salva il dato di produzione giornaliera (D.A. Smontati / Carrelli / D.A. Verniciati / D.A. Evase)
 function saveProduzioneGiorno(ds, campo, valore){
   if(!S.produzione) S.produzione={};
@@ -2077,6 +2118,7 @@ function openGiorno(ds){
   document.getElementById('mGiornoTit').textContent=GGLONG[dt.getDay()]+' '+dt.getDate()+' '+MESI[dt.getMonth()]+' '+dt.getFullYear();
   const all=S.entries.filter(e=>e.data===ds);
   const nP=new Set(all.map(e=>e.dipId)).size;
+  const soloStr=all.length>0 && all.every(e=>e.tipo==='straordinario');
 
   // Raggruppa per reparto
   const byRep={};
@@ -2090,7 +2132,7 @@ function openGiorno(ds){
   let html='';
   if(all.length){
     html=`<div class="al a-info" style="margin-bottom:.85rem">
-      <b>${nP}</b> ${nP===1?'dipendente assente':'dipendenti assenti'} · <b>${fmt(all.reduce((s,e)=>s+parseFloat(e.ore),0))}h</b> totali
+      <b>${nP}</b> ${soloStr?(nP===1?'dipendente con straordinario':'dipendenti con straordinario'):(nP===1?'dipendente assente':'dipendenti assenti')} · <b>${fmt(all.reduce((s,e)=>s+parseFloat(e.ore),0))}h</b> totali
     </div>`;
     Object.keys(byRep).sort().forEach(rep=>{
       html+=`<div style="font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:.4rem 0 .25rem">${shortRep(rep)}</div>`;
@@ -2110,7 +2152,11 @@ function openGiorno(ds){
     html='<p style="color:var(--text3);font-size:.85rem;padding:.5rem 0">Nessuna assenza registrata per questo giorno.</p>';
   }
   document.getElementById('mGiornoBody').innerHTML=html;
-  document.getElementById('mGiornoAdd').onclick=()=>{closeM('mGiorno');openM('mEntry');setTimeout(()=>{document.getElementById('eData').value=ds;},30);};
+  document.getElementById('mGiornoAdd').onclick=()=>{closeM('mGiorno');openM('mEntry');setTimeout(()=>{
+    document.getElementById('eData').value=ds;
+    // di sabato la voce più probabile è lo straordinario
+    if(dt.getDay()===6){document.getElementById('eTipo').value='straordinario';document.getElementById('eOre').value=4;updERes();}
+  },30);};
   openM('mGiorno');
 }
 
@@ -2341,7 +2387,7 @@ function updERes(){
   const tipo=document.getElementById('eTipo').value;
   const dipId=document.getElementById('eDip').value;
   const el=document.getElementById('eRes');
-  const lm={ferie:'Ore Ferie',rol:'Ore ROL/Permessi',t104:'Ore Legge 104',mancata:'Giornata',malattia:'Giornata'};
+  const lm={ferie:'Ore Ferie',rol:'Ore ROL/Permessi',t104:'Ore Legge 104',mancata:'Giornata',malattia:'Giornata',straordinario:'Ore di straordinario'};
   document.getElementById('eOreLabel').textContent=lm[tipo]||'Ore';
   const isGiornata=(tipo==='mancata'||tipo==='malattia');
   const isCambioReparto=(tipo==='cambio_reparto');
@@ -2350,8 +2396,17 @@ function updERes(){
   if(oreRow) oreRow.style.display=(isGiornata||isCambioReparto)?'none':'flex';
   const repTempRow=document.getElementById('eRepartoTempRow');
   if(repTempRow) repTempRow.style.display=isCambioReparto?'flex':'none';
+  // Lo straordinario del sabato si inserisce un giorno alla volta: se era attiva la modalità periodo, torna al giorno singolo
+  if(tipo==='straordinario' && _modalMode==='periodo'){ setModalMode('singolo'); return; }
   // Aggiorna anche la preview del periodo se siamo in quella modalità
   if(_modalMode==='periodo') { updPeriodoPreview(); return; }
+
+  if(tipo==='straordinario'){
+    const oreEl=document.getElementById('eOre');
+    if(oreEl && (parseFloat(oreEl.value)||0)===8) oreEl.value=4; // il sabato si lavora di solito la mattina
+    el.innerHTML='<div class="al a-info" style="font-size:.75rem">⏰ <b>Straordinario del sabato</b> — da inserire solo per chi lavora quel sabato. Nel calcolo dell\'efficienza del sabato contano solo queste persone, con le ore indicate qui (non le solite 8h). Poi inserisci la produzione nelle righe in fondo al calendario.</div>';
+    return;
+  }
 
   if(isCambioReparto){
     el.innerHTML='<div class="al a-info" style="font-size:.75rem">🔄 Per tutta la giornata (o il periodo), le ore di questo dipendente conteranno per il reparto scelto sopra ai fini del calcolo Efficienza — lo storico del suo reparto abituale resta invariato.</div>';
@@ -2393,7 +2448,7 @@ function updERes(){
 // Esclude "lavorazione_extra" (non è un'assenza) e "mancata" (mancata timbratura — non è
 // un'assenza pianificata, non genera né subisce il controllo di sovrapposizione).
 function verificaSovrapposizioneMansione(dipId, tipo, giorniList){
-  if(tipo==='lavorazione_extra' || tipo==='mancata' || tipo==='cambio_reparto') return true; // nessun controllo su questi tipi
+  if(tipo==='lavorazione_extra' || tipo==='mancata' || tipo==='cambio_reparto' || tipo==='straordinario') return true; // nessun controllo su questi tipi
   const dip=S.dipendenti.find(d=>d.id===dipId);
   const mansione=dip&&dip.mansione;
   if(!mansione) return true; // nessuna mansione assegnata: niente da confrontare
@@ -2403,7 +2458,7 @@ function verificaSovrapposizioneMansione(dipId, tipo, giorniList){
   const conflitti=[];
   giorniList.forEach(data=>{
     colleghi.forEach(c=>{
-      const assenza=S.entries.find(e=>e.dipId===c.id && e.tipo!=='lavorazione_extra' && e.tipo!=='mancata' && e.tipo!=='cambio_reparto' && e.data===data);
+      const assenza=S.entries.find(e=>e.dipId===c.id && e.tipo!=='lavorazione_extra' && e.tipo!=='mancata' && e.tipo!=='cambio_reparto' && e.tipo!=='straordinario' && e.data===data);
       if(assenza) conflitti.push({nome:c.nome,data,tipo:LABEL_TIPO[assenza.tipo]||assenza.tipo});
     });
   });
@@ -2434,6 +2489,7 @@ function salvaEntry(){
     const al=document.getElementById('eDataAl').value;
     if(!dal||!al){alert('Inserisci le date Dal e Al.');return;}
     if(al<dal){alert('La data finale deve essere dopo quella iniziale.');return;}
+    if(tipo==='straordinario'){alert('Lo straordinario si inserisce un sabato alla volta: usa "Giorno singolo".');return;}
     const giorni=getLavorativi(dal,al);
     if(!giorni.length){alert('Nessun giorno lavorativo nel periodo.');return;}
     if(!verificaSovrapposizioneMansione(dipId,tipo,giorni))return;
@@ -2450,6 +2506,19 @@ function salvaEntry(){
     // ── MODALITÀ SINGOLO ──
     const data=document.getElementById('eData').value;
     if(!data){alert('Inserisci la data.');return;}
+    if(tipo==='straordinario'){
+      // Solo di sabato; una sola voce per persona e giorno (se c'è già, si aggiornano le ore)
+      if(new Date(data+'T00:00:00').getDay()!==6){alert('Lo straordinario si inserisce solo per il sabato: scegli una data che cada di sabato.');return;}
+      const oreS=parseFloat(document.getElementById('eOre').value)||0;
+      if(oreS<=0){alert('Inserisci le ore di straordinario.');return;}
+      const gia=S.entries.find(e=>e.dipId===dipId&&e.data===data&&e.tipo==='straordinario');
+      if(gia){gia.ore=oreS;gia.note=note;}
+      else S.entries.push({id:uid(),dipId,tipo,data,ore:oreS,note,createdAt:new Date().toISOString()});
+      saveS();closeM('mEntry');
+      renderDash();renderReg();
+      if(document.getElementById('s-calendario').classList.contains('active'))renderCal();
+      return;
+    }
     if(!verificaSovrapposizioneMansione(dipId,tipo,[data]))return;
     const ore=(isGiornata||isCambioReparto)?1:(parseFloat(document.getElementById('eOre').value)||0);
     if(!isGiornata&&!isCambioReparto&&ore<=0){alert('Inserisci le ore.');return;}
@@ -3066,7 +3135,7 @@ function renderPerformanceTabellaSoloRicalcolo(){
     const dips=attivi.filter(d=>d.reparto===rep);
     if(!dips.length)return;
 
-    const oreDisponibili = dips.length * 8 * numGiorniLav;
+    let oreDisponibili = dips.length * 8 * numGiorniLav;
 
     const entsPeriodo=S.entries.filter(e=>{
       if(e.data<primoGiorno||e.data>ultimoGiorno)return false;
@@ -3076,6 +3145,8 @@ function renderPerformanceTabellaSoloRicalcolo(){
     const oreRol      = entsPeriodo.filter(e=>e.tipo==='rol').reduce((s,e)=>s+(parseFloat(e.ore)||0),0);
     const ore104      = entsPeriodo.filter(e=>e.tipo==='t104').reduce((s,e)=>s+(parseFloat(e.ore)||0),0);
     const oreLavExtra = entsPeriodo.filter(e=>e.tipo==='lavorazione_extra'||e.tipo==='assenza_extra').reduce((s,e)=>s+(parseFloat(e.ore)||0),0);
+    // Straordinario del sabato: ore in più rispetto alle 8h × giorni lavorativi (la produzione del sabato è già nel periodo)
+    oreDisponibili += entsPeriodo.filter(e=>e.tipo==='straordinario').reduce((s,e)=>s+(parseFloat(e.ore)||0),0);
     const giorniMal   = entsPeriodo.filter(e=>e.tipo==='malattia').length;
     const oreMalattia = giorniMal*8;
     const orePerse = oreFerie+oreRol+ore104+oreMalattia+oreLavExtra;
@@ -3164,12 +3235,14 @@ function renderPerformanceChart(primoGiorno, ultimoGiorno, repFilt, attiviTotali
       const perse = entsGiorno.filter(e=>e.tipo==='ferie'||e.tipo==='rol'||e.tipo==='t104'||e.tipo==='lavorazione_extra'||e.tipo==='assenza_extra').reduce((s,e)=>s+(parseFloat(e.ore)||0),0)
                   + entsGiorno.filter(e=>e.tipo==='malattia').length*8;
       oreEff = Math.max(0, oreEff-perse);
+    } else if(haStraordinarioSabato(ds)){
+      oreEff = dips.reduce((s,d)=>s+oreStraordinarioDip(d.id,ds),0);   // sabato: solo le ore di straordinario
     }
 
     const prod = repartiProd.reduce((s,r)=>s+(getProduzioneRepartoGiorno(r,ds)||0),0);
 
     labels.push(curD.getDate()+'/'+(curD.getMonth()+1));
-    oreEffSerie.push(isLav ? Math.round(oreEff*10)/10 : null);
+    oreEffSerie.push((isLav||oreEff>0) ? Math.round(oreEff*10)/10 : null);
     prodSerie.push(prod || null);
     curD.setDate(curD.getDate()+1);
   }
@@ -3281,7 +3354,7 @@ function esportaPerformanceExcel(){
   repartiDaMostrare.forEach(rep=>{
     const dips=attivi.filter(d=>d.reparto===rep);
     if(!dips.length)return;
-    const oreDisponibili=dips.length*8*numGiorniLav;
+    let oreDisponibili=dips.length*8*numGiorniLav;
     const entsPeriodo=S.entries.filter(e=>{
       if(e.data<primoGiorno||e.data>ultimoGiorno)return false;
       return dips.some(d=>d.id===e.dipId);
@@ -3290,6 +3363,7 @@ function esportaPerformanceExcel(){
     const oreRol=entsPeriodo.filter(e=>e.tipo==='rol').reduce((s,e)=>s+(parseFloat(e.ore)||0),0);
     const ore104=entsPeriodo.filter(e=>e.tipo==='t104').reduce((s,e)=>s+(parseFloat(e.ore)||0),0);
     const oreLavExtra=entsPeriodo.filter(e=>e.tipo==='lavorazione_extra'||e.tipo==='assenza_extra').reduce((s,e)=>s+(parseFloat(e.ore)||0),0);
+    oreDisponibili+=entsPeriodo.filter(e=>e.tipo==='straordinario').reduce((s,e)=>s+(parseFloat(e.ore)||0),0); // straordinario del sabato
     const giorniMal=entsPeriodo.filter(e=>e.tipo==='malattia').length;
     const orePerse=oreFerie+oreRol+ore104+giorniMal*8+oreLavExtra;
     const oreEffettive=Math.max(0,oreDisponibili-orePerse);
@@ -3874,6 +3948,7 @@ function tCfg(tipo){
     ferie_prev:        {label:'Ferie Prev.',     col:'#be185d',bg:'#fce7f3'},
     rol_prev:          {label:'ROL Prev.',       col:'#0369a1',bg:'#e0f2fe'},
     cambio_reparto:    {label:'Cambio Mansione', col:'#4338ca',bg:'#e0e7ff'},
+    straordinario:     {label:'Straord. sabato', col:'#0e7490',bg:'#cffafe'},
   }[tipo]||{label:tipo,col:'var(--text)',bg:'var(--surface2)'};
 }
 
@@ -4141,7 +4216,7 @@ Object.assign(window, {
   dashRepChip,
   aggiornaSaldoInline, openMSaldi, salvaSaldi,
   initCalSel, calDelta, renderCal,
-  openGiorno, openGiornoTabella, saveProduzioneGiorno,
+  openGiorno, openGiornoTabella, openStraordinario, saveProduzioneGiorno,
   renderPersonale, persRepChip, toggleCessato,
   openM, closeM, toggleScadenza,
   editDip, salvaDip,
