@@ -254,6 +254,8 @@ tr:hover td{background:var(--accent-light)}
 .xtab .td-cell.rol_prev{background:#e0f2fe;color:#0369a1;border:2px dashed #7dd3fc}
 .xtab .td-cell.cambio_reparto{background:#4338ca;color:#fff}
 .xtab .td-cell.straordinario{background:#0891b2;color:#fff}
+.xtab .td-cell.richiesta{background:#ffedd5;color:#c2410c;border:2px dashed #fb923c}
+.cal-pill.richiesta{background:#ffedd5;color:#c2410c;border:1px dashed #fb923c}
 .xtab .td-cell.we.sab-click{cursor:pointer}
 .xtab .td-cell.we.sab-click:hover{background:#cffafe;filter:none;box-shadow:inset 0 0 0 1px #67e8f9}
 .cal-pill.straordinario{background:#cffafe;color:#0e7490}
@@ -386,6 +388,7 @@ tr:hover td{background:var(--accent-light)}
           <option value="ferie_prev">Ferie Previsionali</option>
           <option value="rol_prev">ROL Previsionali</option>
           <option value="straordinario">Straordinario sabato</option>
+          <option value="richiesta">Ferie/Permessi richiesti</option>
         </select>
       </div>
     </div>
@@ -481,6 +484,7 @@ tr:hover td{background:var(--accent-light)}
         <span class="chip" onclick="fReg(this,'ferie_prev')">Ferie Prev.</span>
         <span class="chip" onclick="fReg(this,'rol_prev')">ROL Prev.</span>
         <span class="chip" onclick="fReg(this,'straordinario')">Straord.</span>
+        <span class="chip" onclick="fReg(this,'richiesta')">Richieste</span>
       </div>
       <button class="btn bp sm" style="margin-left:auto" onclick="openM('mEntry')">+ Inserisci</button>
     </div>
@@ -846,6 +850,7 @@ tr:hover td{background:var(--accent-light)}
           <option value="rol_prev">🔵 ROL Previsionali</option>
           <option value="cambio_reparto">🔄 Cambio Mansione Temporanea</option>
           <option value="straordinario">⏰ Straordinario sabato</option>
+          <option value="richiesta">🟠 Ferie / Permessi richiesti</option>
         </select>
       </div>
     </div>
@@ -970,6 +975,25 @@ tr:hover td{background:var(--accent-light)}
         <button class="btn bp" style="flex:1" onclick="confermaPrevSi()">✅ Sì — Conferma</button>
         <button class="btn bdanger" style="flex:1" onclick="confermaPrevNo()">🗑 No — Elimina</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal richiesta ferie/permesso: scelta del tipo da inserire -->
+<div class="mo" id="mRichiesta">
+  <div class="mo-box" style="max-width:400px">
+    <div class="mo-head">
+      <span>Ferie o Permesso?</span>
+      <button class="mo-close" onclick="closeM('mRichiesta')">✕</button>
+    </div>
+    <div style="padding:1.25rem">
+      <div id="mRichiestaInfo" class="al a-info" style="margin-bottom:1rem;font-size:.82rem"></div>
+      <p style="font-size:.9rem;color:var(--text);font-weight:600;margin-bottom:1rem">Inserisci Ferie o Permesso?</p>
+      <div style="display:flex;gap:.75rem;margin-bottom:.75rem">
+        <button class="btn bp" style="flex:1" onclick="confermaRichiesta('ferie')">🏖 Ferie</button>
+        <button class="btn bp" style="flex:1" onclick="confermaRichiesta('rol')">⏱ Permesso (ROL)</button>
+      </div>
+      <button class="btn bg" style="width:100%" onclick="eliminaRichiesta()">🗑 Elimina la richiesta</button>
     </div>
   </div>
 </div>
@@ -1762,10 +1786,12 @@ function buildCalTabella(){
           const isGiornata=(e.tipo==='mancata'||e.tipo==='malattia');
           const isExtra=(e.tipo==='lavorazione_extra');
           const isPrev=(e.tipo==='ferie_prev'||e.tipo==='rol_prev');
+          const isRichiesta=(e.tipo==='richiesta');
           const isCambio=(e.tipo==='cambio_reparto');
           let label, tooltip, clickFn;
           if(isGiornata){ label='1'; tooltip=`${tCfg(e.tipo).label} — ${fmt(e.ore)}h`; clickFn=`openGiorno('${ds}')`; }
           else if(isExtra){ label='<span class="extra-asterisk">✱</span>'; tooltip=`Lav. Extra — ${fmt(e.ore)}h${e.note?' · '+e.note:''}`; clickFn=`openGiorno('${ds}')`; }
+          else if(isRichiesta){ label=fmt(e.ore); tooltip=`Ferie/Permesso richiesti — ${fmt(e.ore)}h${e.note?' · '+e.note:''} · Clicca per inserire Ferie o Permesso`; clickFn=`scegliRichiesta('${e.id}')`; }
           else if(isPrev){ label=fmt(e.ore); tooltip=`${tCfg(e.tipo).label} — ${fmt(e.ore)}h · Clicca per confermare`; clickFn=`confermaPrev('${e.id}','${e.tipo}')`; }
           else if(isCambio){ label='🔄'; tooltip=`Cambio Mansione — oggi lavora per: ${shortRep(e.repartoTemp)}${e.note?' · '+e.note:''}`; clickFn=`openGiorno('${ds}')`; }
           else { label=fmt(e.ore); tooltip=`${tCfg(e.tipo).label} — ${fmt(e.ore)}h`; clickFn=`openGiorno('${ds}')`; }
@@ -2004,7 +2030,8 @@ function buildCalTabella(){
     <span style="background:#eab308;color:#000;padding:.15rem .4rem;border-radius:3px;font-weight:700">1</span> Manc.Timb. &nbsp;
     <span style="background:#7c3aed;color:#fff;padding:.15rem .4rem;border-radius:3px;font-weight:700">2+</span> Più tipi &nbsp;
     <span style="background:#f3e8ff;color:#6b21a8;padding:.15rem .4rem;border-radius:3px;font-weight:700">✱</span> Lav. Extra &nbsp;
-    <span style="background:#0891b2;color:#fff;padding:.15rem .4rem;border-radius:3px;font-weight:700">1</span> Straordinario sabato
+    <span style="background:#0891b2;color:#fff;padding:.15rem .4rem;border-radius:3px;font-weight:700">1</span> Straordinario sabato &nbsp;
+    <span style="background:#ffedd5;color:#c2410c;border:2px dashed #fb923c;padding:.1rem .4rem;border-radius:3px;font-weight:700">8</span> Ferie/Perm. richiesti
   </div>`;
 
   // Intestazione colonne saldi (in fondo all'header)
@@ -2144,6 +2171,7 @@ function openGiorno(ds){
           <span class="badge" style="background:${cfg.bg};color:${cfg.col}">${cfg.label}</span>
           <span style="font-family:var(--mono);font-size:.8rem;color:${cfg.col};font-weight:600">${fmt(e.ore)}h</span>
           ${e.note?`<span style="font-size:.72rem;color:var(--text3)">${e.note}</span>`:''}
+          ${e.tipo==='richiesta'?`<button class="btn bp xs" onclick="closeM('mGiorno');scegliRichiesta('${e.id}')">Ferie o Permesso?</button>`:''}
           <button class="btn bd xs" onclick="delEntry('${e.id}');openGiorno('${ds}')">✕</button>
         </div>`;
       });
@@ -2387,7 +2415,7 @@ function updERes(){
   const tipo=document.getElementById('eTipo').value;
   const dipId=document.getElementById('eDip').value;
   const el=document.getElementById('eRes');
-  const lm={ferie:'Ore Ferie',rol:'Ore ROL/Permessi',t104:'Ore Legge 104',mancata:'Giornata',malattia:'Giornata',straordinario:'Ore di straordinario'};
+  const lm={ferie:'Ore Ferie',rol:'Ore ROL/Permessi',t104:'Ore Legge 104',mancata:'Giornata',malattia:'Giornata',straordinario:'Ore di straordinario',richiesta:'Ore richieste'};
   document.getElementById('eOreLabel').textContent=lm[tipo]||'Ore';
   const isGiornata=(tipo==='mancata'||tipo==='malattia');
   const isCambioReparto=(tipo==='cambio_reparto');
@@ -2410,6 +2438,11 @@ function updERes(){
 
   if(isCambioReparto){
     el.innerHTML='<div class="al a-info" style="font-size:.75rem">🔄 Per tutta la giornata (o il periodo), le ore di questo dipendente conteranno per il reparto scelto sopra ai fini del calcolo Efficienza — lo storico del suo reparto abituale resta invariato.</div>';
+    return;
+  }
+  if(tipo==='richiesta'){
+    const sR=dipId?getSaldi(dipId):null;
+    el.innerHTML='<div class="al a-info" style="font-size:.75rem">🟠 <b>Richiesta di ferie o permesso</b> — per ora non scala nessun saldo. Quando clicchi la casella ti verrà chiesto se inserirla come <b>Ferie</b> o come <b>Permesso (ROL)</b>.'+(sR?'<br>Residuo attuale: ferie <b>'+fmt(sR.ferieTot)+'h</b> · ROL <b>'+fmt(sR.rolTot)+'h</b>':'')+'</div>';
     return;
   }
   if(tipo==='t104'){
@@ -2454,7 +2487,7 @@ function verificaSovrapposizioneMansione(dipId, tipo, giorniList){
   if(!mansione) return true; // nessuna mansione assegnata: niente da confrontare
   const colleghi=S.dipendenti.filter(d=>d.id!==dipId && !d.cessato && d.mansione===mansione);
   if(!colleghi.length) return true;
-  const LABEL_TIPO={ferie:'ferie',ferie_prev:'ferie previsionali',rol:'ROL/permesso',rol_prev:'ROL previsionale',t104:'Legge 104',malattia:'malattia',assenza_extra:'assenza extra'};
+  const LABEL_TIPO={ferie:'ferie',ferie_prev:'ferie previsionali',richiesta:'richiesta ferie/permesso',rol:'ROL/permesso',rol_prev:'ROL previsionale',t104:'Legge 104',malattia:'malattia',assenza_extra:'assenza extra'};
   const conflitti=[];
   giorniList.forEach(data=>{
     colleghi.forEach(c=>{
@@ -2864,6 +2897,48 @@ async function confermaPrevNo(){
   await saveS();
   closeM('mConfermaPrev');
   buildCalTabella();
+}
+
+// ════════════════════════════════════════════════════
+//  RICHIESTE DI FERIE / PERMESSI (tipo "richiesta")
+//  Segnaposto in attesa di decisione: non scala saldi e non incide sull'efficienza.
+//  Al clic si sceglie se diventa Ferie o Permesso (ROL): stessi giorno, ore e nota.
+// ════════════════════════════════════════════════════
+let _richiestaId=null;
+
+function scegliRichiesta(entryId){
+  const e=S.entries.find(x=>x.id===entryId);
+  if(!e)return;
+  _richiestaId=entryId;
+  const d=S.dipendenti.find(x=>x.id===e.dipId);
+  const dt=new Date(e.data+'T00:00:00');
+  const s=getSaldi(e.dipId);
+  document.getElementById('mRichiestaInfo').innerHTML=
+    `<b>${d?d.nome:'—'}</b> · ${dt.getDate()} ${MESI[dt.getMonth()]} ${dt.getFullYear()}<br>Ore richieste: <b>${fmt(e.ore)}h</b>${e.note?' · '+e.note:''}<br><span style="color:var(--text3);font-size:.75rem">Residuo attuale: ferie ${fmt(s.ferieTot)}h · ROL ${fmt(s.rolTot)}h</span>`;
+  openM('mRichiesta');
+}
+
+async function confermaRichiesta(tipo){
+  const e=S.entries.find(x=>x.id===_richiestaId);
+  if(!e){ closeM('mRichiesta'); return; }
+  if(tipo!=='ferie' && tipo!=='rol') return;
+  // Avviso (non bloccante) se il saldo residuo non basta
+  const s=getSaldi(e.dipId);
+  const residuo=tipo==='ferie'?s.ferieTot:s.rolTot;
+  const ore=parseFloat(e.ore)||0;
+  if(residuo<ore && !confirm(`Attenzione: il residuo ${tipo==='ferie'?'ferie':'ROL'} è ${fmt(residuo)}h, meno delle ${fmt(ore)}h richieste. Inserire comunque?`)) return;
+  e.tipo=tipo;
+  await saveS();
+  closeM('mRichiesta');
+  renderDash(); renderReg(); buildCalTabella();
+}
+
+async function eliminaRichiesta(){
+  if(!confirm('Eliminare questa richiesta?')) return;
+  S.entries=S.entries.filter(x=>x.id!==_richiestaId);
+  await saveS();
+  closeM('mRichiesta');
+  renderDash(); renderReg(); buildCalTabella();
 }
 
 function renderRiepilogo(){
@@ -3949,6 +4024,7 @@ function tCfg(tipo){
     rol_prev:          {label:'ROL Prev.',       col:'#0369a1',bg:'#e0f2fe'},
     cambio_reparto:    {label:'Cambio Mansione', col:'#4338ca',bg:'#e0e7ff'},
     straordinario:     {label:'Straord. sabato', col:'#0e7490',bg:'#cffafe'},
+    richiesta:         {label:'Ferie/Perm. richiesti', col:'#c2410c',bg:'#ffedd5'},
   }[tipo]||{label:tipo,col:'var(--text)',bg:'var(--surface2)'};
 }
 
@@ -4226,6 +4302,7 @@ Object.assign(window, {
   toggleMesePicker, meseTuttiToggle, meseSelChange,
   toggleSidebar, toggleCalCol, showAllCalCols,
   confermaPrev, confermaPrevSi, confermaPrevNo,
+  scegliRichiesta, confermaRichiesta, eliminaRichiesta,
   toggleColPanel, selezionaTuttiGiorni, selezionaSoloFeriali, aggiornaColonneNascoste, applicaNascondiColonne,
   renderRiepilogo, setRiepilogoSort,
   renderPerformance, saveTempistica, esportaPerformanceExcel,
