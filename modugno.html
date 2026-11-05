@@ -355,7 +355,10 @@ tr:hover td{background:var(--accent-light)}
 <div class="sec" id="s-calendario">
   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap">
     <div><div class="pt">Calendario Presenze</div><div class="ps">Visualizza le assenze giornaliere — clicca un giorno per i dettagli</div></div>
-    <button class="btn bg sm" onclick="esportaCalendarioExcel()">📊 Esporta Excel</button>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <button class="btn bg sm" onclick="apriTrasferimento('')">↔ Trasferisci dipendente</button>
+      <button class="btn bg sm" onclick="esportaCalendarioExcel()">📊 Esporta Excel</button>
+    </div>
   </div>
   <div class="card" style="padding:.85rem 1.1rem;margin-bottom:.85rem">
     <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end">
@@ -899,6 +902,47 @@ tr:hover td{background:var(--accent-light)}
 </div>
 
 <!-- ══ MODAL: DIPENDENTE ══ -->
+<!-- Modal trasferimento tra filiali -->
+<div class="mo" id="mTrasf">
+  <div class="md">
+    <div class="mh">
+      <div class="mt">↔ Trasferimento dipendente</div>
+      <button class="mc" onclick="closeM('mTrasf')">✕</button>
+    </div>
+    <div class="fr">
+      <div class="fg" style="flex:2"><label>Dipendente *</label><select id="trDip" onchange="trRicalcola()"></select></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Filiale di destinazione *</label><select id="trFil" onchange="trCaricaDest()"></select></div>
+      <div class="fg"><label>In forza nella nuova filiale dal *</label><input type="date" id="trData" onchange="trRicalcola()"></div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Reparto nella nuova filiale *</label><select id="trRep"></select></div>
+      <div class="fg"><label>Mansione</label><select id="trMans"></select></div>
+    </div>
+    <hr class="divider">
+    <div style="font-size:.72rem;font-weight:600;color:var(--text3);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.06em">Saldi che passano alla nuova filiale</div>
+    <div id="trInfo" class="al a-info" style="font-size:.75rem"></div>
+    <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:.3rem">Ferie</div>
+    <div class="fr">
+      <div class="fg"><label>Anno precedente</label><input type="number" id="trFP" step="0.5" value="0"></div>
+      <div class="fg"><label>Anno corrente</label><input type="number" id="trFC" step="0.5" value="0"></div>
+      <div class="fg"><label>Fine anno</label><input type="number" id="trFM" step="0.5" value="0"></div>
+    </div>
+    <div style="font-size:.7rem;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:.3rem">ROL / Permessi</div>
+    <div class="fr">
+      <div class="fg"><label>Anno precedente</label><input type="number" id="trRP" step="0.5" value="0"></div>
+      <div class="fg"><label>Anno corrente</label><input type="number" id="trRC" step="0.5" value="0"></div>
+      <div class="fg"><label>Fine anno</label><input type="number" id="trRM" step="0.5" value="0"></div>
+    </div>
+    <div id="trRiepilogo" style="font-size:.74rem;color:var(--text2);margin:.5rem 0"></div>
+    <div class="fe">
+      <button class="btn bg" onclick="closeM('mTrasf')">Annulla</button>
+      <button class="btn bp" id="trBtn" onclick="eseguiTrasferimento()">↔ Trasferisci</button>
+    </div>
+  </div>
+</div>
+
 <div class="mo" id="mDip">
   <div class="md">
     <div class="mh">
@@ -1220,13 +1264,13 @@ function startListener(){
 //    mancata               → contatore giorni
 //  La sottrazione va prima su Prec, poi su Corr quando Prec = 0
 // ════════════════════════════════════════════════════
-function getSaldi(dipId){
+function getSaldi(dipId, finoA){
   const b=S.saldi[dipId]||{feriePrec:0,ferieCorr:0,ferieMatur:0,rolPrec:0,rolCorr:0,rolMatur:0,mancata:0,dataRif:null};
   // dataRif = ultima data già "inclusa" nel saldo importato/inserito.
   // Solo le entries CON DATA SUCCESSIVA a dataRif vengono scalate da qui.
   // Se dataRif non è impostata, si scala tutto (comportamento storico/compatibilità).
   const dataRif=b.dataRif||'0000-00-00';
-  const ents=S.entries.filter(e=>e.dipId===dipId && e.data>dataRif);
+  const ents=S.entries.filter(e=>e.dipId===dipId && e.data>dataRif && (!finoA||e.data<=finoA));
   let fP=parseFloat(b.feriePrec)||0, fC=parseFloat(b.ferieCorr)||0, fM=parseFloat(b.ferieMatur)||0;
   let rP=parseFloat(b.rolPrec)||0,   rC=parseFloat(b.rolCorr)||0,   rM=parseFloat(b.rolMatur)||0;
   let m=parseFloat(b.mancata)||0, h4=0, mal=0, lavExtra=0;
@@ -1254,9 +1298,11 @@ function getSaldi(dipId){
   // se dataRif è impostata, contiamo comunque TUTTE le mancate storiche (non solo quelle dopo dataRif),
   // perché rappresentano un debito di ore da recuperare che non si azzera con un import di ferie/rol.
   if(dataRif!=='0000-00-00'){
-    m = S.entries.filter(e=>e.dipId===dipId && e.tipo==='mancata').length;
-    h4 = S.entries.filter(e=>e.dipId===dipId && e.tipo==='t104').reduce((s,e)=>s+(parseFloat(e.ore)||0),0);
-    mal = S.entries.filter(e=>e.dipId===dipId && e.tipo==='malattia').length;
+    // + contatori portati da un'eventuale filiale precedente (trasferimento): mancataPrec/h104Prec/malattiaPrec
+    const _ok=e=>!finoA||e.data<=finoA;
+    m = S.entries.filter(e=>e.dipId===dipId && e.tipo==='mancata' && _ok(e)).length + (parseFloat(b.mancataPrec)||0);
+    h4 = S.entries.filter(e=>e.dipId===dipId && e.tipo==='t104' && _ok(e)).reduce((s,e)=>s+(parseFloat(e.ore)||0),0) + (parseFloat(b.h104Prec)||0);
+    mal = S.entries.filter(e=>e.dipId===dipId && e.tipo==='malattia' && _ok(e)).length + (parseFloat(b.malattiaPrec)||0);
   }
 
   return {
@@ -1467,11 +1513,14 @@ function salvaSaldi(){
 }
 
 function aggiornaSaldiDip(dipId,fP,fC,fM,rP,rC,rM,mancata,dataRif){
+  const _old=S.saldi[dipId]||{};
   S.saldi[dipId]={
     feriePrec: fP, ferieCorr: fC, ferieMatur: fM,
     rolPrec:   rP, rolCorr:   rC, rolMatur:   rM,
     mancata, dataRif: dataRif||new Date().toISOString().split('T')[0]
   };
+  // i contatori portati da un trasferimento non vanno persi se si modificano i saldi
+  ['mancataPrec','h104Prec','malattiaPrec'].forEach(k=>{ if(_old[k]) S.saldi[dipId][k]=_old[k]; });
 }
 
 // ════════════════════════════════════════════════════
@@ -1544,6 +1593,7 @@ function trovaRepartoPerChiave(chiave){
 // cessazione. Usata per il calendario e per i calcoli di Efficienza, che devono ragionare
 // giorno per giorno (un cessato a metà mese resta attivo nei giorni prima della cessazione).
 function attivoInData(dip, ds){
+  if(dip.dataInizio && ds<dip.dataInizio) return false; // non ancora in forza (arrivato per trasferimento)
   if(!dip.cessato) return true;
   if(!dip.cessatoData) return false; // cessato ma senza data nota: prudenzialmente sempre inattivo
   return ds<=dip.cessatoData;
@@ -1552,6 +1602,7 @@ function attivoInData(dip, ds){
 // ALMENO un giorno di quel mese — cioè non è cessato, oppure la sua cessazione è avvenuta questo
 // mese o dopo. Un mese completamente successivo alla cessazione non lo mostra più.
 function attivoNelMese(dip, anno, mese){
+  if(dip.dataInizio && isoD(anno, mese, new Date(anno, mese+1, 0).getDate()) < dip.dataInizio) return false;
   if(!dip.cessato) return true;
   if(!dip.cessatoData) return false;
   const primoGiornoMese=isoD(anno, mese, 1);
@@ -1773,7 +1824,7 @@ function buildCalTabella(){
         const ds=isoD(calY,calM,day);
         const isFest=isFestivo(ds);
         if(!attivoInData(d, ds)){
-          cells+=`<td class="td-cell cessato-cell" title="Cessato il ${fmtData(d.cessatoData)} — non più modificabile"></td>`;
+          cells+=`<td class="td-cell cessato-cell" title="${(d.dataInizio && ds<d.dataInizio)?('In forza dal '+fmtData(d.dataInizio)+(d.trasferitoDa?' (trasferito da '+(FILIALI[d.trasferitoDa.filiale]||d.trasferitoDa.filiale)+')':'')):('Cessato il '+fmtData(d.cessatoData)+(d.trasferitoA?' (trasferito a '+(FILIALI[d.trasferitoA.filiale]||d.trasferitoA.filiale)+')':''))} — non modificabile"></td>`;
           continue;
         }
         if(isWe&&!es.length){
@@ -2230,7 +2281,9 @@ function renderPersonale(){
     const tipoBadge=d.tipo==='SOMM'?'b-purple':d.tipo==='DET'?'b-warn':d.tipo==='TIR'?'b-info':'b-gray';
     const tipoLabel={DIP:'Dipendente',DET:'Det.',SOMM:'Somm.',TIR:'Tirocinio'}[d.tipo]||d.tipo;
     const scadHtml=d.scadenza?`<span class="badge ${scadBadge(d.scadenza)}" style="font-size:.62rem">${fmtData(d.scadenza)}</span>`:'<span style="color:var(--text3);font-size:.75rem">—</span>';
-    const cessatoBadge=d.cessato?`<span class="badge b-danger">Cessato ${d.cessatoData?fmtData(d.cessatoData):''}</span>`:`<span class="badge b-ok">Attivo</span>`;
+    let cessatoBadge=d.cessato?`<span class="badge b-danger">Cessato ${d.cessatoData?fmtData(d.cessatoData):''}</span>`:`<span class="badge b-ok">Attivo</span>`;
+    if(d.cessato && d.trasferitoA) cessatoBadge=`<span class="badge b-info">↔ Trasferito a ${FILIALI[d.trasferitoA.filiale]||d.trasferitoA.filiale} dal ${fmtData(d.trasferitoA.data)}</span>`;
+    else if(d.trasferitoDa) cessatoBadge+=` <span class="badge b-info" title="Arrivato per trasferimento">↔ da ${FILIALI[d.trasferitoDa.filiale]||d.trasferitoDa.filiale} (${fmtData(d.trasferitoDa.data)})</span>`;
     return `<tr class="${d.cessato?'cessato-row':''}">
       <td class="td-n">${d.nome}</td>
       <td class="td-s">${shortRep(d.reparto)}</td>
@@ -2247,7 +2300,7 @@ function renderPersonale(){
           <button class="btn bg xs" onclick="editDip('${d.id}')">✏</button>
           ${d.cessato
             ? `<button class="btn bw xs" onclick="toggleCessato('${d.id}',false)">↺ Riattiva</button>`
-            : `<button class="btn bd xs" onclick="toggleCessato('${d.id}',true)">✕ Cessa</button>`}
+            : `<button class="btn bg xs" title="Trasferisci a un'altra filiale" onclick="apriTrasferimento('${d.id}')">↔ Trasferisci</button><button class="btn bd xs" onclick="toggleCessato('${d.id}',true)">✕ Cessa</button>`}
         </div>
       </td>
     </tr>`;
@@ -2267,7 +2320,7 @@ function toggleCessato(id, cessa){
     if(d){d.cessato=true;d.cessatoData=data||new Date().toISOString().split('T')[0];}
   } else {
     const d=S.dipendenti.find(x=>x.id===id);
-    if(d){d.cessato=false;d.cessatoData=null;}
+    if(d){d.cessato=false;d.cessatoData=null;delete d.trasferitoA;}
   }
   saveS();renderPersonale();renderDash();
 }
@@ -2864,6 +2917,7 @@ function getLabelPeriodo(anno, mesi){
 // ════════════════════════════════════════════════════
 //  CONFERMA ASSENZE PREVISIONALI (ferie_prev → ferie, rol_prev → rol)
 // ════════════════════════════════════════════════════
+const FILIALI={seriate:'Seriate',orio:'Orio',modugno:'Modugno',perugia:'Perugia',pomezia:'Pomezia',elmas:'Elmas'};
 let _prevEntryId=null, _prevTipo=null;
 
 function confermaPrev(entryId, tipo){
@@ -2939,6 +2993,125 @@ async function eliminaRichiesta(){
   await saveS();
   closeM('mRichiesta');
   renderDash(); renderReg(); buildCalTabella();
+}
+
+// ════════════════════════════════════════════════════
+//  TRASFERIMENTO TRA FILIALI
+//  Ogni filiale ha il suo archivio (stato/<filiale>). Il trasferimento:
+//   1) legge l'archivio di destinazione e vi crea la scheda (nuovo id, in forza dal giorno indicato)
+//      con i saldi alla data (modificabili) e i contatori mancate/104/malattie già maturati;
+//   2) sposta nella destinazione le voci dal giorno del trasferimento in poi (ferie future, ecc.);
+//   3) chiude la scheda di partenza il giorno prima, con l'indicazione "trasferito a ...".
+//  Lo storico fino al giorno prima resta nella filiale di partenza.
+// ════════════════════════════════════════════════════
+let _trDest=null; // {reparti, mansioni} della filiale di destinazione
+
+function trGiornoPrima(ds){
+  const d=new Date(ds+'T00:00:00'); d.setDate(d.getDate()-1); return localDateStr(d);
+}
+
+function apriTrasferimento(dipId){
+  const miei=S.dipendenti.filter(d=>!d.cessato).sort((a,b)=>a.nome.localeCompare(b.nome));
+  document.getElementById('trDip').innerHTML=miei.map(d=>`<option value="${d.id}">${d.nome} — ${shortRep(d.reparto)}</option>`).join('');
+  if(dipId) document.getElementById('trDip').value=dipId;
+  const me=DOCREF.id;
+  document.getElementById('trFil').innerHTML=Object.keys(FILIALI).filter(k=>k!==me).map(k=>`<option value="${k}">${FILIALI[k]}</option>`).join('');
+  document.getElementById('trData').value=new Date().toISOString().split('T')[0];
+  document.getElementById('trBtn').disabled=true;
+  openM('mTrasf');
+  trCaricaDest();
+}
+
+async function trCaricaDest(){
+  const fil=document.getElementById('trFil').value;
+  const selR=document.getElementById('trRep'), selM=document.getElementById('trMans');
+  selR.innerHTML='<option>caricamento...</option>'; selM.innerHTML='';
+  document.getElementById('trBtn').disabled=true;
+  _trDest=null;
+  try{
+    const snap=await getDoc(doc(db,'stato',fil));
+    if(!snap.exists()) throw new Error('archivio non trovato');
+    const d=snap.data();
+    _trDest={reparti:d.reparti||[], mansioni:d.mansioni||[]};
+  }catch(e){
+    selR.innerHTML='<option value="">— impossibile leggere la filiale —</option>';
+    document.getElementById('trRiepilogo').innerHTML='<span style="color:var(--danger)">⚠ Non riesco a leggere i dati di '+FILIALI[fil]+' ('+e.message+'). Riprova.</span>';
+    return;
+  }
+  selR.innerHTML=_trDest.reparti.map(r=>`<option value="${r}">${r}</option>`).join('');
+  selM.innerHTML='<option value="">— Non specificata —</option>'+_trDest.mansioni.map(m=>`<option value="${m}">${m}</option>`).join('');
+  trSuggerisci();
+  document.getElementById('trBtn').disabled=false;
+  trRicalcola();
+}
+
+// propone reparto/mansione corrispondenti (stessa parola chiave del reparto di partenza)
+function trSuggerisci(){
+  const d=S.dipendenti.find(x=>x.id===document.getElementById('trDip').value); if(!d||!_trDest) return;
+  const chiave=(d.reparto||'').toUpperCase().replace(/^.*?REPARTO\s+/,'').replace(/^AREA\s+\S+\s+/,'').trim();
+  const trovato=_trDest.reparti.find(r=>chiave && r.toUpperCase().includes(chiave));
+  if(trovato) document.getElementById('trRep').value=trovato;
+  if(d.mansione && _trDest.mansioni.includes(d.mansione)) document.getElementById('trMans').value=d.mansione;
+}
+
+function trRicalcola(){
+  const id=document.getElementById('trDip').value, data=document.getElementById('trData').value;
+  if(!id||!data) return;
+  const cut=trGiornoPrima(data);
+  const s=getSaldi(id,cut);
+  const set=(k,v)=>document.getElementById(k).value=Math.round(v*100)/100;
+  set('trFP',s.feriePrec); set('trFC',s.ferieCorr); set('trFM',s.ferieMatur);
+  set('trRP',s.rolPrec);   set('trRC',s.rolCorr);   set('trRM',s.rolMatur);
+  const futuri=S.entries.filter(e=>e.dipId===id && e.data>=data && e.tipo!=='cambio_reparto').length;
+  document.getElementById('trInfo').innerHTML=`Saldi calcolati al <b>${fmtData(cut)}</b> (ultimo giorno in questa filiale), già al netto di tutte le ferie e i permessi inseriti fino a quel giorno. Puoi correggerli a mano.`;
+  document.getElementById('trRiepilogo').innerHTML=`Mancate timbrature (<b>${s.mancata}</b>), ore L.104 (<b>${fmt(s.t104||0)}</b>) e giorni di malattia (<b>${s.malattia||0}</b>) già maturati passano alla nuova scheda.`
+    +(futuri?`<br>Le <b>${futuri}</b> voci inserite dal ${fmtData(data)} in poi vengono spostate nella nuova filiale.`:'');
+}
+
+async function eseguiTrasferimento(){
+  const id=document.getElementById('trDip').value;
+  const fil=document.getElementById('trFil').value;
+  const data=document.getElementById('trData').value;
+  const rep=document.getElementById('trRep').value;
+  const mans=document.getElementById('trMans').value;
+  const d=S.dipendenti.find(x=>x.id===id);
+  if(!d||!fil||!data||!rep||!_trDest){alert('Compila dipendente, filiale, data e reparto.');return;}
+  const num=k=>parseFloat(document.getElementById(k).value)||0;
+  const cut=trGiornoPrima(data);
+  if(!confirm(`Trasferire ${d.nome} da ${FILIALI[DOCREF.id]} a ${FILIALI[fil]} dal ${fmtData(data)}?\n\nA ${FILIALI[DOCREF.id]} risulterà in forza fino al ${fmtData(cut)}.`)) return;
+  const btn=document.getElementById('trBtn'); btn.disabled=true; btn.textContent='Trasferimento...';
+  try{
+    const destRef=doc(db,'stato',fil);
+    const snap=await getDoc(destRef);
+    if(!snap.exists()) throw new Error('archivio di destinazione non trovato');
+    const dd=snap.data();
+    const dDip=dd.dipendenti||[], dEnt=dd.entries||[], dSal=dd.saldi||{};
+    if(dDip.some(x=>!x.cessato && (x.nome||'').toUpperCase()===d.nome.toUpperCase())
+       && !confirm(`In ${FILIALI[fil]} esiste già un dipendente attivo con nome "${d.nome}". Continuare comunque?`)) {btn.disabled=false;btn.textContent='↔ Trasferisci';return;}
+    const s=getSaldi(id,cut);
+    const nuovoId=uid();
+    dDip.push({id:nuovoId,nome:d.nome,reparto:rep,tipo:d.tipo||'DIP',scadenza:d.scadenza||null,mansione:mans,
+      cessato:false,cessatoData:null,dataInizio:data,trasferitoDa:{filiale:DOCREF.id,data}});
+    dSal[nuovoId]={feriePrec:num('trFP'),ferieCorr:num('trFC'),ferieMatur:num('trFM'),
+      rolPrec:num('trRP'),rolCorr:num('trRC'),rolMatur:num('trRM'),
+      mancata:0,mancataPrec:s.mancata||0,h104Prec:s.t104||0,malattiaPrec:s.malattia||0,dataRif:cut};
+    // voci dal giorno del trasferimento in poi → destinazione (i cambi mansione temporanei si scartano: riferiti ai reparti di partenza)
+    const spostate=S.entries.filter(e=>e.dipId===id && e.data>=data && e.tipo!=='cambio_reparto');
+    spostate.forEach(e=>dEnt.push(Object.assign({},e,{id:uid()+Math.random().toString(36).slice(2,4),dipId:nuovoId})));
+    await setDoc(destRef,{dipendenti:dDip,entries:dEnt,saldi:dSal,updatedAt:new Date().toISOString()},{merge:true});
+    // destinazione scritta: ora si chiude la scheda qui
+    S.entries=S.entries.filter(e=>!(e.dipId===id && e.data>=data));
+    d.cessato=true; d.cessatoData=cut; d.trasferitoA={filiale:fil,data};
+    saveS();
+    closeM('mTrasf');
+    renderPersonale(); renderDash();
+    if(document.getElementById('s-calendario').classList.contains('active')) renderCal();
+    setTimeout(()=>alert(`✅ ${d.nome} trasferito a ${FILIALI[fil]} dal ${fmtData(data)}.\nSaldi portati: ferie ${fmt(num('trFP')+num('trFC'))}h · ROL ${fmt(num('trRP')+num('trRC'))}h. Voci spostate: ${spostate.length}.`),150);
+  }catch(e){
+    console.error(e);
+    alert('Trasferimento NON eseguito: '+e.message+'\nNessun dato è stato modificato.');
+  }
+  btn.disabled=false; btn.textContent='↔ Trasferisci';
 }
 
 function renderRiepilogo(){
@@ -4303,6 +4476,7 @@ Object.assign(window, {
   toggleSidebar, toggleCalCol, showAllCalCols,
   confermaPrev, confermaPrevSi, confermaPrevNo,
   scegliRichiesta, confermaRichiesta, eliminaRichiesta,
+  apriTrasferimento, trCaricaDest, trRicalcola, eseguiTrasferimento,
   toggleColPanel, selezionaTuttiGiorni, selezionaSoloFeriali, aggiornaColonneNascoste, applicaNascondiColonne,
   renderRiepilogo, setRiepilogoSort,
   renderPerformance, saveTempistica, esportaPerformanceExcel,

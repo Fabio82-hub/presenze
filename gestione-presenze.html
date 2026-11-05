@@ -119,7 +119,7 @@ function calcolaEfficienza(s){
   const elencoReparti=(s.reparti&&s.reparti.length)?s.reparti:[...new Set(s.dipendenti.map(d=>d.reparto).filter(Boolean))];
   const defs=['1°FASE','MONTAGGIO','COLLAUDI'].map(chiave=>({chiave,rep:trovaRepartoPerChiave(elencoReparti,chiave)}));
   // Attivo in una data: un cessato conta fino al giorno della cessazione compreso
-  const attivoInData=(d,ds)=>!d.cessato||(d.cessatoData&&ds<=d.cessatoData);
+  const attivoInData=(d,ds)=>(!d.dataInizio||ds>=d.dataInizio)&&(!d.cessato||(d.cessatoData&&ds<=d.cessatoData));
   // Reparto effettivo in una data: tiene conto di un eventuale cambio mansione temporaneo
   const repEff=(d,ds)=>{const c=ents.find(e=>e.dipId===d.id&&e.data===ds&&e.tipo==='cambio_reparto');return c?c.repartoTemp:d.reparto;};
   let totR=0,totT=0;

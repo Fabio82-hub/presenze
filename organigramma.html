@@ -228,7 +228,7 @@ function normName(s){
 }
 function oggiISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 // Un cessato conta fino al giorno di cessazione compreso (stessa regola del calendario presenze)
-function attivoOggi(d,oggi){return !d.cessato||(!!d.cessatoData&&oggi<=d.cessatoData);}
+function attivoOggi(d,oggi){return (!d.dataInizio||oggi>=d.dataInizio)&&(!d.cessato||(!!d.cessatoData&&oggi<=d.cessatoData));}
 
 // Reparto del calendario che indica il responsabile di filiale ("RESP. FILIALE", "RESPONSABILE DI FILIALE",
 // anche con la città davanti): chi ci sta dentro occupa la cella blu sotto il vertice. Riconoscimento per
