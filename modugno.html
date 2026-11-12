@@ -1577,15 +1577,26 @@ const GGLONG=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì'
 // Reparti esclusi dai calcoli di Performance (sezione Performance Reparto + riga Efficienza in
 // calendario). Riconosciuti per PAROLA CHIAVE contenuta nel nome (non per nome esatto), così
 // funziona indipendentemente dal prefisso usato dalla filiale.
+// Normalizza il nome di un reparto per il confronto: maiuscolo, senza accenti, spazi, punti e apostrofi
+// ("1° FASE", "1°FASE", "1ºFase" e "Controllo Qualità" vengono riconosciuti allo stesso modo).
+function normRep(s){return (s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/º/g,'°').replace(/[\s.'’`´]/g,'');}
+function repMatch(r,chiave){
+  // segni d'ordinale (° ^ ª) e trattini ignorati: "1°FASE", "1^ FASE", "1 FASE", "1a fase" sono lo stesso reparto
+  const sp=x=>normRep(x).replace(/[°^ª\-_\/]/g,'');
+  const n=sp(r),k=sp(chiave);
+  return n.includes(k)
+    || (k==='1FASE' && (n.includes('PRIMAFASE')||n.includes('1AFASE')))
+    || (k==='COLLAUDI' && n.includes('COLLAUD'))      // anche COLLAUDO
+    || (k==='MONTAGGIO' && n.includes('MONTAGG'));
+}
 const CHIAVI_ESCLUSE_PERF=['S.ITALIA',"CONTROLLO QUALITA",'LABORATORIO','MAGAZZINO','FRIGORISTA','BRANDIZZAZIONE'];
 function repartoEscluso(reparto){
-  const r=(reparto||'').toUpperCase();
-  return CHIAVI_ESCLUSE_PERF.some(k=>r.includes(k));
+  return CHIAVI_ESCLUSE_PERF.some(k=>repMatch(reparto,k));
 }
 // Trova il nome REALE di un reparto configurato (in S.reparti) contenente una parola chiave —
 // così il resto del codice funziona indipendentemente dal prefisso usato dalla filiale.
 function trovaRepartoPerChiave(chiave){
-  return (S.reparti||[]).find(r=>(r||'').toUpperCase().includes(chiave.toUpperCase())) || null;
+  return (S.reparti||[]).find(r=>repMatch(r,chiave)) || null;
 }
 
 // Un dipendente è "attivo" in una certa DATA (non solo genericamente non-cessato) se non è mai
@@ -1990,7 +2001,7 @@ function buildCalTabella(){
         if(sabStr) dipsRep=dipsRep.filter(d=>oreStraordinarioDip(d.id,ds)>0);
 
         if(!dipsRep.length || !tempistica){
-          cellsEff+=`<td class="tr-eff tr-eff-na" title="${!tempistica?'Imposta la tempistica in Performance Reparto':'Nessun dipendente nel reparto'}">—</td>`;
+          cellsEff+=`<td class="tr-eff tr-eff-na" title="${!rep?('Reparto non trovato tra: '+(S.reparti||[]).join(' | ')):!tempistica?'Imposta la tempistica in Performance Reparto':'Nessun dipendente nel reparto'}">—</td>`;
           continue;
         }
 
@@ -3316,16 +3327,16 @@ function getProduzioneRepartoGiorno(rep, ds){
   const p=(S.produzione||{})[ds];
   if(!p) return null;
   const R=(rep||'').toUpperCase();
-  if(R.includes('1°FASE')){
+  if(repMatch(rep,'1°FASE')){
     const smontati=parseInt(p.smontati)||0;
     const carrelli=parseInt(p.carrelli)||0;
     const verniciati=parseInt(p.verniciati)||0;
     return (smontati+carrelli+verniciati)/3;
   }
-  if(R.includes('MONTAGGIO')){
+  if(repMatch(rep,'MONTAGGIO')){
     return parseInt(p.linee)||0;
   }
-  if(R.includes('COLLAUDI')){
+  if(repMatch(rep,'COLLAUDI')){
     return parseInt(p.evase)||0;
   }
   return null;
@@ -3408,7 +3419,7 @@ function renderPerformanceTabellaSoloRicalcolo(){
       const v=getProduzioneRepartoGiorno(rep,ds);
       return s+(v||0);
     },0);
-    const haDatoReale = ['1°FASE','MONTAGGIO','COLLAUDI'].some(k=>(rep||'').toUpperCase().includes(k));
+    const haDatoReale = ['1°FASE','MONTAGGIO','COLLAUDI'].some(k=>repMatch(rep,k));
 
     righePerf.push({rep, numDip:dips.length, oreDisponibili, orePerse, oreEffettive, tempistica, daTeoriche, daReali, haDatoReale});
   });
@@ -3619,7 +3630,7 @@ function esportaPerformanceExcel(){
     const daTeoriche=tempistica>0?(oreEffettive/tempistica):0;
 
     const daReali = giorniPeriodo.reduce((s,ds)=>s+(getProduzioneRepartoGiorno(rep,ds)||0),0);
-    const haDatoReale = ['1°FASE','MONTAGGIO','COLLAUDI'].some(k=>(rep||'').toUpperCase().includes(k));
+    const haDatoReale = ['1°FASE','MONTAGGIO','COLLAUDI'].some(k=>repMatch(rep,k));
     const perf = (haDatoReale && daTeoriche>0) ? (daReali/daTeoriche*100) : null;
 
     aoa.push([
