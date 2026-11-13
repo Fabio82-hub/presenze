@@ -130,7 +130,7 @@ select option{background:var(--surface)}
 
 /* TABLE */
 .tw{overflow-x:auto}
-.xtab thead{position:sticky;top:0;z-index:10}
+.xtab thead{position:sticky;top:0;z-index:10;background:#e0e7ff}
 .xtab thead tr:nth-child(2) th{position:sticky;top:0;z-index:9;background:#e0e7ff}
 .mese-picker{position:relative;display:inline-block}
 .mese-picker-btn{border:1px solid var(--border);border-radius:6px;padding:.38rem .65rem;font-size:.78rem;background:var(--surface);cursor:pointer;white-space:nowrap;min-width:130px;text-align:left;font-family:var(--font)}
@@ -429,7 +429,7 @@ tr:hover td{background:var(--accent-light)}
       <div style="font-size:1rem;font-weight:700" id="calTabTit"></div>
       <button class="btn bg sm" onclick="calDelta(+1)">Succ. →</button>
     </div>
-    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+    <div id="calScroll" style="overflow:auto;-webkit-overflow-scrolling:touch;max-height:calc(100vh - 150px)">
       <div id="calTabella"></div>
     </div>
   </div>
@@ -2162,6 +2162,15 @@ function buildCalTabella(){
       ${footerRows}
     </tfoot>
   </table>`;
+
+  // Intestazione a 2 righe (numeri + lettere dei giorni) sempre visibile scorrendo verso il basso:
+  // la seconda riga si aggancia subito sotto la prima, di cui misuro l'altezza reale.
+  (function(){
+    const th=document.querySelector('#calTabellaTable thead'); if(!th||th.rows.length<2) return;
+    const h1=th.rows[0].offsetHeight;
+    th.rows[0].querySelectorAll('th').forEach(t=>{t.style.top='0px';});
+    th.rows[1].querySelectorAll('th').forEach(t=>{t.style.top=h1+'px';});
+  })();
 
   // Applica colonne già nascoste
   if(_calHiddenCols.size>0) applicaNascondiColonne();
