@@ -109,8 +109,20 @@ function localDateStr(dt){return isoD(dt.getFullYear(),dt.getMonth(),dt.getDate(
 // nel calendario dicono sempre la stessa cosa. I reparti si riconoscono per PAROLA CHIAVE
 // ("MONTAGGIO", "COLLAUDI", "1°FASE") e non per nome esatto: ogni filiale può averli chiamati in
 // modo diverso (con o senza prefisso città), e prima questo funzionava solo per Seriate.
+// Normalizza il nome di un reparto per il confronto: maiuscolo, senza accenti, spazi, punti e apostrofi
+// ("1° FASE", "1°FASE", "1ºFase" e "Controllo Qualità" vengono riconosciuti allo stesso modo).
+function normRep(s){return (s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/º/g,'°').replace(/[\s.'’`´]/g,'');}
+function repMatch(r,chiave){
+  // segni d'ordinale (° ^ ª) e trattini ignorati: "1°FASE", "1^ FASE", "1 FASE", "1a fase" sono lo stesso reparto
+  const sp=x=>normRep(x).replace(/[°^ª\-_\/]/g,'');
+  const n=sp(r),k=sp(chiave);
+  return n.includes(k)
+    || (k==='1FASE' && (n.includes('PRIMAFASE')||n.includes('1AFASE')))
+    || (k==='COLLAUDI' && n.includes('COLLAUD'))      // anche COLLAUDO
+    || (k==='MONTAGGIO' && n.includes('MONTAGG'));
+}
 function trovaRepartoPerChiave(reparti,chiave){
-  return (reparti||[]).find(r=>(r||'').toUpperCase().includes(chiave.toUpperCase()))||null;
+  return (reparti||[]).find(r=>repMatch(r,chiave))||null;
 }
 function calcolaEfficienza(s){
   if(!s||!s.dipendenti||!s.tempistiche)return null;

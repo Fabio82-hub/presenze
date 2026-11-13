@@ -302,7 +302,8 @@ tr:hover td{background:var(--accent-light)}
     <span class="badge" style="background:#4f46e5;color:#fff;padding:.25rem .75rem;border-radius:20px;font-size:.72rem;font-weight:700;letter-spacing:.06em">🏢 PERUGIA</span>
     <span class="hdr-date" id="hdrDate"></span><span id="dbStatus" style="font-size:.72rem;margin-left:.5rem">⏳ connessione...</span>
     <button class="btn bp sm" onclick="openM('mEntry')">+ Inserisci assenza</button>
-    <a href="index.html" style="background:#e0e7ff;color:#4f46e5;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:600;text-decoration:none;white-space:nowrap">🏠 Cambia filiale</a>
+    <button type="button" onclick="apriCambioFiliale()" style="background:#e0e7ff;color:#4f46e5;border:0;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:600;white-space:nowrap;cursor:pointer;font-family:inherit">🏢 Cambia filiale</button>
+    <a href="index.html" style="background:#f3f4f6;color:#374151;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:600;text-decoration:none;white-space:nowrap">🏠 Home</a>
   </div>
 </div>
 
@@ -903,6 +904,17 @@ tr:hover td{background:var(--accent-light)}
 
 <!-- ══ MODAL: DIPENDENTE ══ -->
 <!-- Modal trasferimento tra filiali -->
+<div class="mo" id="mFil" onclick="if(event.target===this)closeM('mFil')">
+  <div class="md" style="max-width:420px">
+    <div class="mh">
+      <div class="mt">🏢 Cambia filiale</div>
+      <button class="mc" onclick="closeM('mFil')">✕</button>
+    </div>
+    <p style="font-size:.8rem;color:var(--text2);margin:.25rem 0 .9rem">Scegli la filiale: si apre direttamente il suo calendario.</p>
+    <div id="filBtns" style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem"></div>
+  </div>
+</div>
+
 <div class="mo" id="mTrasf">
   <div class="md">
     <div class="mh">
@@ -1581,9 +1593,11 @@ const GGLONG=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì'
 // ("1° FASE", "1°FASE", "1ºFase" e "Controllo Qualità" vengono riconosciuti allo stesso modo).
 function normRep(s){return (s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/º/g,'°').replace(/[\s.'’`´]/g,'');}
 function repMatch(r,chiave){
-  const n=normRep(r),k=normRep(chiave);
+  // segni d'ordinale (° ^ ª) e trattini ignorati: "1°FASE", "1^ FASE", "1 FASE", "1a fase" sono lo stesso reparto
+  const sp=x=>normRep(x).replace(/[°^ª\-_\/]/g,'');
+  const n=sp(r),k=sp(chiave);
   return n.includes(k)
-    || (k==='1°FASE' && (n.includes('PRIMAFASE')||n.includes('1AFASE')))
+    || (k==='1FASE' && (n.includes('PRIMAFASE')||n.includes('1AFASE')))
     || (k==='COLLAUDI' && n.includes('COLLAUD'))      // anche COLLAUDO
     || (k==='MONTAGGIO' && n.includes('MONTAGG'));
 }
@@ -1999,7 +2013,7 @@ function buildCalTabella(){
         if(sabStr) dipsRep=dipsRep.filter(d=>oreStraordinarioDip(d.id,ds)>0);
 
         if(!dipsRep.length || !tempistica){
-          cellsEff+=`<td class="tr-eff tr-eff-na" title="${!tempistica?'Imposta la tempistica in Performance Reparto':'Nessun dipendente nel reparto'}">—</td>`;
+          cellsEff+=`<td class="tr-eff tr-eff-na" title="${!rep?('Reparto non trovato tra: '+(S.reparti||[]).join(' | ')):!tempistica?'Imposta la tempistica in Performance Reparto':'Nessun dipendente nel reparto'}">—</td>`;
           continue;
         }
 
@@ -4579,6 +4593,28 @@ setStatus('loading');
   renderDash();
 })();
 
+</script>
+<script>
+// ── Cambio filiale rapido: popup con le filiali → apre direttamente il calendario ──
+const _FIL_LISTA=[['seriate','Seriate'],['orio','Orio'],['modugno','Modugno'],['perugia','Perugia'],['pomezia','Pomezia'],['elmas','Elmas']];
+function apriCambioFiliale(){
+  const cur=(location.pathname.split('/').pop()||'').replace('.html','').toLowerCase();
+  document.getElementById('filBtns').innerHTML=_FIL_LISTA.map(([k,n])=>
+    `<button type="button" class="btn ${k===cur?'bg':'bp'}" style="padding:.7rem;font-size:.85rem;justify-content:center" onclick="vaiFiliale('${k}')">🏢 ${n}${k===cur?' (questa)':''}</button>`).join('');
+  openM('mFil');
+}
+function vaiFiliale(k){
+  const cur=(location.pathname.split('/').pop()||'').replace('.html','').toLowerCase();
+  if(k===cur){ closeM('mFil'); const b=document.querySelector('.nb[onclick*="\'calendario\'"]'); if(typeof nav==='function')nav('calendario',b); return; }
+  location.href=k+'.html#calendario';
+}
+// Se arrivo con #calendario nell'indirizzo, apro subito il calendario
+window.addEventListener('load',()=>{
+  if(location.hash==='#calendario'){
+    const b=document.querySelector('.nb[onclick*="\'calendario\'"]');
+    try{ nav('calendario',b); }catch(e){}
+  }
+});
 </script>
 </body>
 </html>
