@@ -1,0 +1,40 @@
+rules_version = '2';
+// Programma presenze — accesso con utenza personale (B0, Progetto R2-IVS).
+// Ruoli in utenti/{uid}: admin = tutto + utenti · editor = legge e modifica · viewer = legge.
+// Nessun accesso senza login e utenza attiva.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function profilo() {
+      return get(/databases/$(database)/documents/utenti/$(request.auth.uid)).data;
+    }
+    function attivo() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/utenti/$(request.auth.uid))
+        && profilo().attivo == true;
+    }
+    function ruolo(r) {
+      return attivo() && profilo().ruolo in r;
+    }
+
+    // Utenti: ognuno legge il proprio profilo, solo l'amministratore gestisce
+    match /utenti/{uid} {
+      allow read: if (request.auth != null && request.auth.uid == uid) || ruolo(['admin']);
+      allow write: if ruolo(['admin']);
+    }
+
+    // Registro accessi: si scrive solo la propria riga, non si modifica, lo legge l'amministratore
+    match /accessi/{id} {
+      allow create: if attivo()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.quando == request.time;
+      allow read: if ruolo(['admin']);
+    }
+
+    // Tutti gli altri dati del programma
+    match /{raccolta}/{resto=**} {
+      allow read: if attivo() && !(raccolta in ['utenti', 'accessi']);
+      allow write: if ruolo(['admin', 'editor']) && !(raccolta in ['utenti', 'accessi']);
+    }
+  }
+}
