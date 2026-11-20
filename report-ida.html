@@ -3626,7 +3626,9 @@ window.apriDettaglioKpiStorico=function(tipo){
   document.getElementById("kpiModalOverlay").classList.add("open");
 };
 
-window.addEventListener("DOMContentLoaded",async()=>{
+// La pagina parte dopo il login (auth-guard): se il DOM è già pronto si avvia subito
+((avvia)=>document.readyState==='loading'?// La pagina parte dopo il login (auth-guard): se il DOM è già pronto si avvia subito
+((avvia)=>document.readyState==='loading'?window.addEventListener('DOMContentLoaded',avvia):avvia())(avvia):avvia())(async()=>{
   buildMesiChips();buildFasiChips();buildStoricoMesiChips();buildClassificaMesiChips();buildFasiMesiChips();
   await ripristinaTempiDaMemoria(); // ricarica i Tempi Tecnici salvati in precedenza (dal cloud, condivisi tra tutti i PC), senza richiedere un nuovo upload
   await caricaEsclusiManuali(); // ricarica dal cloud l'elenco di chi è stato escluso manualmente dall'analisi

@@ -1251,7 +1251,9 @@ function renderRisultatiCommesse(righe, compPrima, compMontaggio, compCollaudo, 
   </div>`;
 }
 
-window.addEventListener("DOMContentLoaded",async()=>{
+// La pagina parte dopo il login (auth-guard): se il DOM è già pronto si avvia subito
+((avvia)=>document.readyState==='loading'?// La pagina parte dopo il login (auth-guard): se il DOM è già pronto si avvia subito
+((avvia)=>document.readyState==='loading'?window.addEventListener('DOMContentLoaded',avvia):avvia())(avvia):avvia())(async()=>{
   await ripristinaTempiDaMemoria();
   await ripristinaCommesseDaMemoria();
   setupDragDrop("uzTempi","fTempi");

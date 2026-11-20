@@ -511,7 +511,9 @@ window.eseguiAnalisi=async function(){
   openTab("confronto");
 };
 
-window.addEventListener("DOMContentLoaded",()=>{
+// La pagina parte dopo il login (auth-guard): se il DOM è già pronto si avvia subito
+((avvia)=>document.readyState==='loading'?// La pagina parte dopo il login (auth-guard): se il DOM è già pronto si avvia subito
+((avvia)=>document.readyState==='loading'?window.addEventListener('DOMContentLoaded',avvia):avvia())(avvia):avvia())(()=>{
   buildUI();
   chiusure=[{dal:"2026-08-14",al:"2026-08-21",label:"Chiusura estiva"}];
   renderChiusure();

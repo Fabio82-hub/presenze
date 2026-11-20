@@ -183,7 +183,8 @@ function makeIcon(color){
   });
 }
 
-window.addEventListener('DOMContentLoaded',()=>{
+// La pagina parte dopo il login (auth-guard): se il DOM è già pronto si avvia subito
+((avvia)=>document.readyState==='loading'?window.addEventListener('DOMContentLoaded',avvia):avvia())(()=>{
   document.getElementById('hdr-date').textContent=new Date().toLocaleDateString('it-IT',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
 
   // Inizializza mappa Leaflet centrata sull'Italia

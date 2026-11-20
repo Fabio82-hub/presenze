@@ -4619,8 +4619,10 @@ function vaiFiliale(k){
   location.href=k+'.html#calendario';
 }
 // Se arrivo con #calendario nell'indirizzo, apro subito il calendario
+// nav arriva dallo script principale, che parte dopo il login: si aspetta che ci sia (max 15 s)
 window.addEventListener('load',()=>{
   if(location.hash==='#calendario'){
+    let t=0; const prova=()=>{ if(typeof nav==='function'){ const b=document.querySelector('.nb[onclick*="\'calendario\'"]'); try{ nav('calendario',b); }catch(e){} } else if((t+=200)<15000) setTimeout(prova,200); }; prova(); return;
     const b=document.querySelector('.nb[onclick*="\'calendario\'"]');
     try{ nav('calendario',b); }catch(e){}
   }
