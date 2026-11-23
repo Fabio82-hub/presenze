@@ -211,35 +211,12 @@ window.doLogout=async()=>{await signOut(auth);window.location.href='login.html';
 
 <div class="main">
   <div class="pt">👑 Gestione Utenti</div>
-  <div class="ps">Crea e gestisci gli accessi all'applicazione. Solo gli amministratori possono accedere a questa pagina.</div>
+  <div class="ps">Gestisci ruoli e stato degli accessi all'applicazione. Solo gli amministratori possono accedere a questa pagina.</div>
 
   <!-- CREA NUOVO UTENTE -->
   <div class="card">
-    <div class="ct">➕ Crea nuovo utente</div>
-    <div class="fr" style="margin-bottom:.85rem">
-      <div class="fg" style="min-width:160px">
-        <label>Nome completo</label>
-        <input type="text" id="nuovoNome" placeholder="Mario Rossi">
-      </div>
-      <div class="fg" style="min-width:200px">
-        <label>Email</label>
-        <input type="email" id="nuovaEmail" placeholder="mario.rossi@azienda.it">
-      </div>
-      <div class="fg" style="min-width:150px">
-        <label>Password temporanea</label>
-        <input type="password" id="nuovaPw" placeholder="min. 6 caratteri">
-      </div>
-      <div class="fg" style="min-width:130px">
-        <label>Ruolo</label>
-        <select id="nuovoRuolo">
-          <option value="viewer">👁 Sola lettura</option>
-          <option value="editor">✏️ Modifica — lettura e modifica</option>
-          <option value="admin">👑 Amministratore — accesso completo e gestione utenti</option>
-        </select>
-      </div>
-      <button class="btn bp" id="btnCreaUtente" onclick="creaUtente()" style="padding:.52rem 1.1rem">+ Crea utente</button>
-    </div>
-    <div id="msgCrea" style="display:none"></div>
+    <div class="ct">➕ Nuovi utenti e cambio email</div>
+    <div class="al a-info" style="font-size:.8rem;margin-bottom:.85rem">Per aggiungere un utente o correggere l'email con cui accede, scrivi a <b>dr@kaleidohq.ai</b>: lo facciamo in giornata.</div>
     <div class="al a-info" style="font-size:.72rem">
       <b>Ruoli:</b> &nbsp;
       👁 <b>Sola lettura</b> = consulta, non modifica &nbsp;·&nbsp;

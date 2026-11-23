@@ -62,11 +62,20 @@ onAuthStateChanged(auth, async user=>{
   }
 });
 
+// Le utenze sono registrate con @s-italia.com o con @ivsitalia.com, e ognuno scrive quella che usa:
+// se non è registrata con un dominio si prova con l'altro (accesso e «Password dimenticata»).
+function altraEmail(email){
+  const [nome,dominio]=email.toLowerCase().split('@');
+  if(dominio==='s-italia.com')return nome+'@ivsitalia.com';
+  if(dominio==='ivsitalia.com')return nome+'@s-italia.com';
+  return null;
+}
+
 window.doReset=async function(){
   const email=document.getElementById('email').value.trim();
   const err=document.getElementById('errMsg');
   if(!email){err.textContent='Scrivi la tua email, poi clicca di nuovo su «Password dimenticata».';err.classList.add('show');return;}
-  try{await sendPasswordResetEmail(auth,email);}catch(e){}
+  for(const e of [email,altraEmail(email)].filter(Boolean)){try{await sendPasswordResetEmail(auth,e);}catch(_){}}
   err.textContent='Se l\'email è registrata, riceverai un link per impostare la password.';err.classList.add('show');
 };
 
@@ -80,7 +89,13 @@ window.doLogin=async function(){
   btn.disabled=true;
   btn.innerHTML='<span class="spin"></span>Accesso in corso...';
   try{
-    const cred=await signInWithEmailAndPassword(auth,email,pw);
+    let cred;
+    try{cred=await signInWithEmailAndPassword(auth,email,pw);}
+    catch(e1){
+      const altra=altraEmail(email);
+      if(!altra||!/invalid-credential|user-not-found|wrong-password/.test(e1.message||''))throw e1;
+      cred=await signInWithEmailAndPassword(auth,altra,pw);
+    }
     // Verifica che l'utente esista nel nostro sistema
     const userDoc=await getDoc(doc(db,'utenti',cred.user.uid));
     if(!userDoc.exists()||!userDoc.data().attivo){
